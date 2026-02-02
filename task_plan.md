@@ -95,20 +95,20 @@ pnpm test:shell     # shell script tests
 - [x] Add package.json scripts (build, test, lint)
 - [x] Set up ESLint + Prettier
 
-### Phase 3b: Core daemon
-- [ ] Project root detection (find .htpx or git root)
-- [ ] Daemon lifecycle (start, stop, health check via child_process)
-- [ ] Port allocation (find free port, write to .htpx/proxy.port)
-- [ ] Unix socket control server (net module or fastify)
-- [ ] CA certificate generation (mockttp handles this)
-- [ ] MITM proxy with mockttp
-- [ ] Request/response capture to SQLite
-- [ ] **Tests:**
-  - [ ] Unit: project root detection logic
-  - [ ] Unit: SQLite repository (CRUD operations, temp DB)
-  - [ ] Integration: daemon start/stop lifecycle
-  - [ ] Integration: make HTTP request through proxy, verify captured
-  - [ ] Integration: control API via Unix socket
+### Phase 3b: Core daemon ✅
+- [x] Project root detection (find .htpx or git root)
+- [x] Daemon lifecycle (start, stop, health check via child_process)
+- [x] Port allocation (find free port, write to .htpx/proxy.port)
+- [x] Unix socket control server (net module)
+- [x] CA certificate generation (mockttp handles this)
+- [x] MITM proxy with mockttp
+- [x] Request/response capture to SQLite
+- [x] **Tests:**
+  - [x] Unit: project root detection logic (18 tests)
+  - [x] Unit: SQLite repository (15 tests)
+  - [x] Integration: daemon start/stop lifecycle
+  - [x] Integration: make HTTP request through proxy, verify captured
+  - [x] Integration: control API via Unix socket
 
 ### Phase 3c: Shell integration
 - [ ] `htpx init` - output shell function for zsh/bash
