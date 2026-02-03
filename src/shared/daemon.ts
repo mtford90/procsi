@@ -4,6 +4,7 @@ import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { getHtpxPaths, readDaemonPid, isProcessRunning, ensureHtpxDir } from "./project.js";
 import { ControlClient } from "../daemon/control.js";
+import type { LogLevel } from "./logger.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -38,7 +39,10 @@ export async function isDaemonRunning(projectRoot: string): Promise<boolean> {
  * Start the daemon for a project.
  * Returns the proxy port.
  */
-export async function startDaemon(projectRoot: string): Promise<number> {
+export async function startDaemon(
+  projectRoot: string,
+  logLevel: LogLevel = "warn"
+): Promise<number> {
   // Check if already running
   if (await isDaemonRunning(projectRoot)) {
     const paths = getHtpxPaths(projectRoot);
@@ -63,6 +67,7 @@ export async function startDaemon(projectRoot: string): Promise<number> {
     env: {
       ...process.env,
       PROJECT_ROOT: projectRoot,
+      HTPX_LOG_LEVEL: logLevel,
     },
     detached: true,
     stdio: ["ignore", out, err],

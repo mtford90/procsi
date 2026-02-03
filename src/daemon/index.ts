@@ -13,6 +13,7 @@ import {
   writeDaemonPid,
   removeDaemonPid,
 } from "../shared/project.js";
+import { createLogger, isValidLogLevel, type LogLevel } from "../shared/logger.js";
 
 /**
  * Daemon entry point.
@@ -28,11 +29,16 @@ async function main() {
   // Ensure .htpx directory exists
   ensureHtpxDir(projectRoot);
 
+  // Parse log level from environment
+  const envLogLevel = process.env["HTPX_LOG_LEVEL"];
+  const logLevel: LogLevel = envLogLevel && isValidLogLevel(envLogLevel) ? envLogLevel : "warn";
+  const logger = createLogger("daemon", projectRoot, logLevel);
+
   const paths = getHtpxPaths(projectRoot);
 
   // Generate CA certificate if it doesn't exist
   if (!fs.existsSync(paths.caCertFile) || !fs.existsSync(paths.caKeyFile)) {
-    console.log("Generating CA certificate...");
+    logger.info("Generating CA certificate");
     const ca = await generateCACertificate({
       subject: { commonName: "htpx Local CA - DO NOT TRUST" },
     });
@@ -43,7 +49,7 @@ async function main() {
   }
 
   // Initialise storage
-  const storage = new RequestRepository(paths.databaseFile);
+  const storage = new RequestRepository(paths.databaseFile, projectRoot, logLevel);
 
   // Find a free port for the proxy
   const proxyPort = await findFreePort();
@@ -53,37 +59,43 @@ async function main() {
   storage.ensureSession(DAEMON_SESSION_ID, "daemon", process.pid);
 
   // Start the proxy server
-  console.log(`Starting proxy on port ${proxyPort}...`);
+  logger.info("Starting proxy", { port: proxyPort });
   const proxy = await createProxy({
     port: proxyPort,
     caKeyPath: paths.caKeyFile,
     caCertPath: paths.caCertFile,
     storage,
     sessionId: DAEMON_SESSION_ID,
+    projectRoot,
+    logLevel,
   });
 
   // Write proxy port to file
   writeProxyPort(projectRoot, proxy.port);
 
   // Start control server
-  console.log("Starting control server...");
+  logger.info("Starting control server", { socketPath: paths.controlSocketFile });
   const controlServer = createControlServer({
     socketPath: paths.controlSocketFile,
     storage,
     proxyPort: proxy.port,
+    projectRoot,
+    logLevel,
   });
 
   // Write PID file
   writeDaemonPid(projectRoot, process.pid);
 
-  console.log(`htpx daemon started (PID: ${process.pid})`);
-  console.log(`  Proxy: http://127.0.0.1:${proxy.port}`);
-  console.log(`  Control: ${paths.controlSocketFile}`);
-  console.log(`  CA cert: ${paths.caCertFile}`);
+  logger.info("Daemon started", {
+    pid: process.pid,
+    proxyPort: proxy.port,
+    controlSocket: paths.controlSocketFile,
+    caCert: paths.caCertFile,
+  });
 
   // Handle graceful shutdown
   const shutdown = async (signal: string) => {
-    console.log(`\nReceived ${signal}, shutting down...`);
+    logger.info("Received shutdown signal", { signal });
 
     try {
       await controlServer.close();
@@ -96,10 +108,12 @@ async function main() {
         fs.unlinkSync(paths.proxyPortFile);
       }
 
-      console.log("Shutdown complete");
+      logger.info("Shutdown complete");
       process.exit(0);
     } catch (err) {
-      console.error("Error during shutdown:", err);
+      logger.error("Error during shutdown", {
+        error: err instanceof Error ? err.message : String(err),
+      });
       process.exit(1);
     }
   };
@@ -127,7 +141,8 @@ async function findFreePort(): Promise<number> {
   });
 }
 
-main().catch((err) => {
+main().catch((err: unknown) => {
+  // Can't use logger here as we may not have initialised it yet
   console.error("Daemon error:", err);
   process.exit(1);
 });

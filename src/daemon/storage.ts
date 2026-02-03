@@ -1,6 +1,7 @@
 import Database from "better-sqlite3";
 import { v4 as uuidv4 } from "uuid";
 import type { CapturedRequest, Session } from "../shared/types.js";
+import { createLogger, type LogLevel, type Logger } from "../shared/logger.js";
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS sessions (
@@ -36,11 +37,16 @@ CREATE INDEX IF NOT EXISTS idx_requests_label ON requests(label);
 
 export class RequestRepository {
   private db: Database.Database;
+  private logger: Logger | undefined;
 
-  constructor(dbPath: string) {
+  constructor(dbPath: string, projectRoot?: string, logLevel?: LogLevel) {
     this.db = new Database(dbPath);
     this.db.pragma("journal_mode = WAL");
     this.db.exec(SCHEMA);
+
+    if (projectRoot) {
+      this.logger = createLogger("storage", projectRoot, logLevel);
+    }
   }
 
   /**
@@ -169,6 +175,13 @@ export class RequestRepository {
       request.responseBody ?? null,
       request.durationMs ?? null
     );
+
+    this.logger?.debug("Request saved", {
+      id,
+      sessionId: request.sessionId,
+      method: request.method,
+      url: request.url,
+    });
 
     return id;
   }

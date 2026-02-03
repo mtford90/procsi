@@ -93,6 +93,7 @@ export function getHtpxPaths(projectRoot: string) {
     caKeyFile: path.join(htpxDir, "ca-key.pem"),
     caCertFile: path.join(htpxDir, "ca.pem"),
     pidFile: path.join(htpxDir, "daemon.pid"),
+    logFile: path.join(htpxDir, "htpx.log"),
   };
 }
 

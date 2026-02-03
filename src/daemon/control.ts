@@ -2,11 +2,14 @@ import * as net from "node:net";
 import * as fs from "node:fs";
 import type { RequestRepository } from "./storage.js";
 import type { CapturedRequest, DaemonStatus, Session } from "../shared/types.js";
+import { createLogger, type LogLevel, type Logger } from "../shared/logger.js";
 
 export interface ControlServerOptions {
   socketPath: string;
   storage: RequestRepository;
   proxyPort: number;
+  projectRoot?: string;
+  logLevel?: LogLevel;
 }
 
 export interface ControlServer {
@@ -34,7 +37,12 @@ type RequestHandler = (params: Record<string, unknown>) => unknown;
  * Create a Unix socket control server for daemon communication.
  */
 export function createControlServer(options: ControlServerOptions): ControlServer {
-  const { socketPath, storage, proxyPort } = options;
+  const { socketPath, storage, proxyPort, projectRoot, logLevel } = options;
+
+  // Create logger if projectRoot is provided
+  const logger: Logger | undefined = projectRoot
+    ? createLogger("control", projectRoot, logLevel)
+    : undefined;
 
   // Remove existing socket file if it exists
   if (fs.existsSync(socketPath)) {
@@ -133,9 +141,13 @@ export function createControlServer(options: ControlServerOptions): ControlServe
 
         try {
           const message = JSON.parse(messageStr) as ControlMessage;
+          logger?.debug("Control message received", { type: message.method });
           const response = handleMessage(message, handlers);
           socket.write(JSON.stringify(response) + "\n");
         } catch (err) {
+          logger?.error("Control message parse error", {
+            error: err instanceof Error ? err.message : "Unknown error",
+          });
           const errorResponse: ControlResponse = {
             id: "unknown",
             error: {
@@ -149,8 +161,7 @@ export function createControlServer(options: ControlServerOptions): ControlServe
     });
 
     socket.on("error", (err) => {
-      // Log but don't crash on socket errors
-      console.error("Control socket error:", err.message);
+      logger?.error("Control socket error", { error: err.message });
     });
   });
 

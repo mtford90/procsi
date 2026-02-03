@@ -2,6 +2,7 @@ import { Command } from "commander";
 import { findOrCreateProjectRoot, ensureHtpxDir, getHtpxPaths } from "../../shared/project.js";
 import { startDaemon } from "../../shared/daemon.js";
 import { ControlClient } from "../../daemon/control.js";
+import { parseVerbosity } from "../../shared/logger.js";
 
 /**
  * Format environment variable exports for shell evaluation.
@@ -16,8 +17,11 @@ export function formatEnvVars(vars: Record<string, string>): string {
 export const interceptCommand = new Command("intercept")
   .description("Output environment variables to intercept HTTP traffic")
   .option("-l, --label <label>", "Label for this session")
-  .action(async (options: { label?: string }) => {
+  .action(async (options: { label?: string }, command: Command) => {
     const label = options.label;
+    const globalOpts = command.optsWithGlobals() as { verbose?: number };
+    const verbosity = globalOpts.verbose ?? 0;
+    const logLevel = parseVerbosity(verbosity);
 
     // Find project root (auto-creates .htpx if needed)
     const projectRoot = findOrCreateProjectRoot();
@@ -27,7 +31,7 @@ export const interceptCommand = new Command("intercept")
 
     try {
       // Start daemon if not already running
-      const proxyPort = await startDaemon(projectRoot);
+      const proxyPort = await startDaemon(projectRoot, logLevel);
       const proxyUrl = `http://127.0.0.1:${proxyPort}`;
 
       // Register session with daemon

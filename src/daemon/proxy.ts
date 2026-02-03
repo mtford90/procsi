@@ -1,6 +1,7 @@
 import * as mockttp from "mockttp";
 import type { CompletedRequest, CompletedBody, Headers } from "mockttp";
 import type { RequestRepository } from "./storage.js";
+import { createLogger, type LogLevel } from "../shared/logger.js";
 
 /**
  * Response object passed to beforeResponse callback.
@@ -22,6 +23,8 @@ export interface ProxyOptions {
   storage: RequestRepository;
   sessionId: string;
   label?: string;
+  projectRoot?: string;
+  logLevel?: LogLevel;
 }
 
 export interface ProxyServer {
@@ -34,7 +37,10 @@ export interface ProxyServer {
  * Create and start a MITM proxy server that captures all HTTP/HTTPS traffic.
  */
 export async function createProxy(options: ProxyOptions): Promise<ProxyServer> {
-  const { storage, sessionId, label } = options;
+  const { storage, sessionId, label, projectRoot, logLevel } = options;
+
+  // Create logger if projectRoot is provided
+  const logger = projectRoot ? createLogger("proxy", projectRoot, logLevel) : undefined;
 
   // Map to track request info for response correlation
   const requestInfo = new Map<string, { ourId: string; timestamp: number }>();
@@ -63,6 +69,12 @@ export async function createProxy(options: ProxyOptions): Promise<ProxyServer> {
 
       // Convert headers to simple object
       const headers = flattenHeaders(request.headers);
+
+      logger?.trace("Request received", {
+        method: request.method,
+        url: request.url,
+        headers,
+      });
 
       // Save request to storage and track the ID
       const ourId = storage.saveRequest({
@@ -97,6 +109,12 @@ export async function createProxy(options: ProxyOptions): Promise<ProxyServer> {
 
       // Convert headers to simple object
       const headers = flattenHeaders(response.headers);
+
+      logger?.trace("Response sent", {
+        status: response.statusCode,
+        durationMs,
+        url: request.url,
+      });
 
       // Update request with response data using our ID
       storage.updateRequestResponse(info.ourId, {
