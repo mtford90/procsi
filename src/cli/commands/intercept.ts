@@ -17,8 +17,10 @@ export function formatEnvVars(vars: Record<string, string>): string {
 export const interceptCommand = new Command("intercept")
   .description("Output environment variables to intercept HTTP traffic")
   .option("-l, --label <label>", "Label for this session")
-  .action(async (options: { label?: string }, command: Command) => {
+  .option("--no-restart", "Do not auto-restart daemon on version mismatch")
+  .action(async (options: { label?: string; restart: boolean }, command: Command) => {
     const label = options.label;
+    const autoRestart = options.restart;
     const globalOpts = command.optsWithGlobals() as { verbose?: number };
     const verbosity = globalOpts.verbose ?? 0;
     const logLevel = parseVerbosity(verbosity);
@@ -31,7 +33,20 @@ export const interceptCommand = new Command("intercept")
 
     try {
       // Start daemon if not already running
-      const proxyPort = await startDaemon(projectRoot, logLevel);
+      const proxyPort = await startDaemon(projectRoot, {
+        logLevel,
+        autoRestart,
+        onVersionMismatch: (running, cli) => {
+          if (autoRestart) {
+            console.log(`# htpx: restarting daemon (version mismatch: ${running} -> ${cli})`);
+          } else {
+            console.log(
+              `# htpx warning: daemon version mismatch (running: ${running}, CLI: ${cli})`
+            );
+            console.log(`# Use 'htpx restart' to update.`);
+          }
+        },
+      });
       const proxyUrl = `http://127.0.0.1:${proxyPort}`;
 
       // Register session with daemon

@@ -9,6 +9,7 @@ import {
   isProcessRunning,
 } from "../../shared/project.js";
 import { readProxyPort } from "../../shared/project.js";
+import { getHtpxVersion } from "../../shared/version.js";
 
 interface DebugDump {
   timestamp: string;
@@ -94,27 +95,6 @@ export function collectDebugInfo(projectRoot: string | undefined): DebugDump {
   }
 
   return dump;
-}
-
-/**
- * Get htpx version from package.json.
- */
-function getHtpxVersion(): string {
-  try {
-    // Find package.json relative to this file
-    const packageJsonPath = path.resolve(
-      path.dirname(new URL(import.meta.url).pathname),
-      "..",
-      "..",
-      "..",
-      "package.json"
-    );
-    const content = fs.readFileSync(packageJsonPath, "utf-8");
-    const pkg = JSON.parse(content) as { version?: string };
-    return pkg.version ?? "unknown";
-  } catch {
-    return "unknown";
-  }
 }
 
 /**

@@ -8,6 +8,7 @@ export interface ControlServerOptions {
   socketPath: string;
   storage: RequestRepository;
   proxyPort: number;
+  version: string;
   projectRoot?: string;
   logLevel?: LogLevel;
 }
@@ -37,7 +38,7 @@ type RequestHandler = (params: Record<string, unknown>) => unknown;
  * Create a Unix socket control server for daemon communication.
  */
 export function createControlServer(options: ControlServerOptions): ControlServer {
-  const { socketPath, storage, proxyPort, projectRoot, logLevel } = options;
+  const { socketPath, storage, proxyPort, version, projectRoot, logLevel } = options;
 
   // Create logger if projectRoot is provided
   const logger: Logger | undefined = projectRoot
@@ -62,6 +63,7 @@ export function createControlServer(options: ControlServerOptions): ControlServe
         proxyPort,
         sessionCount: sessions.length,
         requestCount,
+        version,
       };
     },
 

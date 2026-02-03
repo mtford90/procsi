@@ -31,4 +31,5 @@ export interface DaemonStatus {
   proxyPort?: number;
   sessionCount: number;
   requestCount: number;
+  version: string;
 }

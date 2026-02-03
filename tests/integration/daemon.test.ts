@@ -8,6 +8,7 @@ import { RequestRepository } from "../../src/daemon/storage.js";
 import { createProxy } from "../../src/daemon/proxy.js";
 import { createControlServer, ControlClient } from "../../src/daemon/control.js";
 import { ensureHtpxDir, getHtpxPaths } from "../../src/shared/project.js";
+import { getHtpxVersion } from "../../src/shared/version.js";
 
 describe("daemon integration", () => {
   let tempDir: string;
@@ -158,6 +159,7 @@ describe("daemon integration", () => {
         socketPath: paths.controlSocketFile,
         storage,
         proxyPort: proxy.port,
+        version: "1.0.0",
       });
       cleanup.push(controlServer.close);
 
@@ -166,6 +168,32 @@ describe("daemon integration", () => {
       const isAlive = await client.ping();
 
       expect(isAlive).toBe(true);
+    });
+
+    it("status includes version field", async () => {
+      const session = storage.registerSession("test", process.pid);
+
+      const proxy = await createProxy({
+        caKeyPath: paths.caKeyFile,
+        caCertPath: paths.caCertFile,
+        storage,
+        sessionId: session.id,
+      });
+      cleanup.push(proxy.stop);
+
+      const testVersion = "2.3.4";
+      const controlServer = createControlServer({
+        socketPath: paths.controlSocketFile,
+        storage,
+        proxyPort: proxy.port,
+        version: testVersion,
+      });
+      cleanup.push(controlServer.close);
+
+      const client = new ControlClient(paths.controlSocketFile);
+      const status = await client.status();
+
+      expect(status.version).toBe(testVersion);
     });
 
     it("returns daemon status", async () => {
@@ -189,10 +217,12 @@ describe("daemon integration", () => {
       });
       cleanup.push(proxy.stop);
 
+      const testVersion = getHtpxVersion();
       const controlServer = createControlServer({
         socketPath: paths.controlSocketFile,
         storage,
         proxyPort: proxy.port,
+        version: testVersion,
       });
       cleanup.push(controlServer.close);
 
@@ -203,6 +233,7 @@ describe("daemon integration", () => {
       expect(status.proxyPort).toBe(proxy.port);
       expect(status.sessionCount).toBe(2);
       expect(status.requestCount).toBe(1);
+      expect(status.version).toBe(testVersion);
     });
 
     it("lists and counts requests via control API", async () => {
@@ -231,6 +262,7 @@ describe("daemon integration", () => {
         socketPath: paths.controlSocketFile,
         storage,
         proxyPort: proxy.port,
+        version: "1.0.0",
       });
       cleanup.push(controlServer.close);
 
@@ -257,6 +289,7 @@ describe("daemon integration", () => {
         socketPath: paths.controlSocketFile,
         storage,
         proxyPort: proxy.port,
+        version: "1.0.0",
       });
       cleanup.push(controlServer.close);
 

@@ -14,6 +14,7 @@ import {
   removeDaemonPid,
 } from "../shared/project.js";
 import { createLogger, isValidLogLevel, type LogLevel } from "../shared/logger.js";
+import { getHtpxVersion } from "../shared/version.js";
 
 /**
  * Daemon entry point.
@@ -74,11 +75,16 @@ async function main() {
   writeProxyPort(projectRoot, proxy.port);
 
   // Start control server
-  logger.info("Starting control server", { socketPath: paths.controlSocketFile });
+  const daemonVersion = getHtpxVersion();
+  logger.info("Starting control server", {
+    socketPath: paths.controlSocketFile,
+    version: daemonVersion,
+  });
   const controlServer = createControlServer({
     socketPath: paths.controlSocketFile,
     storage,
     proxyPort: proxy.port,
+    version: daemonVersion,
     projectRoot,
     logLevel,
   });

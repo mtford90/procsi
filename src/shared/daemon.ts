@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { getHtpxPaths, readDaemonPid, isProcessRunning, ensureHtpxDir } from "./project.js";
 import { ControlClient } from "../daemon/control.js";
 import type { LogLevel } from "./logger.js";
+import { getHtpxVersion } from "./version.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -16,6 +17,12 @@ function getDaemonPath(): string {
   // This is relative to dist/shared/daemon.js
   // The daemon entry point is at dist/daemon/index.js
   return path.resolve(__dirname, "..", "daemon", "index.js");
+}
+
+export interface StartDaemonOptions {
+  logLevel?: LogLevel;
+  autoRestart?: boolean;
+  onVersionMismatch?: (running: string, cli: string) => void;
 }
 
 /**
@@ -36,20 +43,84 @@ export async function isDaemonRunning(projectRoot: string): Promise<boolean> {
 }
 
 /**
- * Start the daemon for a project.
- * Returns the proxy port.
+ * Get the version of the running daemon.
+ * Returns null if daemon is not running.
  */
-export async function startDaemon(
+export async function getDaemonVersion(projectRoot: string): Promise<string | null> {
+  if (!(await isDaemonRunning(projectRoot))) {
+    return null;
+  }
+
+  const paths = getHtpxPaths(projectRoot);
+  const client = new ControlClient(paths.controlSocketFile);
+
+  try {
+    const status = await client.status();
+    return status.version;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Restart the daemon for a project.
+ * Returns the new proxy port.
+ */
+export async function restartDaemon(
   projectRoot: string,
   logLevel: LogLevel = "warn"
 ): Promise<number> {
+  await stopDaemon(projectRoot);
+  return spawnDaemon(projectRoot, logLevel);
+}
+
+/**
+ * Start the daemon for a project.
+ * Returns the proxy port.
+ *
+ * When the daemon is already running and autoRestart is true (default),
+ * restarts the daemon if there is a version mismatch between CLI and daemon.
+ */
+export async function startDaemon(
+  projectRoot: string,
+  options?: StartDaemonOptions | LogLevel
+): Promise<number> {
+  // Handle backward compatibility with old signature
+  const opts: StartDaemonOptions =
+    typeof options === "string" ? { logLevel: options } : (options ?? {});
+  const { logLevel = "warn", autoRestart = true, onVersionMismatch } = opts;
+
   // Check if already running
   if (await isDaemonRunning(projectRoot)) {
     const paths = getHtpxPaths(projectRoot);
+
+    // Check version
+    const daemonVersion = await getDaemonVersion(projectRoot);
+    const cliVersion = getHtpxVersion();
+
+    if (daemonVersion && daemonVersion !== cliVersion) {
+      // Version mismatch detected
+      if (onVersionMismatch) {
+        onVersionMismatch(daemonVersion, cliVersion);
+      }
+
+      if (autoRestart) {
+        return restartDaemon(projectRoot, logLevel);
+      }
+    }
+
     const portContent = fs.readFileSync(paths.proxyPortFile, "utf-8").trim();
     return parseInt(portContent, 10);
   }
 
+  return spawnDaemon(projectRoot, logLevel);
+}
+
+/**
+ * Spawn a new daemon process.
+ * Internal function used by startDaemon and restartDaemon.
+ */
+async function spawnDaemon(projectRoot: string, logLevel: LogLevel): Promise<number> {
   // Ensure .htpx directory exists
   ensureHtpxDir(projectRoot);
 
