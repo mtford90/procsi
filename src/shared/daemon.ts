@@ -53,7 +53,9 @@ export async function startDaemon(projectRoot: string): Promise<number> {
   const paths = getHtpxPaths(projectRoot);
 
   // Spawn daemon as detached background process
+  // Clear the log file first so we only see errors from this attempt
   const logFile = path.join(paths.htpxDir, "daemon.log");
+  fs.writeFileSync(logFile, "");
   const out = fs.openSync(logFile, "a");
   const err = fs.openSync(logFile, "a");
 
@@ -129,7 +131,19 @@ async function waitForDaemon(projectRoot: string, timeoutMs: number): Promise<nu
     await sleep(100);
   }
 
-  throw new Error("Daemon failed to start within timeout");
+  // On timeout, check daemon.log for errors to surface to the user
+  const logPath = path.join(paths.htpxDir, "daemon.log");
+  let logTail = "";
+  if (fs.existsSync(logPath)) {
+    const content = fs.readFileSync(logPath, "utf-8");
+    const lines = content.trim().split("\n");
+    logTail = lines.slice(-20).join("\n"); // Last 20 lines
+  }
+
+  if (logTail) {
+    throw new Error(`Daemon failed to start. Log output:\n${logTail}`);
+  }
+  throw new Error("Daemon failed to start within timeout (no log output)");
 }
 
 /**
