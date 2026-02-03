@@ -19,6 +19,16 @@ export const interceptCommand = new Command("intercept")
   .option("-l, --label <label>", "Label for this session")
   .option("--no-restart", "Do not auto-restart daemon on version mismatch")
   .action(async (options: { label?: string; restart: boolean }, command: Command) => {
+    // If stdout is a TTY, user ran directly - show instructions instead
+    if (process.stdout.isTTY) {
+      console.log("To intercept HTTP traffic, run:");
+      console.log("");
+      console.log("  eval $(htpx intercept)");
+      console.log("");
+      console.log("This sets the required environment variables in your shell.");
+      return;
+    }
+
     const label = options.label;
     const autoRestart = options.restart;
     const globalOpts = command.optsWithGlobals() as { verbose?: number };
