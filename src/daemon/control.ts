@@ -223,6 +223,44 @@ function handleMessage(
 }
 
 /**
+ * Recursively revive Buffer objects from JSON serialisation.
+ * JSON.stringify(Buffer) produces { type: 'Buffer', data: [...] }
+ * This converts them back to actual Buffer instances.
+ */
+function reviveBuffers<T>(obj: T): T {
+  if (obj === null || obj === undefined) {
+    return obj;
+  }
+
+  // Check if this is a serialised Buffer
+  if (
+    typeof obj === "object" &&
+    "type" in obj &&
+    "data" in obj &&
+    (obj as Record<string, unknown>)["type"] === "Buffer" &&
+    Array.isArray((obj as Record<string, unknown>)["data"])
+  ) {
+    return Buffer.from((obj as { data: number[] }).data) as T;
+  }
+
+  // Recurse into arrays
+  if (Array.isArray(obj)) {
+    return obj.map(reviveBuffers) as T;
+  }
+
+  // Recurse into objects
+  if (typeof obj === "object") {
+    const result: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(obj)) {
+      result[key] = reviveBuffers(value);
+    }
+    return result as T;
+  }
+
+  return obj;
+}
+
+/**
  * Client for communicating with the control server.
  */
 export class ControlClient {
@@ -261,7 +299,7 @@ export class ControlClient {
             if (response.error) {
               reject(new Error(response.error.message));
             } else {
-              resolve(response.result as T);
+              resolve(reviveBuffers(response.result) as T);
             }
           } catch (err) {
             socket.end();
