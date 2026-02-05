@@ -224,7 +224,8 @@ export const AccordionPanel = forwardRef<DOMElement, AccordionPanelProps>(functi
 
   // Determine border colour based on whether any section is focused
   const getBorderColour = (sectionIndex: number): string => {
-    return isActive && focusedSection === sectionIndex ? "cyan" : "gray";
+    if (!isActive) return "gray";
+    return focusedSection === sectionIndex ? "cyan" : "white";
   };
 
   // Build the bottom border line
@@ -331,7 +332,7 @@ export const AccordionPanel = forwardRef<DOMElement, AccordionPanelProps>(functi
       </AccordionSection>
 
       {/* Bottom border */}
-      <Text color="gray">{bottomBorder}</Text>
+      <Text color={isActive ? "white" : "gray"}>{bottomBorder}</Text>
     </Box>
   );
 });

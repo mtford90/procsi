@@ -124,7 +124,33 @@ function AppContent({ __testEnableInput }: AppProps): React.ReactElement {
           setFocusedSection((prev) => Math.max(prev - 1, 0));
         }
       } else if (key.tab) {
-        setActivePanel((prev) => (prev === "list" ? "accordion" : "list"));
+        // Tab cycles through all 5 panels: 1 (list), 2, 3, 4, 5 (accordion sections)
+        if (key.shift) {
+          // Shift+Tab cycles backwards
+          if (activePanel === "accordion") {
+            if (focusedSection > SECTION_REQUEST) {
+              setFocusedSection((prev) => prev - 1);
+            } else {
+              setActivePanel("list");
+            }
+          } else {
+            setActivePanel("accordion");
+            setFocusedSection(SECTION_RESPONSE_BODY);
+          }
+        } else {
+          // Tab cycles forwards
+          if (activePanel === "list") {
+            setActivePanel("accordion");
+            setFocusedSection(SECTION_REQUEST);
+          } else {
+            // Cycle through accordion sections, then back to list
+            if (focusedSection < SECTION_RESPONSE_BODY) {
+              setFocusedSection((prev) => prev + 1);
+            } else {
+              setActivePanel("list");
+            }
+          }
+        }
       } else if (input === "1") {
         setActivePanel("list");
       } else if (input === "2") {
