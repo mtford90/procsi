@@ -115,7 +115,7 @@ export async function createProxy(options: ProxyOptions): Promise<ProxyServer> {
       return undefined;
     },
 
-    beforeResponse: (response: PassThroughResponse, request: CompletedRequest) => {
+    beforeResponse: async (response: PassThroughResponse, request: CompletedRequest) => {
       const info = requestInfo.get(request.id);
       requestInfo.delete(request.id);
 
@@ -133,6 +133,17 @@ export async function createProxy(options: ProxyOptions): Promise<ProxyServer> {
       const contentLength = parseInt(headers["content-length"] ?? "0", 10);
       const responseBodyTruncated = response.body.buffer.length === 0 && contentLength > 0;
 
+      // Decode compressed body (gzip, br, deflate) for storage.
+      // The actual response to the client is unmodified.
+      const decodedBody =
+        response.body.buffer.length > 0
+          ? ((await response.body.getDecodedBuffer()) ?? response.body.buffer)
+          : undefined;
+
+      // Strip content-encoding from stored headers since we store the decoded body
+      const storedHeaders = { ...headers };
+      delete storedHeaders["content-encoding"];
+
       logger?.trace("Response sent", {
         status: response.statusCode,
         durationMs,
@@ -143,8 +154,8 @@ export async function createProxy(options: ProxyOptions): Promise<ProxyServer> {
       // Update request with response data using our ID
       storage.updateRequestResponse(info.ourId, {
         status: response.statusCode,
-        headers,
-        body: response.body.buffer.length > 0 ? response.body.buffer : undefined,
+        headers: storedHeaders,
+        body: decodedBody,
         durationMs,
         responseBodyTruncated,
       });

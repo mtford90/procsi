@@ -3,6 +3,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
 import * as http from "node:http";
+import * as zlib from "node:zlib";
 import { generateCACertificate } from "mockttp";
 import { RequestRepository } from "../../src/daemon/storage.js";
 import { createProxy } from "../../src/daemon/proxy.js";
@@ -140,6 +141,47 @@ describe("daemon integration", () => {
       expect(captured?.method).toBe("GET");
       expect(captured?.responseStatus).toBe(200);
       expect(captured?.label).toBe("test-label");
+    });
+
+    it("decompresses gzip-encoded response bodies before storage", async () => {
+      const jsonPayload = JSON.stringify({ input_tokens: 42 });
+      const gzippedPayload = zlib.gzipSync(Buffer.from(jsonPayload));
+
+      const testServer = http.createServer((req, res) => {
+        res.writeHead(200, {
+          "Content-Type": "application/json",
+          "Content-Encoding": "gzip",
+          "Content-Length": String(gzippedPayload.length),
+        });
+        res.end(gzippedPayload);
+      });
+
+      await new Promise<void>((resolve) => testServer.listen(0, "127.0.0.1", resolve));
+      const testServerAddress = testServer.address() as { port: number };
+      cleanup.push(() => new Promise((resolve) => testServer.close(() => resolve())));
+
+      const session = storage.registerSession("test", process.pid);
+      const proxy = await createProxy({
+        caKeyPath: paths.caKeyFile,
+        caCertPath: paths.caCertFile,
+        storage,
+        sessionId: session.id,
+      });
+      cleanup.push(proxy.stop);
+
+      await makeProxiedRequest(proxy.port, `http://127.0.0.1:${testServerAddress.port}/api/tokens`);
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      const requests = storage.listRequests();
+      const captured = requests.find((r) => r.path === "/api/tokens");
+      expect(captured).toBeDefined();
+
+      // Stored body should be the decompressed JSON, not garbled gzip bytes
+      const storedBody = captured?.responseBody?.toString("utf-8");
+      expect(storedBody).toBe(jsonPayload);
+
+      // Stored headers should not include content-encoding since the body is decoded
+      expect(captured?.responseHeaders?.["content-encoding"]).toBeUndefined();
     });
   });
 
