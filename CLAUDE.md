@@ -16,6 +16,25 @@ Published to npm as `htpx-cli` (v0.1.0). The name `htpx` was taken.
 
 htpx is a terminal-based HTTP interception/inspection tool with project-scoped isolation and a lazygit-style TUI. It captures HTTP/HTTPS traffic through a MITM proxy and displays it in an interactive terminal interface.
 
+## Product Vision
+
+### Messaging Pillars
+
+These define what htpx is and how it should feel — keep them in mind when making design and UX decisions:
+
+- **Workspace-isolated** — per-project `.htpx/` directory, no cross-project bleed
+- **Lives in your terminal** — TUI, not another GUI app; fits your existing workflow
+- **AI-native** — MCP integration, AI writes your mocks, inspects your traffic
+- **Config-as-code** — mocks and interceptors are TypeScript files, not GUI toggles
+- **Zero-config** — `eval $(htpx intercept)` and go; auto-starts daemon, auto-generates certs
+- **Developer-first** — built for how you already work, not bolted on
+
+### Strategic Direction
+
+The long-term vision centres on **mocks & interceptors as code** — TypeScript config files inside `.htpx/` that define middleware/intercept/mock behaviour, with full programmatic access to the htpx client. The TUI visualises what's configured, but logic lives in code.
+
+**MCP integration** is a first-class concern: AI agents should be able to discover `.htpx`, communicate with the proxy, search through captured traffic, and write/manage mock rules via the config-as-code system.
+
 ## Architecture
 
 ```
