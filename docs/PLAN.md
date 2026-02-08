@@ -15,10 +15,11 @@
 - [x] **Global htpx instance** - Support `~/` scope for a global htpx instance that works across all projects
 - [x] **Mouse support** - Click to select requests, panels, etc. (like neovim/zellij)
 - [ ] manipulate/explore request/response bodies e.g. if JSON
-- [ ] when focused on e.g. request body, allow for opening in system editor, or copy to clipboard - same for other panels - we might need a modal thing to allow choosing how to export
+- [x] when focused on e.g. request body, allow for opening in system editor, or copy to clipboard - same for other panels - we might need a modal thing to allow choosing how to export
 - [x] pretty request/response
 - [x] syntax highlighting for request/response
-- [ ] copy request/response body when focused
+- [x] copy request/response body when focused
+- [ ] **Context-sensitive status bar hints** - Only show keybindings that are relevant to the current focus/selection (e.g. `y`/`s` only when on a body panel, `c` only when a request is selected)
 
 ---
 
@@ -57,7 +58,7 @@
 
 ## Bugs
 
-- [ ] i can't save json - save only seems to work for binary files
+- [x] i can't save json - save only seems to work for binary files
 
 ---
 

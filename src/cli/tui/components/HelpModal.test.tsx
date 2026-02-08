@@ -41,7 +41,8 @@ describe("HelpModal", () => {
     expect(frame).toContain("Actions");
     expect(frame).toContain("Toggle section");
     expect(frame).toContain("Copy as cURL");
-    expect(frame).toContain("Save binary content");
+    expect(frame).toContain("Copy body to clipboard");
+    expect(frame).toContain("Export body content");
     expect(frame).toContain("Toggle full URL");
     expect(frame).toContain("Refresh");
   });

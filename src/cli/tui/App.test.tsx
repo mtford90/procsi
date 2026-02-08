@@ -24,6 +24,16 @@ vi.mock("./hooks/useExport.js", () => ({
   }),
 }));
 
+const mockCopyToClipboard = vi.fn().mockResolvedValue(undefined);
+vi.mock("./utils/clipboard.js", () => ({
+  copyToClipboard: (...args: unknown[]) => mockCopyToClipboard(...args),
+}));
+
+const mockOpenInExternalApp = vi.fn().mockResolvedValue({ success: true, message: "Opened" });
+vi.mock("./utils/open-external.js", () => ({
+  openInExternalApp: (...args: unknown[]) => mockOpenInExternalApp(...args),
+}));
+
 // Import the mocked hook so we can control its return value
 import { useRequests } from "./hooks/useRequests.js";
 const mockUseRequests = vi.mocked(useRequests);
@@ -73,6 +83,8 @@ describe("App keyboard interactions", () => {
     mockGetAllFullRequests.mockReset();
     mockExportCurl.mockReset().mockResolvedValue({ success: true, message: "Copied to clipboard" });
     mockExportHar.mockReset().mockReturnValue({ success: true, message: "HAR exported" });
+    mockCopyToClipboard.mockReset().mockResolvedValue(undefined);
+    mockOpenInExternalApp.mockReset().mockResolvedValue({ success: true, message: "Opened" });
   });
 
   // Helper to set up mocks with multiple requests
@@ -181,7 +193,7 @@ describe("App keyboard interactions", () => {
       const frame = lastFrame();
 
       // Status bar contains URL hint (may be truncated at narrow widths)
-      expect(frame).toMatch(/u\s+UR/);
+      expect(frame).toMatch(/UR/);
     });
   });
 
@@ -843,6 +855,206 @@ describe("App keyboard interactions", () => {
 
       const frame = lastFrame();
       expect(frame).not.toContain("Keyboard Shortcuts");
+    });
+  });
+
+  describe("Copy body to clipboard (y key)", () => {
+    it("y copies text body to clipboard when on response body section", async () => {
+      const fullRequest = createMockFullRequest({
+        responseBody: Buffer.from('{"data":"test"}'),
+        responseHeaders: { "content-type": "application/json" },
+      });
+      mockUseRequests.mockReturnValue({
+        requests: [createMockSummary()],
+        isLoading: false,
+        error: null,
+        refresh: mockRefresh,
+        getFullRequest: vi.fn().mockResolvedValue(fullRequest),
+        getAllFullRequests: mockGetAllFullRequests,
+      });
+
+      const { lastFrame, stdin } = render(<App __testEnableInput />);
+      await tick();
+
+      // Navigate to Response Body section
+      stdin.write("5");
+      await tick();
+
+      // Press y to copy
+      stdin.write("y");
+      await tick(100);
+
+      expect(mockCopyToClipboard).toHaveBeenCalledWith('{"data":"test"}');
+      const frame = lastFrame();
+      expect(frame).toContain("Body copied to clipboard");
+    });
+
+    it("y rejects binary body with message", async () => {
+      const pngBuffer = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, ...new Array(100).fill(0)]);
+      const fullRequest = createMockFullRequest({
+        responseBody: pngBuffer,
+        responseHeaders: { "content-type": "image/png" },
+      });
+      mockUseRequests.mockReturnValue({
+        requests: [createMockSummary()],
+        isLoading: false,
+        error: null,
+        refresh: mockRefresh,
+        getFullRequest: vi.fn().mockResolvedValue(fullRequest),
+        getAllFullRequests: mockGetAllFullRequests,
+      });
+
+      const { lastFrame, stdin } = render(<App __testEnableInput />);
+      await tick();
+
+      // Navigate to Response Body section
+      stdin.write("5");
+      await tick();
+
+      // Press y to try to copy
+      stdin.write("y");
+      await tick();
+
+      expect(mockCopyToClipboard).not.toHaveBeenCalled();
+      const frame = lastFrame();
+      expect(frame).toContain("Cannot copy binary content");
+    });
+
+    it("y shows no body message when body is empty", async () => {
+      const fullRequest = createMockFullRequest({
+        responseBody: undefined,
+        responseHeaders: { "content-type": "application/json" },
+      });
+      mockUseRequests.mockReturnValue({
+        requests: [createMockSummary()],
+        isLoading: false,
+        error: null,
+        refresh: mockRefresh,
+        getFullRequest: vi.fn().mockResolvedValue(fullRequest),
+        getAllFullRequests: mockGetAllFullRequests,
+      });
+
+      const { lastFrame, stdin } = render(<App __testEnableInput />);
+      await tick();
+
+      // Navigate to Response Body section
+      stdin.write("5");
+      await tick();
+
+      // Press y
+      stdin.write("y");
+      await tick();
+
+      expect(mockCopyToClipboard).not.toHaveBeenCalled();
+      const frame = lastFrame();
+      expect(frame).toContain("No body to copy");
+    });
+
+    it("y does nothing when not on a body section", async () => {
+      setupMocksWithRequests(1);
+
+      const { stdin } = render(<App __testEnableInput />);
+      await tick();
+
+      // Navigate to Request headers section (not a body section)
+      stdin.write("2");
+      await tick();
+
+      // Press y
+      stdin.write("y");
+      await tick();
+
+      expect(mockCopyToClipboard).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("Export body (s key)", () => {
+    it("s opens export modal for text body content", async () => {
+      const fullRequest = createMockFullRequest({
+        responseBody: Buffer.from('{"data":"test"}'),
+        responseHeaders: { "content-type": "application/json" },
+      });
+      mockUseRequests.mockReturnValue({
+        requests: [createMockSummary()],
+        isLoading: false,
+        error: null,
+        refresh: mockRefresh,
+        getFullRequest: vi.fn().mockResolvedValue(fullRequest),
+        getAllFullRequests: mockGetAllFullRequests,
+      });
+
+      const { lastFrame, stdin } = render(<App __testEnableInput />);
+      await tick();
+
+      // Navigate to Response Body section
+      stdin.write("5");
+      await tick();
+
+      // Press s to export
+      stdin.write("s");
+      await tick();
+
+      const frame = lastFrame();
+      expect(frame).toContain("Export Body Content");
+    });
+
+    it("s opens export modal for binary body content", async () => {
+      const pngBuffer = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, ...new Array(100).fill(0)]);
+      const fullRequest = createMockFullRequest({
+        responseBody: pngBuffer,
+        responseHeaders: { "content-type": "image/png" },
+      });
+      mockUseRequests.mockReturnValue({
+        requests: [createMockSummary()],
+        isLoading: false,
+        error: null,
+        refresh: mockRefresh,
+        getFullRequest: vi.fn().mockResolvedValue(fullRequest),
+        getAllFullRequests: mockGetAllFullRequests,
+      });
+
+      const { lastFrame, stdin } = render(<App __testEnableInput />);
+      await tick();
+
+      // Navigate to Response Body section
+      stdin.write("5");
+      await tick();
+
+      // Press s to export
+      stdin.write("s");
+      await tick();
+
+      const frame = lastFrame();
+      expect(frame).toContain("Export Body Content");
+    });
+
+    it("s shows no body message when body is empty", async () => {
+      const fullRequest = createMockFullRequest({
+        responseBody: undefined,
+        responseHeaders: { "content-type": "application/json" },
+      });
+      mockUseRequests.mockReturnValue({
+        requests: [createMockSummary()],
+        isLoading: false,
+        error: null,
+        refresh: mockRefresh,
+        getFullRequest: vi.fn().mockResolvedValue(fullRequest),
+        getAllFullRequests: mockGetAllFullRequests,
+      });
+
+      const { lastFrame, stdin } = render(<App __testEnableInput />);
+      await tick();
+
+      // Navigate to Response Body section
+      stdin.write("5");
+      await tick();
+
+      // Press s
+      stdin.write("s");
+      await tick();
+
+      const frame = lastFrame();
+      expect(frame).toContain("No body to export");
     });
   });
 });

@@ -226,7 +226,7 @@ describe("AccordionPanel", () => {
       const frame = lastFrame();
 
       expect(frame).toContain("content");
-      expect(frame).toContain("Press 's' to save");
+      expect(frame).toContain("Press 's' to export");
     });
 
     it("shows truncation message for truncated body", () => {
