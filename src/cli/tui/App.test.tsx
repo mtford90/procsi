@@ -38,6 +38,21 @@ vi.mock("./hooks/useStdoutDimensions.js", () => ({
   useStdoutDimensions: () => [200, 50],
 }));
 
+vi.mock("../../shared/project.js", () => ({
+  findProjectRoot: () => "/mock/project",
+  readProxyPort: () => 54321,
+  getHtpxPaths: () => ({
+    htpxDir: "/mock/project/.htpx",
+    proxyPortFile: "/mock/project/.htpx/proxy.port",
+    controlSocketFile: "/mock/project/.htpx/control.sock",
+    databaseFile: "/mock/project/.htpx/requests.db",
+    caKeyFile: "/mock/project/.htpx/ca-key.pem",
+    caCertFile: "/mock/project/.htpx/ca.pem",
+    pidFile: "/mock/project/.htpx/daemon.pid",
+    logFile: "/mock/project/.htpx/htpx.log",
+  }),
+}));
+
 // Import the mocked hook so we can control its return value
 import { useRequests } from "./hooks/useRequests.js";
 const mockUseRequests = vi.mocked(useRequests);
@@ -196,8 +211,8 @@ describe("App keyboard interactions", () => {
       const { lastFrame } = render(<App __testEnableInput />);
       const frame = lastFrame();
 
-      // Status bar contains URL hint (may be truncated at narrow widths)
-      expect(frame).toMatch(/UR/);
+      // Status bar contains the u key hint (may be truncated at narrow widths)
+      expect(frame).toMatch(/u\s/);
     });
   });
 
@@ -969,6 +984,57 @@ describe("App keyboard interactions", () => {
       await tick();
 
       expect(mockCopyToClipboard).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("Info modal (i key)", () => {
+    it("i opens the info modal", async () => {
+      setupMocksWithRequests(1);
+
+      const { lastFrame, stdin } = render(<App __testEnableInput />);
+      await tick();
+
+      stdin.write("i");
+      await tick();
+
+      const frame = lastFrame();
+      expect(frame).toContain("Proxy Connection Details");
+    });
+
+    it("i closes the info modal", async () => {
+      setupMocksWithRequests(1);
+
+      const { lastFrame, stdin } = render(<App __testEnableInput />);
+      await tick();
+
+      // Open info
+      stdin.write("i");
+      await tick();
+
+      // Close info
+      stdin.write("i");
+      await tick();
+
+      const frame = lastFrame();
+      expect(frame).not.toContain("Proxy Connection Details");
+    });
+
+    it("Escape closes the info modal", async () => {
+      setupMocksWithRequests(1);
+
+      const { lastFrame, stdin } = render(<App __testEnableInput />);
+      await tick();
+
+      // Open info
+      stdin.write("i");
+      await tick();
+
+      // Close with Escape
+      stdin.write("\x1b");
+      await tick();
+
+      const frame = lastFrame();
+      expect(frame).not.toContain("Proxy Connection Details");
     });
   });
 

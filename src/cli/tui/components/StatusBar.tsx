@@ -22,6 +22,7 @@ const KEY_HINTS: KeyHint[] = [
   { key: "s", action: "export" },
   { key: "u", action: "URL" },
   { key: "/", action: "filter" },
+  { key: "i", action: "info" },
   { key: "?", action: "help" },
   { key: "q", action: "quit" },
 ];

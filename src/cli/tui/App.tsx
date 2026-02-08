@@ -27,7 +27,9 @@ import { StatusBar } from "./components/StatusBar.js";
 import { FilterBar } from "./components/FilterBar.js";
 import { ExportModal, type ExportAction } from "./components/ExportModal.js";
 import { HelpModal } from "./components/HelpModal.js";
+import { InfoModal } from "./components/InfoModal.js";
 import { isFilterActive } from "./utils/filters.js";
+import { findProjectRoot, getHtpxPaths, readProxyPort } from "../../shared/project.js";
 import type { CapturedRequest, RequestFilter } from "../../shared/types.js";
 
 interface AppProps {
@@ -71,6 +73,20 @@ function AppContent({ __testEnableInput, projectRoot }: AppProps): React.ReactEl
 
   // Help modal state
   const [showHelp, setShowHelp] = useState(false);
+
+  // Info modal state
+  const [showInfo, setShowInfo] = useState(false);
+
+  // Proxy details for info modal (one-time sync read)
+  const proxyPort = useMemo(() => {
+    const root = projectRoot ?? findProjectRoot();
+    return root ? readProxyPort(root) : undefined;
+  }, [projectRoot]);
+
+  const caCertPath = useMemo(() => {
+    const root = projectRoot ?? findProjectRoot();
+    return root ? getHtpxPaths(root).caCertFile : "";
+  }, [projectRoot]);
 
   // Save modal state
   const [showSaveModal, setShowSaveModal] = useState(false);
@@ -402,6 +418,8 @@ function AppContent({ __testEnableInput, projectRoot }: AppProps): React.ReactEl
         showStatus(newShowFullUrl ? "Showing full URL" : "Showing path only");
       } else if (input === "?") {
         setShowHelp(true);
+      } else if (input === "i") {
+        setShowInfo(true);
       } else if (input === "/") {
         setShowFilter(true);
       } else if (input === "y") {
@@ -432,7 +450,7 @@ function AppContent({ __testEnableInput, projectRoot }: AppProps): React.ReactEl
         }
       }
     },
-    { isActive: (__testEnableInput || isRawModeSupported === true) && !showSaveModal && !showHelp && !showFilter },
+    { isActive: (__testEnableInput || isRawModeSupported === true) && !showSaveModal && !showHelp && !showInfo && !showFilter },
   );
 
   // Calculate layout
@@ -521,6 +539,20 @@ function AppContent({ __testEnableInput, projectRoot }: AppProps): React.ReactEl
           setShowSaveModal(false);
           setSavingBodyType(null);
         }}
+        isActive={__testEnableInput || isRawModeSupported === true}
+      />
+    );
+  }
+
+  // Info modal - full screen replacement
+  if (showInfo) {
+    return (
+      <InfoModal
+        proxyPort={proxyPort}
+        caCertPath={caCertPath}
+        width={columns}
+        height={rows}
+        onClose={() => setShowInfo(false)}
         isActive={__testEnableInput || isRawModeSupported === true}
       />
     );
