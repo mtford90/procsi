@@ -93,17 +93,31 @@ export function isBinaryContent(
   // Check text content types first
   if (normalisedType) {
     // Check prefixes
+    let isTextContentType = false;
     for (const prefix of TEXT_CONTENT_TYPES) {
       if (normalisedType.startsWith(prefix)) {
-        return { isBinary: false, reason: "text-content-type" };
+        isTextContentType = true;
+        break;
       }
     }
 
     // Check suffixes (e.g., application/hal+json)
-    for (const suffix of TEXT_SUFFIXES) {
-      if (normalisedType.endsWith(suffix)) {
-        return { isBinary: false, reason: "text-content-type" };
+    if (!isTextContentType) {
+      for (const suffix of TEXT_SUFFIXES) {
+        if (normalisedType.endsWith(suffix)) {
+          isTextContentType = true;
+          break;
+        }
       }
+    }
+
+    if (isTextContentType) {
+      // Content-type says text, but verify with byte scan as safety net.
+      // Handles compressed bodies still in the DB, mislabelled content types, etc.
+      const scanResult = scanForBinaryContent(body);
+      return scanResult.isBinary
+        ? { isBinary: true, reason: "content-scan" }
+        : { isBinary: false, reason: "text-content-type" };
     }
 
     // Check binary content types

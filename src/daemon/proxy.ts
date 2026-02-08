@@ -78,7 +78,7 @@ export async function createProxy(options: ProxyOptions): Promise<ProxyServer> {
     // Ignore certificate errors when connecting to upstream servers
     ignoreHostHttpsErrors: true,
 
-    beforeRequest: (request: CompletedRequest) => {
+    beforeRequest: async (request: CompletedRequest) => {
       const timestamp = Date.now();
 
       // Parse URL to extract host and path
@@ -92,10 +92,21 @@ export async function createProxy(options: ProxyOptions): Promise<ProxyServer> {
       const contentLength = parseInt(headers["content-length"] ?? "0", 10);
       const requestBodyTruncated = request.body.buffer.length === 0 && contentLength > 0;
 
+      // Decode compressed request body (gzip, br, deflate) for storage.
+      // The actual request to the upstream server is unmodified.
+      const decodedBody =
+        request.body.buffer.length > 0
+          ? ((await request.body.getDecodedBuffer()) ?? request.body.buffer)
+          : undefined;
+
+      // Strip content-encoding from stored headers since we store the decoded body
+      const storedHeaders = { ...headers };
+      delete storedHeaders["content-encoding"];
+
       logger?.trace("Request received", {
         method: request.method,
         url: request.url,
-        headers,
+        headers: storedHeaders,
         bodyTruncated: requestBodyTruncated,
       });
 
@@ -108,8 +119,8 @@ export async function createProxy(options: ProxyOptions): Promise<ProxyServer> {
         url: request.url,
         host: url.host,
         path: url.pathname + url.search,
-        requestHeaders: headers,
-        requestBody: request.body.buffer.length > 0 ? request.body.buffer : undefined,
+        requestHeaders: storedHeaders,
+        requestBody: decodedBody,
         requestBodyTruncated,
       });
 

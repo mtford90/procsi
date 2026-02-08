@@ -55,6 +55,26 @@ describe("isBinaryContent", () => {
       });
     });
 
+    it("should detect binary bytes even when content-type says text", () => {
+      // Simulates compressed body stored with a text content-type (e.g. gzip-encoded JSON)
+      const binaryBody = Buffer.alloc(1000);
+      for (let i = 0; i < 1000; i++) {
+        binaryBody[i] = i % 2 === 0 ? 0 : 1; // Alternating null and SOH
+      }
+      expect(isBinaryContent(binaryBody, "application/json")).toEqual({
+        isBinary: true,
+        reason: "content-scan",
+      });
+      expect(isBinaryContent(binaryBody, "text/plain")).toEqual({
+        isBinary: true,
+        reason: "content-scan",
+      });
+      expect(isBinaryContent(binaryBody, "application/hal+json")).toEqual({
+        isBinary: true,
+        reason: "content-scan",
+      });
+    });
+
     it("should handle content-type with charset", () => {
       const body = Buffer.from("Hello");
       expect(isBinaryContent(body, "text/plain; charset=utf-8")).toEqual({

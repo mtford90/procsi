@@ -185,6 +185,57 @@ describe("daemon integration", () => {
       expect(captured?.responseHeaders?.["content-encoding"]).toBeUndefined();
     });
 
+    it("decompresses gzip-encoded request bodies before storage", async () => {
+      const jsonPayload = JSON.stringify({ name: "compressed-request" });
+      const gzippedPayload = zlib.gzipSync(Buffer.from(jsonPayload));
+
+      const testServer = http.createServer((req, res) => {
+        // Just consume the body and respond
+        const chunks: Buffer[] = [];
+        req.on("data", (chunk: Buffer) => chunks.push(chunk));
+        req.on("end", () => {
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ ok: true }));
+        });
+      });
+
+      await new Promise<void>((resolve) => testServer.listen(0, "127.0.0.1", resolve));
+      const testServerAddress = testServer.address() as { port: number };
+      cleanup.push(() => new Promise((resolve) => testServer.close(() => resolve())));
+
+      const session = storage.registerSession("test", process.pid);
+      const proxy = await createProxy({
+        caKeyPath: paths.caKeyFile,
+        caCertPath: paths.caCertFile,
+        storage,
+        sessionId: session.id,
+      });
+      cleanup.push(proxy.stop);
+
+      await makeProxiedPostRequest(
+        proxy.port,
+        `http://127.0.0.1:${testServerAddress.port}/api/compressed`,
+        gzippedPayload,
+        {
+          "Content-Type": "application/json",
+          "Content-Encoding": "gzip",
+        }
+      );
+
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      const requests = storage.listRequests();
+      const captured = requests.find((r) => r.path === "/api/compressed");
+      expect(captured).toBeDefined();
+
+      // Stored body should be the decompressed JSON, not garbled gzip bytes
+      const storedBody = captured?.requestBody?.toString("utf-8");
+      expect(storedBody).toBe(jsonPayload);
+
+      // Stored headers should not include content-encoding since the body is decoded
+      expect(captured?.requestHeaders?.["content-encoding"]).toBeUndefined();
+    });
+
     it("captures POST requests with JSON body", async () => {
       const testServer = http.createServer((req, res) => {
         let body = "";
@@ -717,12 +768,13 @@ function makeProxiedRequest(
 function makeProxiedPostRequest(
   proxyPort: number,
   url: string,
-  body: string,
+  body: string | Buffer,
   headers: Record<string, string> = {},
   method = "POST"
 ): Promise<{ statusCode: number; body: string }> {
   return new Promise((resolve, reject) => {
     const parsedUrl = new URL(url);
+    const bodyBuffer = Buffer.isBuffer(body) ? body : Buffer.from(body);
 
     const options: http.RequestOptions = {
       hostname: "127.0.0.1",
@@ -731,7 +783,7 @@ function makeProxiedPostRequest(
       method,
       headers: {
         Host: parsedUrl.host,
-        "Content-Length": String(Buffer.byteLength(body)),
+        "Content-Length": String(bodyBuffer.length),
         ...headers,
       },
     };
@@ -743,7 +795,7 @@ function makeProxiedPostRequest(
     });
 
     req.on("error", reject);
-    req.write(body);
+    req.write(bodyBuffer);
     req.end();
   });
 }
