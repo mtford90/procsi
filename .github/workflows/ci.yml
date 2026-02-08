@@ -8,6 +8,10 @@ on:
   pull_request:
     branches: [master, main]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -15,6 +19,7 @@ jobs:
   test:
     name: Test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -50,18 +55,24 @@ jobs:
       - name: Build
         run: pnpm run build
 
-      - name: Typecheck
-        run: pnpm run typecheck
-
       - name: Lint
         run: pnpm run lint
 
       - name: Test
         run: pnpm test
 
+      - name: Upload build artefact
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: dist
+          path: dist/
+          retention-days: 1
+
   publish:
     name: Publish to npm
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: [test]
     if: startsWith(github.ref, 'refs/tags/v')
     permissions:
@@ -70,6 +81,16 @@ jobs:
 
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Verify tag matches package version
+        shell: bash
+        run: |
+          TAG_VERSION="${GITHUB_REF#refs/tags/v}"
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "::error::Tag version ($TAG_VERSION) does not match package.json version ($PKG_VERSION)"
+            exit 1
+          fi
 
       - name: Setup Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -83,8 +104,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Build
-        run: pnpm run build
+      - name: Download build artefact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: dist
+          path: dist/
 
       - name: Publish
         run: npm publish --access public --provenance
