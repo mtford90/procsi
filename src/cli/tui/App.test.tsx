@@ -168,7 +168,7 @@ describe("App keyboard interactions", () => {
       const { lastFrame, stdin } = render(<App __testEnableInput />);
 
       stdin.write("u");
-      await tick();
+      await tick(100);
 
       const frame = lastFrame();
       expect(frame).toContain("http://example.com");
