@@ -609,7 +609,15 @@ function AppContent({ __testEnableInput, projectRoot }: AppProps): React.ReactEl
       )}
 
       {/* Status bar */}
-      <StatusBar message={statusMessage} filterActive={isFilterActive(filter)} />
+      <StatusBar
+        message={statusMessage}
+        filterActive={isFilterActive(filter)}
+        filterOpen={showFilter}
+        activePanel={activePanel}
+        hasSelection={selectedFullRequest !== null}
+        hasRequests={requests.length > 0}
+        onBodySection={currentBodyIsExportable}
+      />
     </Box>
   );
 }

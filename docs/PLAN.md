@@ -9,7 +9,7 @@
   - Fuzzy search (URL, headers, body)
   - HTTP method
   - Status codes
-- [ ] **Publish proxy details** - Show connection details so the proxy can be used anywhere, not just via `eval $(htpx intercept)` on CLI
+- [x] **Publish proxy details** - Show connection details so the proxy can be used anywhere, not just via `eval $(htpx intercept)` on CLI
 - [x] **Support any directory** - Allow running htpx in any dir; climb to `~/` if no project/git root found (generic proxy across projects)
 - [x] **Directory scope override** - Pass a parameter to htpx CLI allowing override of cwd (currently uses .git or current dir)
 - [x] **Global htpx instance** - Support `~/` scope for a global htpx instance that works across all projects
