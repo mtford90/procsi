@@ -29,6 +29,8 @@ import { ExportModal, type ExportAction } from "./components/ExportModal.js";
 import { HelpModal } from "./components/HelpModal.js";
 import { InfoModal } from "./components/InfoModal.js";
 import { isFilterActive } from "./utils/filters.js";
+import { isJsonContent } from "./utils/content-type.js";
+import { JsonExplorerModal } from "./components/JsonExplorerModal.js";
 import { findProjectRoot, getHtpxPaths, readProxyPort } from "../../shared/project.js";
 import type { CapturedRequest, RequestFilter } from "../../shared/types.js";
 
@@ -92,6 +94,15 @@ function AppContent({ __testEnableInput, projectRoot }: AppProps): React.ReactEl
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [savingBodyType, setSavingBodyType] = useState<"request" | "response" | null>(null);
 
+  // JSON explorer modal state
+  const [showJsonExplorer, setShowJsonExplorer] = useState(false);
+  const [jsonExplorerData, setJsonExplorerData] = useState<{
+    data: unknown;
+    title: string;
+    contentType: string;
+    bodySize: number;
+  } | null>(null);
+
   // Full request data for the selected item (fetched on demand)
   const [selectedFullRequest, setSelectedFullRequest] = useState<CapturedRequest | null>(null);
 
@@ -112,10 +123,20 @@ function AppContent({ __testEnableInput, projectRoot }: AppProps): React.ReactEl
   // Get the summary for the currently selected request
   const selectedSummary = requests[selectedIndex];
 
+  // Stores the filter state at the moment the filter bar opens, so Escape can revert
+  const preOpenFilterRef = useRef<RequestFilter>({});
+
   // Handle filter change from the filter bar
   const handleFilterChange = useCallback((newFilter: RequestFilter) => {
     setFilter(newFilter);
     setSelectedIndex(0);
+  }, []);
+
+  // Handle filter cancel — revert to pre-open state
+  const handleFilterCancel = useCallback(() => {
+    setFilter(preOpenFilterRef.current);
+    setSelectedIndex(0);
+    setShowFilter(false);
   }, []);
 
   // Handle item click from the request list
@@ -214,6 +235,22 @@ function AppContent({ __testEnableInput, projectRoot }: AppProps): React.ReactEl
     }
     return false;
   }, [selectedFullRequest, activePanel, focusedSection]);
+
+  // Determine if the currently focused body section contains explorable JSON
+  const currentBodyIsJson = useMemo(() => {
+    if (!selectedFullRequest || activePanel !== "accordion") return false;
+
+    const isBodySection =
+      focusedSection === SECTION_REQUEST_BODY || focusedSection === SECTION_RESPONSE_BODY;
+    if (!isBodySection || !expandedSections.has(focusedSection)) return false;
+
+    const isReqBody = focusedSection === SECTION_REQUEST_BODY;
+    const ct = isReqBody
+      ? selectedFullRequest.requestHeaders["content-type"]
+      : selectedFullRequest.responseHeaders?.["content-type"];
+
+    return isJsonContent(ct);
+  }, [selectedFullRequest, activePanel, focusedSection, expandedSections]);
 
   // Determine if the currently focused body section contains binary content
   const currentBodyIsBinary = useMemo(() => {
@@ -388,6 +425,37 @@ function AppContent({ __testEnableInput, projectRoot }: AppProps): React.ReactEl
         handleSectionToggle(focusedSection);
       }
 
+      // Open JSON explorer on expanded JSON body section
+      else if (input === "e" && activePanel === "accordion") {
+        const isBodySection =
+          focusedSection === SECTION_REQUEST_BODY || focusedSection === SECTION_RESPONSE_BODY;
+
+        if (isBodySection && expandedSections.has(focusedSection)) {
+          const isReqBody = focusedSection === SECTION_REQUEST_BODY;
+          const body = isReqBody
+            ? selectedFullRequest?.requestBody
+            : selectedFullRequest?.responseBody;
+          const ct = isReqBody
+            ? selectedFullRequest?.requestHeaders["content-type"]
+            : selectedFullRequest?.responseHeaders?.["content-type"];
+
+          if (body && isJsonContent(ct)) {
+            try {
+              const parsed = JSON.parse(body.toString("utf-8")) as unknown;
+              setJsonExplorerData({
+                data: parsed,
+                title: isReqBody ? "Request Body" : "Response Body",
+                contentType: ct ?? "",
+                bodySize: body.length,
+              });
+              setShowJsonExplorer(true);
+            } catch {
+              // Invalid JSON — ignore
+            }
+          }
+        }
+      }
+
       // Actions
       else if (input === "q") {
         exit();
@@ -421,6 +489,7 @@ function AppContent({ __testEnableInput, projectRoot }: AppProps): React.ReactEl
       } else if (input === "i") {
         setShowInfo(true);
       } else if (input === "/") {
+        preOpenFilterRef.current = filter;
         setShowFilter(true);
       } else if (input === "y") {
         // Copy body to clipboard
@@ -450,7 +519,7 @@ function AppContent({ __testEnableInput, projectRoot }: AppProps): React.ReactEl
         }
       }
     },
-    { isActive: (__testEnableInput || isRawModeSupported === true) && !showSaveModal && !showHelp && !showInfo && !showFilter },
+    { isActive: (__testEnableInput || isRawModeSupported === true) && !showSaveModal && !showHelp && !showInfo && !showFilter && !showJsonExplorer },
   );
 
   // Calculate layout
@@ -570,6 +639,23 @@ function AppContent({ __testEnableInput, projectRoot }: AppProps): React.ReactEl
     );
   }
 
+  // JSON explorer modal - full screen replacement
+  if (showJsonExplorer && jsonExplorerData) {
+    return (
+      <JsonExplorerModal
+        data={jsonExplorerData.data}
+        title={jsonExplorerData.title}
+        contentType={jsonExplorerData.contentType}
+        bodySize={jsonExplorerData.bodySize}
+        width={columns}
+        height={rows}
+        onClose={() => setShowJsonExplorer(false)}
+        onStatus={showStatus}
+        isActive={__testEnableInput || isRawModeSupported === true}
+      />
+    );
+  }
+
   return (
     <Box flexDirection="column" height={rows}>
       {/* Main content */}
@@ -585,6 +671,7 @@ function AppContent({ __testEnableInput, projectRoot }: AppProps): React.ReactEl
           showFullUrl={showFullUrl}
           onItemClick={handleItemClick}
           scrollOffset={listScrollOffset}
+          searchTerm={filter.search}
         />
         <AccordionPanel
           ref={accordionPanelRef}
@@ -604,6 +691,7 @@ function AppContent({ __testEnableInput, projectRoot }: AppProps): React.ReactEl
           filter={filter}
           onFilterChange={handleFilterChange}
           onClose={() => setShowFilter(false)}
+          onCancel={handleFilterCancel}
           width={columns}
         />
       )}
@@ -617,6 +705,7 @@ function AppContent({ __testEnableInput, projectRoot }: AppProps): React.ReactEl
         hasSelection={selectedFullRequest !== null}
         hasRequests={requests.length > 0}
         onBodySection={currentBodyIsExportable}
+        onJsonBodySection={currentBodyIsJson}
       />
     </Box>
   );

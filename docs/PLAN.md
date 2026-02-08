@@ -14,7 +14,7 @@
 - [x] **Directory scope override** - Pass a parameter to htpx CLI allowing override of cwd (currently uses .git or current dir)
 - [x] **Global htpx instance** - Support `~/` scope for a global htpx instance that works across all projects
 - [x] **Mouse support** - Click to select requests, panels, etc. (like neovim/zellij)
-- [ ] manipulate/explore request/response bodies e.g. if JSON
+- [x] manipulate/explore request/response bodies e.g. if JSON
 - [x] when focused on e.g. request body, allow for opening in system editor, or copy to clipboard - same for other panels - we might need a modal thing to allow choosing how to export
 - [x] pretty request/response
 - [x] syntax highlighting for request/response

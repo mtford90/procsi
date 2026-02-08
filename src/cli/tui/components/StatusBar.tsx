@@ -11,6 +11,7 @@ interface StatusBarContext {
   hasSelection: boolean;
   hasRequests: boolean;
   onBodySection: boolean;
+  onJsonBodySection: boolean;
 }
 
 interface KeyHint {
@@ -25,6 +26,7 @@ const KEY_HINTS: KeyHint[] = [
   { key: "Tab", action: "panel" },
   { key: "1-5", action: "section" },
   { key: "Enter", action: "expand", visible: (ctx) => ctx.activePanel === "accordion" },
+  { key: "e", action: "explore", visible: (ctx) => ctx.onJsonBodySection },
   { key: "c", action: "curl", visible: (ctx) => ctx.hasSelection },
   { key: "h", action: "HAR", visible: (ctx) => ctx.hasRequests },
   { key: "y", action: "yank", visible: (ctx) => ctx.onBodySection },
@@ -45,6 +47,7 @@ export interface StatusBarProps {
   hasSelection?: boolean;
   hasRequests?: boolean;
   onBodySection?: boolean;
+  onJsonBodySection?: boolean;
 }
 
 /**
@@ -56,8 +59,9 @@ export function getVisibleHints({
   hasSelection = true,
   hasRequests = true,
   onBodySection = true,
-}: Pick<StatusBarProps, "activePanel" | "hasSelection" | "hasRequests" | "onBodySection">): KeyHint[] {
-  const ctx: StatusBarContext = { activePanel, hasSelection, hasRequests, onBodySection };
+  onJsonBodySection = false,
+}: Pick<StatusBarProps, "activePanel" | "hasSelection" | "hasRequests" | "onBodySection" | "onJsonBodySection">): KeyHint[] {
+  const ctx: StatusBarContext = { activePanel, hasSelection, hasRequests, onBodySection, onJsonBodySection };
   return KEY_HINTS.filter((hint) => !hint.visible || hint.visible(ctx));
 }
 
@@ -69,10 +73,11 @@ export function StatusBar({
   hasSelection,
   hasRequests,
   onBodySection,
+  onJsonBodySection,
 }: StatusBarProps): React.ReactElement {
   const visibleHints = useMemo(
-    () => getVisibleHints({ activePanel, hasSelection, hasRequests, onBodySection }),
-    [activePanel, hasSelection, hasRequests, onBodySection],
+    () => getVisibleHints({ activePanel, hasSelection, hasRequests, onBodySection, onJsonBodySection }),
+    [activePanel, hasSelection, hasRequests, onBodySection, onJsonBodySection],
   );
 
   return (

@@ -14,6 +14,7 @@ interface RequestListItemProps {
   width: number;
   showFullUrl?: boolean;
   onClick?: () => void;
+  searchTerm?: string;
 }
 
 /**
@@ -71,12 +72,41 @@ export function getMethodColour(method: string): string {
   }
 }
 
+/**
+ * Split text into segments around case-insensitive matches of a search term.
+ * Returns alternating [non-match, match, non-match, ...] segments.
+ */
+function splitByMatch(text: string, term: string): { text: string; isMatch: boolean }[] {
+  if (!term) return [{ text, isMatch: false }];
+
+  const segments: { text: string; isMatch: boolean }[] = [];
+  const lowerText = text.toLowerCase();
+  const lowerTerm = term.toLowerCase();
+  let pos = 0;
+
+  while (pos < text.length) {
+    const matchIdx = lowerText.indexOf(lowerTerm, pos);
+    if (matchIdx === -1) {
+      segments.push({ text: text.slice(pos), isMatch: false });
+      break;
+    }
+    if (matchIdx > pos) {
+      segments.push({ text: text.slice(pos, matchIdx), isMatch: false });
+    }
+    segments.push({ text: text.slice(matchIdx, matchIdx + term.length), isMatch: true });
+    pos = matchIdx + term.length;
+  }
+
+  return segments.length > 0 ? segments : [{ text, isMatch: false }];
+}
+
 export const RequestListItem = memo(function RequestListItem({
   request,
   isSelected,
   width,
   showFullUrl,
   onClick,
+  searchTerm,
 }: RequestListItemProps): React.ReactElement {
   const ref = useRef<DOMElement>(null);
 
@@ -109,7 +139,19 @@ export const RequestListItem = memo(function RequestListItem({
       <Text> </Text>
       <Text color={getStatusColour(request.responseStatus)}>{statusIndicator}{statusText.padStart(3)}</Text>
       <Text> </Text>
-      <Text dimColor={!isSelected}>{displayPath}</Text>
+      {searchTerm ? (
+        <Text dimColor={!isSelected}>
+          {splitByMatch(displayPath, searchTerm).map((seg, i) =>
+            seg.isMatch ? (
+              <Text key={i} color="yellow" bold>{seg.text}</Text>
+            ) : (
+              <Text key={i}>{seg.text}</Text>
+            ),
+          )}
+        </Text>
+      ) : (
+        <Text dimColor={!isSelected}>{displayPath}</Text>
+      )}
       <Box flexGrow={1} />
       <Text dimColor>{duration.padStart(durationWidth)}</Text>
     </Box>
@@ -119,6 +161,7 @@ export const RequestListItem = memo(function RequestListItem({
     prevProps.request === nextProps.request &&
     prevProps.isSelected === nextProps.isSelected &&
     prevProps.width === nextProps.width &&
-    prevProps.showFullUrl === nextProps.showFullUrl
+    prevProps.showFullUrl === nextProps.showFullUrl &&
+    prevProps.searchTerm === nextProps.searchTerm
   );
 });

@@ -18,10 +18,11 @@ interface RequestListProps {
   showFullUrl?: boolean;
   onItemClick?: (index: number) => void;
   scrollOffset?: number;
+  searchTerm?: string;
 }
 
 export const RequestList = forwardRef<DOMElement, RequestListProps>(function RequestList(
-  { requests, selectedIndex, isActive, isHovered, width, height, showFullUrl, onItemClick, scrollOffset: providedScrollOffset },
+  { requests, selectedIndex, isActive, isHovered, width, height, showFullUrl, onItemClick, scrollOffset: providedScrollOffset, searchTerm },
   ref,
 ) {
   // Calculate visible window (accounting for border - 2 lines for top/bottom)
@@ -72,6 +73,7 @@ export const RequestList = forwardRef<DOMElement, RequestListProps>(function Req
                 width={width - 4} // Account for border and padding
                 showFullUrl={showFullUrl}
                 onClick={onItemClick ? () => onItemClick(absoluteIndex) : undefined}
+                searchTerm={searchTerm}
               />
             );
           })}

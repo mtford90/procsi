@@ -7,13 +7,14 @@
  * When focused on method/status, left/right arrows cycle the value.
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Box, Text, useInput } from "ink";
 import type { RequestFilter } from "../../../shared/types.js";
 
 const METHOD_CYCLE = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
 const STATUS_CYCLE = ["2xx", "3xx", "4xx", "5xx"] as const;
 const MAX_SEARCH_LENGTH = 200;
+const FILTER_DEBOUNCE_MS = 150;
 
 type FilterField = "search" | "method" | "status";
 const FIELD_ORDER: FilterField[] = ["search", "method", "status"];
@@ -23,6 +24,8 @@ export interface FilterBarProps {
   filter: RequestFilter;
   onFilterChange: (filter: RequestFilter) => void;
   onClose: () => void;
+  /** Called on Escape — reverts filter to pre-open state */
+  onCancel?: () => void;
   width: number;
 }
 
@@ -31,6 +34,7 @@ export function FilterBar({
   filter,
   onFilterChange,
   onClose,
+  onCancel,
   width,
 }: FilterBarProps): React.ReactElement {
   const [search, setSearch] = useState(filter.search ?? "");
@@ -79,6 +83,38 @@ export function FilterBar({
     return result;
   }
 
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Stable reference to buildFilter for use in the debounce effect
+  const buildFilterRef = useRef(buildFilter);
+  buildFilterRef.current = buildFilter;
+
+  // Live debounced filter application
+  useEffect(() => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+
+    debounceRef.current = setTimeout(() => {
+      onFilterChange(buildFilterRef.current());
+    }, FILTER_DEBOUNCE_MS);
+
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, [search, methodIndex, statusIndex, onFilterChange]);
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, []);
+
   function cycleField(setter: React.Dispatch<React.SetStateAction<number>>, length: number, direction: 1 | -1): void {
     setter((prev) => {
       const total = length + 1; // +1 for the "ALL" option at index 0
@@ -89,12 +125,16 @@ export function FilterBar({
   useInput(
     (input, key) => {
       if (key.escape) {
-        onClose();
+        if (onCancel) {
+          onCancel();
+        } else {
+          onClose();
+        }
         return;
       }
 
       if (key.return) {
-        onFilterChange(buildFilter());
+        // Filter already applied live — just close the bar
         onClose();
         return;
       }
@@ -187,7 +227,7 @@ export function FilterBar({
         {currentStatus}
       </Text>
       <Text color="gray">{"  "}</Text>
-      <Text dimColor>Tab=switch Enter=apply Esc=cancel</Text>
+      <Text dimColor>Tab=switch Enter=close Esc=cancel</Text>
     </Box>
   );
 }

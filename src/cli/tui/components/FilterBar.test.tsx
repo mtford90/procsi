@@ -168,7 +168,24 @@ describe("FilterBar", () => {
     expect(frame).not.toContain("5xx");
   });
 
-  it("Escape calls onClose without applying", async () => {
+  it("Escape calls onCancel when provided", async () => {
+    const onClose = vi.fn();
+    const onCancel = vi.fn();
+    const onFilterChange = vi.fn();
+    const { stdin } = render(
+      <FilterBar {...defaultProps} onClose={onClose} onCancel={onCancel} onFilterChange={onFilterChange} />,
+    );
+
+    stdin.write("a");
+    await tick();
+    stdin.write("\x1b");
+    await tick();
+
+    expect(onCancel).toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("Escape calls onClose when onCancel not provided", async () => {
     const onClose = vi.fn();
     const onFilterChange = vi.fn();
     const { stdin } = render(
@@ -181,10 +198,26 @@ describe("FilterBar", () => {
     await tick();
 
     expect(onClose).toHaveBeenCalled();
-    expect(onFilterChange).not.toHaveBeenCalled();
   });
 
-  it("Enter calls onFilterChange with current filter state", async () => {
+  it("typing applies filter live (debounced)", async () => {
+    const onFilterChange = vi.fn();
+    const { stdin } = render(
+      <FilterBar {...defaultProps} onFilterChange={onFilterChange} />,
+    );
+
+    stdin.write("a");
+    await tick();
+    stdin.write("p");
+    await tick();
+    stdin.write("i");
+    // Wait for debounce (150ms) + render
+    await tick(250);
+
+    expect(onFilterChange).toHaveBeenCalledWith({ search: "api" });
+  });
+
+  it("Enter closes the bar without additional onFilterChange call", async () => {
     const onFilterChange = vi.fn();
     const onClose = vi.fn();
     const { stdin } = render(
@@ -197,41 +230,38 @@ describe("FilterBar", () => {
     stdin.write("p");
     await tick();
     stdin.write("i");
-    await tick();
+    await tick(250);
+
+    // Clear the mock to check Enter doesn't trigger another call
+    onFilterChange.mockClear();
 
     // Press Enter
     stdin.write("\r");
     await tick();
 
-    expect(onFilterChange).toHaveBeenCalledWith({ search: "api" });
     expect(onClose).toHaveBeenCalled();
   });
 
-  it("Enter with method filter calls onFilterChange with methods", async () => {
+  it("method filter applies live (debounced)", async () => {
     const onFilterChange = vi.fn();
-    const onClose = vi.fn();
     const { stdin } = render(
-      <FilterBar {...defaultProps} onFilterChange={onFilterChange} onClose={onClose} />,
+      <FilterBar {...defaultProps} onFilterChange={onFilterChange} />,
     );
 
     // Tab to method, cycle to GET
     stdin.write("\t");
     await tick();
     stdin.write("\x1b[C"); // right arrow
-    await tick();
-
-    // Press Enter
-    stdin.write("\r");
-    await tick();
+    // Wait for debounce
+    await tick(250);
 
     expect(onFilterChange).toHaveBeenCalledWith({ methods: ["GET"] });
   });
 
-  it("Enter with status filter calls onFilterChange with statusRange", async () => {
+  it("status filter applies live (debounced)", async () => {
     const onFilterChange = vi.fn();
-    const onClose = vi.fn();
     const { stdin } = render(
-      <FilterBar {...defaultProps} onFilterChange={onFilterChange} onClose={onClose} />,
+      <FilterBar {...defaultProps} onFilterChange={onFilterChange} />,
     );
 
     // Tab to method, Tab to status, cycle to 2xx
@@ -240,11 +270,8 @@ describe("FilterBar", () => {
     stdin.write("\t");
     await tick();
     stdin.write("\x1b[C"); // right arrow
-    await tick();
-
-    // Press Enter
-    stdin.write("\r");
-    await tick();
+    // Wait for debounce
+    await tick(250);
 
     expect(onFilterChange).toHaveBeenCalledWith({ statusRange: "2xx" });
   });
@@ -266,17 +293,15 @@ describe("FilterBar", () => {
     expect(lastFrame()).not.toContain("abc");
   });
 
-  it("Enter with no input calls onFilterChange with empty filter", async () => {
-    const onFilterChange = vi.fn();
+  it("Enter with no input closes the bar", async () => {
     const onClose = vi.fn();
     const { stdin } = render(
-      <FilterBar {...defaultProps} onFilterChange={onFilterChange} onClose={onClose} />,
+      <FilterBar {...defaultProps} onClose={onClose} />,
     );
 
     stdin.write("\r");
     await tick();
 
-    expect(onFilterChange).toHaveBeenCalledWith({});
     expect(onClose).toHaveBeenCalled();
   });
 
@@ -296,16 +321,15 @@ describe("FilterBar", () => {
   it("shows help text for key bindings", () => {
     const { lastFrame } = render(<FilterBar {...defaultProps} />);
     const frame = lastFrame();
-    expect(frame).toContain("Enter=apply");
+    expect(frame).toContain("Enter=close");
     expect(frame).toContain("Esc=cancel");
     expect(frame).toContain("Tab=switch");
   });
 
   it("typing in search does not affect method or status", async () => {
     const onFilterChange = vi.fn();
-    const onClose = vi.fn();
     const { stdin } = render(
-      <FilterBar {...defaultProps} onFilterChange={onFilterChange} onClose={onClose} />,
+      <FilterBar {...defaultProps} onFilterChange={onFilterChange} />,
     );
 
     // Type "message" which contains both 'm' and 's'
@@ -314,8 +338,8 @@ describe("FilterBar", () => {
       await tick();
     }
 
-    stdin.write("\r");
-    await tick();
+    // Wait for debounce
+    await tick(250);
 
     // Should only have search, no method or status filter
     expect(onFilterChange).toHaveBeenCalledWith({ search: "message" });

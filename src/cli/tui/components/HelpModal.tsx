@@ -52,6 +52,19 @@ const HELP_SECTIONS: HelpSection[] = [
     ],
   },
   {
+    title: "JSON Explorer",
+    entries: [
+      { key: "e", description: "Explore JSON body" },
+      { key: "j / k", description: "Navigate tree" },
+      { key: "Enter / l", description: "Toggle node" },
+      { key: "h", description: "Collapse node" },
+      { key: "e / c", description: "Expand / collapse all" },
+      { key: "/", description: "Filter by path" },
+      { key: "y", description: "Copy value" },
+      { key: "Esc", description: "Close explorer" },
+    ],
+  },
+  {
     title: "General",
     entries: [
       { key: "i", description: "Proxy connection info" },

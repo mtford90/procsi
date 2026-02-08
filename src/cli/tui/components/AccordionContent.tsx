@@ -11,6 +11,8 @@ import { highlightCode } from "../utils/syntax-highlight.js";
 /** Only process the first 10 KB of body content for display — full body remains available for export/save. */
 const BODY_PREVIEW_LIMIT = 10 * 1024;
 
+import { isJsonContent } from "../utils/content-type.js";
+
 /**
  * Display request/response headers as key-value pairs.
  */
@@ -114,12 +116,7 @@ export function BodyContent({
     const truncated = body.length > BODY_PREVIEW_LIMIT;
     let text = (truncated ? body.subarray(0, BODY_PREVIEW_LIMIT) : body).toString("utf-8");
 
-    // Only pretty-print when content-type explicitly indicates JSON
-    const isJson =
-      contentType?.includes("application/json") ||
-      contentType?.includes("+json");
-
-    if (isJson && !truncated) {
+    if (isJsonContent(contentType) && !truncated) {
       try {
         const parsed = JSON.parse(text) as unknown;
         text = JSON.stringify(parsed, null, 2);
