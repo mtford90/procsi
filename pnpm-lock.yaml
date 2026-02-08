@@ -44,7 +44,7 @@ importers:
         version: 7.6.13
       '@types/node':
         specifier: ^25.2.0
-        version: 25.2.0
+        version: 25.2.2
       '@types/react':
         specifier: ^19.2.10
         version: 19.2.10
@@ -53,7 +53,7 @@ importers:
         version: 11.0.0
       cli-testing-library:
         specifier: ^3.0.1
-        version: 3.0.1(vitest@4.0.18(@types/node@25.2.0)(yaml@2.8.2))
+        version: 3.0.1(vitest@4.0.18(@types/node@25.2.2)(yaml@2.8.2))
       eslint:
         specifier: ^9.39.2
         version: 9.39.2
@@ -80,7 +80,7 @@ importers:
         version: 8.54.0(eslint@9.39.2)(typescript@5.9.3)
       vitest:
         specifier: ^4.0.18
-        version: 4.0.18(@types/node@25.2.0)(yaml@2.8.2)
+        version: 4.0.18(@types/node@25.2.2)(yaml@2.8.2)
 
 packages:
 
@@ -538,8 +538,8 @@ packages:
   '@types/json-schema@7.0.15':
     resolution: {integrity: sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==}
 
-  '@types/node@25.2.0':
-    resolution: {integrity: sha512-DZ8VwRFUNzuqJ5khrvwMXHmvPe+zGayJhr2CDNiKB1WBE1ST8Djl00D0IC4vvNmHMdj6DlbYRIaFE7WHjlDl5w==}
+  '@types/node@25.2.2':
+    resolution: {integrity: sha512-BkmoP5/FhRYek5izySdkOneRyXYN35I860MFAGupTdebyE66uZaR+bXLHq8k4DirE5DwQi3NuhvRU1jqTVwUrQ==}
 
   '@types/react@19.2.10':
     resolution: {integrity: sha512-WPigyYuGhgZ/cTPRXB2EwUw+XvsRA3GqHlsP4qteqrnnjDrApbS7MxcGr/hke5iUoeB7E/gQtrs9I37zAJ0Vjw==}
@@ -2396,7 +2396,7 @@ snapshots:
 
   '@httptoolkit/httpolyglot@3.0.1':
     dependencies:
-      '@types/node': 25.2.0
+      '@types/node': 25.2.2
 
   '@httptoolkit/subscriptions-transport-ws@0.11.2(graphql@15.10.1)':
     dependencies:
@@ -2616,7 +2616,7 @@ snapshots:
 
   '@types/better-sqlite3@7.6.13':
     dependencies:
-      '@types/node': 25.2.0
+      '@types/node': 25.2.2
 
   '@types/chai@5.2.3':
     dependencies:
@@ -2625,7 +2625,7 @@ snapshots:
 
   '@types/cors@2.8.19':
     dependencies:
-      '@types/node': 25.2.0
+      '@types/node': 25.2.2
 
   '@types/deep-eql@4.0.2': {}
 
@@ -2633,7 +2633,7 @@ snapshots:
 
   '@types/json-schema@7.0.15': {}
 
-  '@types/node@25.2.0':
+  '@types/node@25.2.2':
     dependencies:
       undici-types: 7.16.0
 
@@ -2647,7 +2647,7 @@ snapshots:
 
   '@types/ws@8.18.1':
     dependencies:
-      '@types/node': 25.2.0
+      '@types/node': 25.2.2
 
   '@typescript-eslint/eslint-plugin@8.54.0(@typescript-eslint/parser@8.54.0(eslint@9.39.2)(typescript@5.9.3))(eslint@9.39.2)(typescript@5.9.3)':
     dependencies:
@@ -2749,13 +2749,13 @@ snapshots:
       chai: 6.2.2
       tinyrainbow: 3.0.3
 
-  '@vitest/mocker@4.0.18(vite@7.3.1(@types/node@25.2.0)(yaml@2.8.2))':
+  '@vitest/mocker@4.0.18(vite@7.3.1(@types/node@25.2.2)(yaml@2.8.2))':
     dependencies:
       '@vitest/spy': 4.0.18
       estree-walker: 3.0.3
       magic-string: 0.30.21
     optionalDependencies:
-      vite: 7.3.1(@types/node@25.2.0)(yaml@2.8.2)
+      vite: 7.3.1(@types/node@25.2.2)(yaml@2.8.2)
 
   '@vitest/pretty-format@4.0.18':
     dependencies:
@@ -2953,7 +2953,7 @@ snapshots:
       parse5-htmlparser2-tree-adapter: 6.0.1
       yargs: 16.2.0
 
-  cli-testing-library@3.0.1(vitest@4.0.18(@types/node@25.2.0)(yaml@2.8.2)):
+  cli-testing-library@3.0.1(vitest@4.0.18(@types/node@25.2.2)(yaml@2.8.2)):
     dependencies:
       '@babel/code-frame': 7.29.0
       '@babel/runtime': 7.28.6
@@ -2964,7 +2964,7 @@ snapshots:
       strip-final-newline: 4.0.0
       tree-kill: 1.2.2
     optionalDependencies:
-      vitest: 4.0.18(@types/node@25.2.0)(yaml@2.8.2)
+      vitest: 4.0.18(@types/node@25.2.2)(yaml@2.8.2)
 
   cli-truncate@5.1.1:
     dependencies:
@@ -3069,7 +3069,7 @@ snapshots:
 
   destroyable-server@1.1.1:
     dependencies:
-      '@types/node': 25.2.0
+      '@types/node': 25.2.2
 
   detect-libc@2.1.2: {}
 
@@ -3666,7 +3666,7 @@ snapshots:
       '@peculiar/asn1-x509': 2.6.0
       '@peculiar/x509': 1.14.3
       '@types/cors': 2.8.19
-      '@types/node': 25.2.0
+      '@types/node': 25.2.2
       async-mutex: 0.5.0
       base64-arraybuffer: 0.1.5
       body-parser: 1.20.4
@@ -3920,7 +3920,7 @@ snapshots:
 
   read-tls-client-hello@1.1.0:
     dependencies:
-      '@types/node': 25.2.0
+      '@types/node': 25.2.2
 
   readable-stream@2.3.8:
     dependencies:
@@ -4283,7 +4283,7 @@ snapshots:
 
   vary@1.1.2: {}
 
-  vite@7.3.1(@types/node@25.2.0)(yaml@2.8.2):
+  vite@7.3.1(@types/node@25.2.2)(yaml@2.8.2):
     dependencies:
       esbuild: 0.27.2
       fdir: 6.5.0(picomatch@4.0.3)
@@ -4292,14 +4292,14 @@ snapshots:
       rollup: 4.57.1
       tinyglobby: 0.2.15
     optionalDependencies:
-      '@types/node': 25.2.0
+      '@types/node': 25.2.2
       fsevents: 2.3.3
       yaml: 2.8.2
 
-  vitest@4.0.18(@types/node@25.2.0)(yaml@2.8.2):
+  vitest@4.0.18(@types/node@25.2.2)(yaml@2.8.2):
     dependencies:
       '@vitest/expect': 4.0.18
-      '@vitest/mocker': 4.0.18(vite@7.3.1(@types/node@25.2.0)(yaml@2.8.2))
+      '@vitest/mocker': 4.0.18(vite@7.3.1(@types/node@25.2.2)(yaml@2.8.2))
       '@vitest/pretty-format': 4.0.18
       '@vitest/runner': 4.0.18
       '@vitest/snapshot': 4.0.18
@@ -4316,10 +4316,10 @@ snapshots:
       tinyexec: 1.0.2
       tinyglobby: 0.2.15
       tinyrainbow: 3.0.3
-      vite: 7.3.1(@types/node@25.2.0)(yaml@2.8.2)
+      vite: 7.3.1(@types/node@25.2.2)(yaml@2.8.2)
       why-is-node-running: 2.3.0
     optionalDependencies:
-      '@types/node': 25.2.0
+      '@types/node': 25.2.2
     transitivePeerDependencies:
       - jiti
       - less
