@@ -52,6 +52,7 @@
     "url": "https://github.com/mtford90/htpx/issues"
   },
   "homepage": "https://github.com/mtford90/htpx#readme",
+  "packageManager": "pnpm@10.13.1",
   "engines": {
     "node": ">=20"
   },
