@@ -24,9 +24,9 @@ describe("getVisibleHints", () => {
     const hints = getVisibleHints({});
     const keys = hintKeys(hints);
 
-    expect(keys).toContain("^u/^d");
+    expect(keys).toContain("^u/^d/^f/^b");
     expect(keys).toContain("c");
-    expect(keys).toContain("h");
+    expect(keys).toContain("H");
     expect(keys).toContain("y");
     expect(keys).toContain("s");
     for (const key of ALWAYS_VISIBLE_KEYS) {
@@ -52,9 +52,9 @@ describe("getVisibleHints", () => {
   });
 
   describe("activePanel === 'list'", () => {
-    it("shows ^u/^d (page)", () => {
+    it("shows ^u/^d/^f/^b (page)", () => {
       const keys = hintKeys(getVisibleHints({ activePanel: "list" }));
-      expect(keys).toContain("^u/^d");
+      expect(keys).toContain("^u/^d/^f/^b");
     });
 
     it("hides Enter (explore)", () => {
@@ -64,9 +64,9 @@ describe("getVisibleHints", () => {
   });
 
   describe("activePanel === 'accordion'", () => {
-    it("hides ^u/^d (page)", () => {
+    it("hides ^u/^d/^f/^b (page)", () => {
       const keys = hintKeys(getVisibleHints({ activePanel: "accordion" }));
-      expect(keys).not.toContain("^u/^d");
+      expect(keys).not.toContain("^u/^d/^f/^b");
     });
 
     it("hides Enter (view) when not on viewable body section", () => {
@@ -96,14 +96,14 @@ describe("getVisibleHints", () => {
   });
 
   describe("hasRequests", () => {
-    it("shows h (HAR) when true", () => {
+    it("shows H (HAR) when true", () => {
       const keys = hintKeys(getVisibleHints({ hasRequests: true }));
-      expect(keys).toContain("h");
+      expect(keys).toContain("H");
     });
 
-    it("hides h (HAR) when false", () => {
+    it("hides H (HAR) when false", () => {
       const keys = hintKeys(getVisibleHints({ hasRequests: false }));
-      expect(keys).not.toContain("h");
+      expect(keys).not.toContain("H");
     });
   });
 
@@ -137,12 +137,12 @@ describe("getVisibleHints", () => {
     // Conditional hints should all be hidden
     expect(keys).not.toContain("Enter");
     expect(keys).not.toContain("c");
-    expect(keys).not.toContain("h");
+    expect(keys).not.toContain("H");
     expect(keys).not.toContain("y");
     expect(keys).not.toContain("s");
 
-    // ^u/^d should still be visible (list panel)
-    expect(keys).toContain("^u/^d");
+    // ^u/^d/^f/^b should still be visible (list panel)
+    expect(keys).toContain("^u/^d/^f/^b");
   });
 });
 
@@ -189,18 +189,18 @@ describe("StatusBar component", () => {
 
     // With fewer hints there's more room — "Enter" should not appear
     expect(frame).not.toContain("Enter");
-    // But ^u/^d (page) key should appear
-    expect(frame).toMatch(/\^u/);
+    // But ^u/^d/^f/^b (page) key should appear
+    expect(frame).toMatch(/\^u\/\^d\/\^f\/\^b/);
   });
 
-  it("does not render ^u/^d key when activePanel is accordion", () => {
+  it("does not render ^u/^d/^f/^b key when activePanel is accordion", () => {
     const { lastFrame } = render(
       <StatusBar activePanel="accordion" hasSelection={false} hasRequests={false} onBodySection={false} />,
     );
     const frame = lastFrame();
 
-    // ^u/^d should not appear
-    expect(frame).not.toMatch(/\^u\/\^d/);
+    // ^u/^d/^f/^b should not appear
+    expect(frame).not.toMatch(/\^u\/\^d\/\^f\/\^b/);
     // Enter should not appear either (not on JSON body section)
     expect(frame).not.toContain("Enter");
   });

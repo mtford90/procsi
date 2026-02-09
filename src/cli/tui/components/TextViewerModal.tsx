@@ -156,7 +156,7 @@ export function TextViewerModal({
       }
 
       // Normal mode
-      if (key.escape) {
+      if (key.escape || input === "q") {
         onClose();
         return;
       }
@@ -171,6 +171,12 @@ export function TextViewerModal({
       } else if (input === "u" && key.ctrl) {
         const halfPage = Math.floor(availableHeight / 2);
         setScrollOffset((prev) => Math.max(prev - halfPage, 0));
+      } else if ((input === "f" && key.ctrl) || input === " ") {
+        // Full-page down (Ctrl+f or Space)
+        setScrollOffset((prev) => Math.min(prev + availableHeight, maxScrollOffset));
+      } else if (input === "b" && key.ctrl) {
+        // Full-page up
+        setScrollOffset((prev) => Math.max(prev - availableHeight, 0));
       } else if (input === "g" && !key.shift) {
         setScrollOffset(0);
       } else if (input === "G") {
@@ -293,7 +299,7 @@ export function TextViewerModal({
           <Text color="green">{statusMessage}</Text>
         ) : (
           <Text dimColor wrap="truncate">
-            j/k nav {"\u2502"} ^u/^d page {"\u2502"} g/G top/bottom {"\u2502"} / search {"\u2502"} n/N match {"\u2502"} y copy {"\u2502"} Esc close
+            j/k nav {"\u2502"} ^u/^d/^f/^b page {"\u2502"} g/G top/bottom {"\u2502"} / search {"\u2502"} n/N match {"\u2502"} y copy {"\u2502"} q/Esc close
           </Text>
         )}
       </Box>

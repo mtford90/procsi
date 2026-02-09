@@ -69,10 +69,10 @@ describe("JsonExplorerModal", () => {
     });
 
     it("renders hint bar", () => {
-      const { lastFrame } = render(<JsonExplorerModal {...defaultProps} width={120} />);
+      const { lastFrame } = render(<JsonExplorerModal {...defaultProps} width={150} />);
       const frame = lastFrame();
       expect(frame).toContain("j/k nav");
-      expect(frame).toContain("Esc close");
+      expect(frame).toContain("q/Esc close");
     });
 
     it("renders breadcrumb for cursor position", () => {

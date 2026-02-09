@@ -22,12 +22,12 @@ interface KeyHint {
 
 const KEY_HINTS: KeyHint[] = [
   { key: "j/k/g/G", action: "nav" },
-  { key: "^u/^d", action: "page", visible: (ctx) => ctx.activePanel === "list" },
+  { key: "^u/^d/^f/^b", action: "page", visible: (ctx) => ctx.activePanel === "list" },
   { key: "Tab", action: "panel" },
   { key: "1-5", action: "section" },
   { key: "Enter", action: "view", visible: (ctx) => ctx.onViewableBodySection },
   { key: "c", action: "curl", visible: (ctx) => ctx.hasSelection },
-  { key: "h", action: "HAR", visible: (ctx) => ctx.hasRequests },
+  { key: "H", action: "HAR", visible: (ctx) => ctx.hasRequests },
   { key: "y", action: "yank", visible: (ctx) => ctx.onBodySection },
   { key: "s", action: "export", visible: (ctx) => ctx.onBodySection },
   { key: "u", action: "URL" },

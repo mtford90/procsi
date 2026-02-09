@@ -740,7 +740,7 @@ describe("App keyboard interactions", () => {
     });
   });
 
-  describe("Actions (r, c, h)", () => {
+  describe("Actions (r, c, H)", () => {
     it("r calls refresh and shows Refreshing status", async () => {
       setupMocksWithRequests(1);
 
@@ -797,7 +797,7 @@ describe("App keyboard interactions", () => {
       expect(frame).toContain("No request selected");
     });
 
-    it("h with requests calls exportHar", async () => {
+    it("H with requests calls exportHar", async () => {
       const fullRequest = createMockFullRequest();
       mockGetAllFullRequests.mockResolvedValue([fullRequest]);
       mockUseRequests.mockReturnValue({
@@ -812,7 +812,7 @@ describe("App keyboard interactions", () => {
       const { lastFrame, stdin } = render(<App __testEnableInput />);
       await tick();
 
-      stdin.write("h");
+      stdin.write("H");
       await tick(100); // Give more time for async operation
 
       expect(mockGetAllFullRequests).toHaveBeenCalled();
@@ -821,7 +821,7 @@ describe("App keyboard interactions", () => {
       expect(frame).toMatch(/HAR|Export/i);
     });
 
-    it("h without requests shows No requests to export", async () => {
+    it("H without requests shows No requests to export", async () => {
       mockUseRequests.mockReturnValue({
         requests: [],
         isLoading: false,
@@ -834,7 +834,7 @@ describe("App keyboard interactions", () => {
       const { lastFrame, stdin } = render(<App __testEnableInput />);
       await tick();
 
-      stdin.write("h");
+      stdin.write("H");
       await tick();
 
       const frame = lastFrame();

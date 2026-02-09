@@ -29,8 +29,8 @@ describe("HelpModal", () => {
     expect(frame).toContain("Navigation");
     expect(frame).toContain("Move down");
     expect(frame).toContain("Move up");
-    expect(frame).toContain("Half page up");
-    expect(frame).toContain("Half page down");
+    expect(frame).toContain("Half page up / down");
+    expect(frame).toContain("Full page down / up");
     expect(frame).toContain("Jump to section");
   });
 
@@ -41,10 +41,28 @@ describe("HelpModal", () => {
     expect(frame).toContain("Actions");
     expect(frame).toContain("View body content");
     expect(frame).toContain("Copy as cURL");
+    expect(frame).toContain("Export HAR");
     expect(frame).toContain("Copy body to clipboard");
     expect(frame).toContain("Export body content");
     expect(frame).toContain("Toggle full URL");
     expect(frame).toContain("Refresh");
+  });
+
+  it("renders the JSON Explorer section", () => {
+    const { lastFrame } = render(<HelpModal {...defaultProps} />);
+    const frame = lastFrame();
+
+    expect(frame).toContain("JSON Explorer");
+    expect(frame).toContain("Navigate tree");
+    expect(frame).toContain("Half page up / down");
+    expect(frame).toContain("Full page down / up");
+    expect(frame).toContain("Toggle node");
+    expect(frame).toContain("Collapse node");
+    expect(frame).toContain("Expand / collapse all");
+    expect(frame).toContain("Filter by path");
+    expect(frame).toContain("Next / previous match");
+    expect(frame).toContain("Copy value");
+    expect(frame).toContain("Close explorer");
   });
 
   it("renders the Text Viewer section", () => {
@@ -54,6 +72,8 @@ describe("HelpModal", () => {
     expect(frame).toContain("Text Viewer");
     expect(frame).toContain("Scroll line by line");
     expect(frame).toContain("Scroll half page");
+    expect(frame).toContain("Full page down / up");
+    expect(frame).toContain("Page down");
     expect(frame).toContain("Search text");
     expect(frame).toContain("Next / previous match");
     expect(frame).toContain("Close viewer");

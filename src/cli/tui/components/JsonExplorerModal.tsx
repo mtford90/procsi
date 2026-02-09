@@ -203,7 +203,7 @@ export function JsonExplorerModal({
       }
 
       // Normal mode
-      if (key.escape) {
+      if (key.escape || input === "q") {
         onClose();
         return;
       }
@@ -212,6 +212,20 @@ export function JsonExplorerModal({
         setCursorIndex((prev) => Math.min(prev + 1, visibleNodes.length - 1));
       } else if (input === "k" || key.upArrow) {
         setCursorIndex((prev) => Math.max(prev - 1, 0));
+      } else if (input === "d" && key.ctrl) {
+        // Half-page down
+        const halfPage = Math.floor(availableHeight / 2);
+        setCursorIndex((prev) => Math.min(prev + halfPage, visibleNodes.length - 1));
+      } else if (input === "u" && key.ctrl) {
+        // Half-page up
+        const halfPage = Math.floor(availableHeight / 2);
+        setCursorIndex((prev) => Math.max(prev - halfPage, 0));
+      } else if (input === "f" && key.ctrl) {
+        // Full-page down
+        setCursorIndex((prev) => Math.min(prev + availableHeight, visibleNodes.length - 1));
+      } else if (input === "b" && key.ctrl) {
+        // Full-page up
+        setCursorIndex((prev) => Math.max(prev - availableHeight, 0));
       } else if (key.return || input === "l") {
         // Toggle expand/collapse on node at cursor
         if (cursorNode?.expandable) {
@@ -246,6 +260,33 @@ export function JsonExplorerModal({
         setExpandedPaths(expandAll(data));
       } else if (input === "c") {
         setExpandedPaths(collapseAll());
+      } else if (input === "n") {
+        // Jump to next filter match
+        if (matchingPaths.size > 0) {
+          const matchIndices = visibleNodes
+            .map((n, i) => (matchingPaths.has(n.path) ? i : -1))
+            .filter((i) => i !== -1);
+          if (matchIndices.length > 0) {
+            const nextIdx = matchIndices.find((i) => i > cursorIndex) ?? matchIndices[0];
+            if (nextIdx !== undefined) {
+              setCursorIndex(nextIdx);
+            }
+          }
+        }
+      } else if (input === "N") {
+        // Jump to previous filter match
+        if (matchingPaths.size > 0) {
+          const matchIndices = visibleNodes
+            .map((n, i) => (matchingPaths.has(n.path) ? i : -1))
+            .filter((i) => i !== -1);
+          if (matchIndices.length > 0) {
+            const prevIdx = [...matchIndices].reverse().find((i) => i < cursorIndex)
+              ?? matchIndices[matchIndices.length - 1];
+            if (prevIdx !== undefined) {
+              setCursorIndex(prevIdx);
+            }
+          }
+        }
       } else if (input === "y") {
         if (cursorNode) {
           const value = getValueAtPath(data, cursorNode.path);
@@ -340,7 +381,7 @@ export function JsonExplorerModal({
           <Text color="green">{statusMessage}</Text>
         ) : (
           <Text dimColor wrap="truncate">
-            j/k nav │ Enter/l toggle │ h collapse │ e/c expand/collapse all │ / filter │ y copy │ Esc close
+            j/k nav │ ^u/^d/^f/^b page │ Enter/l toggle │ h collapse │ e/c expand/collapse all │ / filter │ n/N match │ y copy │ q/Esc close
           </Text>
         )}
       </Box>

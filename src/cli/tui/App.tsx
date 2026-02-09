@@ -463,7 +463,7 @@ function AppContent({ __testEnableInput, projectRoot }: AppProps): React.ReactEl
         } else {
           showStatus("No request selected");
         }
-      } else if (input === "h") {
+      } else if (input === "H") {
         if (requests.length > 0) {
           showStatus("Exporting HAR...");
           void getAllFullRequests().then((fullRequests) => {
@@ -472,6 +472,18 @@ function AppContent({ __testEnableInput, projectRoot }: AppProps): React.ReactEl
           });
         } else {
           showStatus("No requests to export");
+        }
+      } else if (input === "f" && key.ctrl) {
+        // Full-page down (list only)
+        if (activePanel === "list") {
+          const fullPage = contentHeightRef.current;
+          setSelectedIndex((prev) => Math.min(prev + fullPage, requestsLengthRef.current - 1));
+        }
+      } else if (input === "b" && key.ctrl) {
+        // Full-page up (list only)
+        if (activePanel === "list") {
+          const fullPage = contentHeightRef.current;
+          setSelectedIndex((prev) => Math.max(prev - fullPage, 0));
         }
       } else if (input === "u" && !key.ctrl) {
         const newShowFullUrl = !showFullUrl;

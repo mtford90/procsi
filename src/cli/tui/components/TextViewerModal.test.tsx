@@ -83,7 +83,7 @@ describe("TextViewerModal", () => {
       expect(frame).toContain("j/k nav");
       expect(frame).toContain("/ search");
       expect(frame).toContain("y copy");
-      expect(frame).toContain("Esc close");
+      expect(frame).toContain("q/Esc close");
     });
 
     it("renders with different title", () => {
