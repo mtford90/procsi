@@ -5,25 +5,7 @@
  * Content-Type headers and byte scanning.
  */
 
-/**
- * Content types that are definitively text.
- */
-const TEXT_CONTENT_TYPES = [
-  "text/",
-  "application/json",
-  "application/xml",
-  "application/javascript",
-  "application/x-www-form-urlencoded",
-  "application/xhtml+xml",
-  "application/ld+json",
-  "application/manifest+json",
-  "application/x-javascript",
-];
-
-/**
- * Content type suffixes that indicate text.
- */
-const TEXT_SUFFIXES = ["+json", "+xml", "+html", "+text"];
+import { TEXT_CONTENT_TYPES, TEXT_SUFFIXES } from "../../../shared/content-type.js";
 
 /**
  * Content types that are definitively binary.

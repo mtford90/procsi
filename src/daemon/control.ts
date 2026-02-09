@@ -5,6 +5,7 @@ import type {
   CapturedRequest,
   CapturedRequestSummary,
   DaemonStatus,
+  JsonQueryResult,
   RequestFilter,
   Session,
 } from "../shared/types.js";
@@ -43,6 +44,8 @@ interface ControlHandlers {
   listRequestsSummary: ControlHandler;
   getRequest: ControlHandler;
   countRequests: ControlHandler;
+  searchBodies: ControlHandler;
+  queryJsonBodies: ControlHandler;
   clearRequests: ControlHandler;
   ping: ControlHandler;
 }
@@ -103,6 +106,38 @@ function optionalFilter(params: Record<string, unknown>): RequestFilter | undefi
 
   if (typeof f["search"] === "string") {
     result.search = f["search"];
+  }
+
+  if (typeof f["host"] === "string") {
+    result.host = f["host"];
+  }
+
+  if (typeof f["pathPrefix"] === "string") {
+    result.pathPrefix = f["pathPrefix"];
+  }
+
+  if (typeof f["since"] === "number") {
+    result.since = f["since"];
+  }
+
+  if (typeof f["before"] === "number") {
+    result.before = f["before"];
+  }
+
+  if (typeof f["headerName"] === "string") {
+    result.headerName = f["headerName"];
+  }
+
+  if (typeof f["headerValue"] === "string") {
+    result.headerValue = f["headerValue"];
+  }
+
+  if (
+    f["headerTarget"] === "request" ||
+    f["headerTarget"] === "response" ||
+    f["headerTarget"] === "both"
+  ) {
+    result.headerTarget = f["headerTarget"];
   }
 
   return Object.keys(result).length > 0 ? result : undefined;
@@ -170,6 +205,9 @@ export function createControlServer(options: ControlServerOptions): ControlServe
 
     getRequest: (params): CapturedRequest | null => {
       const id = requireString(params, "id");
+      // storage.getRequest() returns undefined for missing rows, but undefined
+      // disappears during JSON serialisation over the control socket. Convert
+      // to null so the client receives an explicit "not found" value.
       return storage.getRequest(id) ?? null;
     },
 
@@ -177,6 +215,33 @@ export function createControlServer(options: ControlServerOptions): ControlServe
       return storage.countRequests({
         sessionId: optionalString(params, "sessionId"),
         label: optionalString(params, "label"),
+        filter: optionalFilter(params),
+      });
+    },
+
+    searchBodies: (params): CapturedRequestSummary[] => {
+      const query = requireString(params, "query");
+      return storage.searchBodies({
+        query,
+        limit: optionalNumber(params, "limit"),
+        offset: optionalNumber(params, "offset"),
+        filter: optionalFilter(params),
+      });
+    },
+
+    queryJsonBodies: (params): JsonQueryResult[] => {
+      const jsonPath = requireString(params, "jsonPath");
+      const target = optionalString(params, "target") as
+        | "request"
+        | "response"
+        | "both"
+        | undefined;
+      return storage.queryJsonBodies({
+        jsonPath,
+        value: optionalString(params, "value"),
+        target,
+        limit: optionalNumber(params, "limit"),
+        offset: optionalNumber(params, "offset"),
         filter: optionalFilter(params),
       });
     },

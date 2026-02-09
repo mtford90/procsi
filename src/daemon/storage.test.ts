@@ -521,6 +521,258 @@ describe("RequestRepository", () => {
       const count = repo.countRequests({ filter: { methods: ["POST"] } });
       expect(count).toBe(2);
     });
+
+    it("filters by exact status code", () => {
+      seedRequests();
+      const results = repo.listRequests({ filter: { statusRange: "404" } });
+      expect(results).toHaveLength(1);
+      expect(results[0]?.responseStatus).toBe(404);
+    });
+
+    it("filters by numeric status range", () => {
+      seedRequests();
+      const results = repo.listRequests({ filter: { statusRange: "200-201" } });
+      expect(results).toHaveLength(4);
+      expect(
+        results.every(
+          (r) =>
+            r.responseStatus !== undefined && r.responseStatus >= 200 && r.responseStatus <= 201
+        )
+      ).toBe(true);
+    });
+
+    it("Nxx status range still works (backward compat)", () => {
+      seedRequests();
+      const results = repo.listRequests({ filter: { statusRange: "3xx" } });
+      expect(results).toHaveLength(1);
+      expect(results[0]?.responseStatus).toBe(301);
+    });
+
+    it("filters by exact host match", () => {
+      // Seed requests go to api.example.com — add one to a different host
+      seedRequests();
+      const id = repo.saveRequest({
+        sessionId,
+        timestamp: Date.now(),
+        method: "GET",
+        url: "https://other.example.com/page",
+        host: "other.example.com",
+        path: "/page",
+        requestHeaders: {},
+      });
+      repo.updateRequestResponse(id, { status: 200, headers: {}, durationMs: 10 });
+
+      const results = repo.listRequests({ filter: { host: "other.example.com" } });
+      expect(results).toHaveLength(1);
+      expect(results[0]?.host).toBe("other.example.com");
+    });
+
+    it("filters by host suffix match", () => {
+      seedRequests();
+      const id = repo.saveRequest({
+        sessionId,
+        timestamp: Date.now(),
+        method: "GET",
+        url: "https://cdn.other.com/asset",
+        host: "cdn.other.com",
+        path: "/asset",
+        requestHeaders: {},
+      });
+      repo.updateRequestResponse(id, { status: 200, headers: {}, durationMs: 10 });
+
+      // ".example.com" should match "api.example.com" from seed, not "cdn.other.com"
+      const results = repo.listRequests({ filter: { host: ".example.com" } });
+      expect(results).toHaveLength(7); // all seed requests
+      expect(results.every((r) => r.host.endsWith(".example.com"))).toBe(true);
+    });
+
+    it("filters by path prefix", () => {
+      seedRequests();
+      const results = repo.listRequests({ filter: { pathPrefix: "/users" } });
+      expect(results).toHaveLength(4);
+      expect(results.every((r) => r.path.startsWith("/users"))).toBe(true);
+    });
+
+    it("escapes SQL wildcards in path prefix", () => {
+      const id = repo.saveRequest({
+        sessionId,
+        timestamp: Date.now(),
+        method: "GET",
+        url: "https://api.example.com/a%b/test",
+        host: "api.example.com",
+        path: "/a%b/test",
+        requestHeaders: {},
+      });
+      repo.updateRequestResponse(id, { status: 200, headers: {}, durationMs: 10 });
+
+      const id2 = repo.saveRequest({
+        sessionId,
+        timestamp: Date.now(),
+        method: "GET",
+        url: "https://api.example.com/aXb/test",
+        host: "api.example.com",
+        path: "/aXb/test",
+        requestHeaders: {},
+      });
+      repo.updateRequestResponse(id2, { status: 200, headers: {}, durationMs: 10 });
+
+      // Literal "%" in prefix should only match "/a%b/test"
+      const results = repo.listRequests({ filter: { pathPrefix: "/a%b" } });
+      expect(results).toHaveLength(1);
+      expect(results[0]?.path).toBe("/a%b/test");
+    });
+
+    it("filters by since (inclusive lower bound)", () => {
+      const baseTime = 1700000000000;
+      const id1 = repo.saveRequest({
+        sessionId,
+        timestamp: baseTime,
+        method: "GET",
+        url: "https://api.example.com/old",
+        host: "api.example.com",
+        path: "/old",
+        requestHeaders: {},
+      });
+      repo.updateRequestResponse(id1, { status: 200, headers: {}, durationMs: 10 });
+
+      const id2 = repo.saveRequest({
+        sessionId,
+        timestamp: baseTime + 1000,
+        method: "GET",
+        url: "https://api.example.com/new",
+        host: "api.example.com",
+        path: "/new",
+        requestHeaders: {},
+      });
+      repo.updateRequestResponse(id2, { status: 200, headers: {}, durationMs: 10 });
+
+      // since is inclusive — exactly at baseTime+1000 should include id2
+      const results = repo.listRequests({ filter: { since: baseTime + 1000 } });
+      expect(results).toHaveLength(1);
+      expect(results[0]?.path).toBe("/new");
+    });
+
+    it("filters by before (exclusive upper bound)", () => {
+      const baseTime = 1700000000000;
+      const id1 = repo.saveRequest({
+        sessionId,
+        timestamp: baseTime,
+        method: "GET",
+        url: "https://api.example.com/old",
+        host: "api.example.com",
+        path: "/old",
+        requestHeaders: {},
+      });
+      repo.updateRequestResponse(id1, { status: 200, headers: {}, durationMs: 10 });
+
+      const id2 = repo.saveRequest({
+        sessionId,
+        timestamp: baseTime + 1000,
+        method: "GET",
+        url: "https://api.example.com/new",
+        host: "api.example.com",
+        path: "/new",
+        requestHeaders: {},
+      });
+      repo.updateRequestResponse(id2, { status: 200, headers: {}, durationMs: 10 });
+
+      // before is exclusive — exactly at baseTime+1000 should exclude id2
+      const results = repo.listRequests({ filter: { before: baseTime + 1000 } });
+      expect(results).toHaveLength(1);
+      expect(results[0]?.path).toBe("/old");
+    });
+
+    it("filters by since + before combined (time window)", () => {
+      const baseTime = 1700000000000;
+      for (let i = 0; i < 5; i++) {
+        const id = repo.saveRequest({
+          sessionId,
+          timestamp: baseTime + i * 1000,
+          method: "GET",
+          url: `https://api.example.com/t${i}`,
+          host: "api.example.com",
+          path: `/t${i}`,
+          requestHeaders: {},
+        });
+        repo.updateRequestResponse(id, { status: 200, headers: {}, durationMs: 10 });
+      }
+
+      // Window: [baseTime+1000, baseTime+3000) → t1, t2
+      const results = repo.listRequests({
+        filter: { since: baseTime + 1000, before: baseTime + 3000 },
+      });
+      expect(results).toHaveLength(2);
+    });
+
+    it("returns empty when since equals before", () => {
+      const baseTime = 1700000000000;
+      const id = repo.saveRequest({
+        sessionId,
+        timestamp: baseTime,
+        method: "GET",
+        url: "https://api.example.com/x",
+        host: "api.example.com",
+        path: "/x",
+        requestHeaders: {},
+      });
+      repo.updateRequestResponse(id, { status: 200, headers: {}, durationMs: 10 });
+
+      // since >= baseTime AND timestamp < baseTime → impossible
+      const results = repo.listRequests({
+        filter: { since: baseTime, before: baseTime },
+      });
+      expect(results).toHaveLength(0);
+    });
+
+    it("combines host + method + time filters", () => {
+      const baseTime = 1700000000000;
+      // POST to api.example.com at baseTime
+      const id1 = repo.saveRequest({
+        sessionId,
+        timestamp: baseTime,
+        method: "POST",
+        url: "https://api.example.com/data",
+        host: "api.example.com",
+        path: "/data",
+        requestHeaders: {},
+      });
+      repo.updateRequestResponse(id1, { status: 201, headers: {}, durationMs: 10 });
+
+      // GET to api.example.com at baseTime+1000
+      const id2 = repo.saveRequest({
+        sessionId,
+        timestamp: baseTime + 1000,
+        method: "GET",
+        url: "https://api.example.com/data",
+        host: "api.example.com",
+        path: "/data",
+        requestHeaders: {},
+      });
+      repo.updateRequestResponse(id2, { status: 200, headers: {}, durationMs: 10 });
+
+      // POST to other.com at baseTime
+      const id3 = repo.saveRequest({
+        sessionId,
+        timestamp: baseTime,
+        method: "POST",
+        url: "https://other.com/data",
+        host: "other.com",
+        path: "/data",
+        requestHeaders: {},
+      });
+      repo.updateRequestResponse(id3, { status: 201, headers: {}, durationMs: 10 });
+
+      const results = repo.listRequests({
+        filter: {
+          methods: ["POST"],
+          host: "api.example.com",
+          since: baseTime,
+          before: baseTime + 500,
+        },
+      });
+      expect(results).toHaveLength(1);
+      expect(results[0]?.id).toBe(id1);
+    });
   });
 
   describe("listRequestsSummary", () => {
@@ -709,7 +961,7 @@ describe("RequestRepository", () => {
       // Verify user_version was set to latest migration
       const checkDb = new Database(migrationDbPath);
       const version = checkDb.pragma("user_version", { simple: true });
-      expect(version).toBe(2);
+      expect(version).toBe(4);
       checkDb.close();
 
       migratedRepo.close();
@@ -720,7 +972,7 @@ describe("RequestRepository", () => {
       // The default repo from beforeEach is a fresh DB
       const checkDb = new Database(dbPath);
       const version = checkDb.pragma("user_version", { simple: true });
-      expect(version).toBe(2);
+      expect(version).toBe(4);
       checkDb.close();
     });
 
@@ -832,6 +1084,568 @@ describe("RequestRepository", () => {
 
       checkDb.close();
       fs.rmSync(rollbackDir, { recursive: true, force: true });
+    });
+  });
+
+  describe("header filtering", () => {
+    let sessionId: string;
+
+    beforeEach(() => {
+      const session = repo.registerSession("test", 1);
+      sessionId = session.id;
+    });
+
+    function seedHeaderRequests(): void {
+      // Request with content-type header on request
+      const id1 = repo.saveRequest({
+        sessionId,
+        timestamp: Date.now(),
+        method: "POST",
+        url: "https://api.example.com/data",
+        host: "api.example.com",
+        path: "/data",
+        requestHeaders: { "content-type": "application/json", "x-custom": "req-value" },
+        requestBody: Buffer.from('{"a":1}'),
+      });
+      repo.updateRequestResponse(id1, {
+        status: 200,
+        headers: { "content-type": "text/html", "x-custom": "res-value" },
+        body: Buffer.from("<h1>OK</h1>"),
+        durationMs: 10,
+      });
+
+      // Request with x-api-key header
+      const id2 = repo.saveRequest({
+        sessionId,
+        timestamp: Date.now() + 1,
+        method: "GET",
+        url: "https://api.example.com/secure",
+        host: "api.example.com",
+        path: "/secure",
+        requestHeaders: { "x-api-key": "secret-123" },
+      });
+      repo.updateRequestResponse(id2, {
+        status: 200,
+        headers: { "content-type": "application/json" },
+        body: Buffer.from("{}"),
+        durationMs: 5,
+      });
+
+      // Request with no special headers
+      const id3 = repo.saveRequest({
+        sessionId,
+        timestamp: Date.now() + 2,
+        method: "GET",
+        url: "https://api.example.com/plain",
+        host: "api.example.com",
+        path: "/plain",
+        requestHeaders: { accept: "text/html" },
+      });
+      repo.updateRequestResponse(id3, {
+        status: 200,
+        headers: { "content-type": "text/plain" },
+        body: Buffer.from("hello"),
+        durationMs: 3,
+      });
+    }
+
+    it("filters by header name only (existence check)", () => {
+      seedHeaderRequests();
+      const results = repo.listRequests({
+        filter: { headerName: "x-api-key" },
+      });
+      expect(results).toHaveLength(1);
+      expect(results[0]?.path).toBe("/secure");
+    });
+
+    it("filters by header name + value", () => {
+      seedHeaderRequests();
+      const results = repo.listRequests({
+        filter: { headerName: "x-custom", headerValue: "req-value" },
+      });
+      expect(results).toHaveLength(1);
+      expect(results[0]?.path).toBe("/data");
+    });
+
+    it("filters by response target", () => {
+      seedHeaderRequests();
+      const results = repo.listRequests({
+        filter: { headerName: "x-custom", headerTarget: "response" },
+      });
+      expect(results).toHaveLength(1);
+      expect(results[0]?.path).toBe("/data");
+    });
+
+    it("filters by both target (default) matches request or response", () => {
+      seedHeaderRequests();
+      // x-custom exists on both request and response of /data
+      const results = repo.listRequests({
+        filter: { headerName: "x-custom" },
+      });
+      expect(results).toHaveLength(1);
+      expect(results[0]?.path).toBe("/data");
+    });
+
+    it("is case-insensitive for header name", () => {
+      seedHeaderRequests();
+      const results = repo.listRequests({
+        filter: { headerName: "X-API-KEY" },
+      });
+      expect(results).toHaveLength(1);
+      expect(results[0]?.path).toBe("/secure");
+    });
+
+    it("returns empty for non-existent header", () => {
+      seedHeaderRequests();
+      const results = repo.listRequests({
+        filter: { headerName: "x-nonexistent" },
+      });
+      expect(results).toHaveLength(0);
+    });
+
+    it("combines header filter with other filters", () => {
+      seedHeaderRequests();
+      const results = repo.listRequests({
+        filter: { headerName: "content-type", methods: ["POST"] },
+      });
+      expect(results).toHaveLength(1);
+      expect(results[0]?.method).toBe("POST");
+    });
+
+    it("handles hyphenated header names", () => {
+      seedHeaderRequests();
+      const results = repo.listRequests({
+        filter: {
+          headerName: "content-type",
+          headerValue: "application/json",
+          headerTarget: "request",
+        },
+      });
+      expect(results).toHaveLength(1);
+      expect(results[0]?.path).toBe("/data");
+    });
+  });
+
+  describe("searchBodies", () => {
+    let sessionId: string;
+
+    beforeEach(() => {
+      const session = repo.registerSession("test", 1);
+      sessionId = session.id;
+    });
+
+    it("finds text in request body", () => {
+      const id = repo.saveRequest({
+        sessionId,
+        timestamp: Date.now(),
+        method: "POST",
+        url: "https://api.example.com/users",
+        host: "api.example.com",
+        path: "/users",
+        requestHeaders: { "content-type": "application/json" },
+        requestBody: Buffer.from('{"name":"Alice"}'),
+      });
+      repo.updateRequestResponse(id, {
+        status: 201,
+        headers: { "content-type": "application/json" },
+        body: Buffer.from('{"id":1}'),
+        durationMs: 50,
+      });
+
+      const results = repo.searchBodies({ query: "Alice" });
+      expect(results).toHaveLength(1);
+      expect(results[0]?.id).toBe(id);
+    });
+
+    it("finds text in response body", () => {
+      const id = repo.saveRequest({
+        sessionId,
+        timestamp: Date.now(),
+        method: "GET",
+        url: "https://api.example.com/users",
+        host: "api.example.com",
+        path: "/users",
+        requestHeaders: {},
+      });
+      repo.updateRequestResponse(id, {
+        status: 200,
+        headers: { "content-type": "application/json" },
+        body: Buffer.from('{"users":["Bob"]}'),
+        durationMs: 30,
+      });
+
+      const results = repo.searchBodies({ query: "Bob" });
+      expect(results).toHaveLength(1);
+      expect(results[0]?.id).toBe(id);
+    });
+
+    it("returns empty when no match", () => {
+      const id = repo.saveRequest({
+        sessionId,
+        timestamp: Date.now(),
+        method: "POST",
+        url: "https://api.example.com/users",
+        host: "api.example.com",
+        path: "/users",
+        requestHeaders: { "content-type": "application/json" },
+        requestBody: Buffer.from('{"name":"Alice"}'),
+      });
+      repo.updateRequestResponse(id, {
+        status: 200,
+        headers: { "content-type": "application/json" },
+        body: Buffer.from("{}"),
+        durationMs: 10,
+      });
+
+      const results = repo.searchBodies({ query: "NonExistent" });
+      expect(results).toHaveLength(0);
+    });
+
+    it("respects filters", () => {
+      const id1 = repo.saveRequest({
+        sessionId,
+        timestamp: Date.now(),
+        method: "POST",
+        url: "https://api.example.com/users",
+        host: "api.example.com",
+        path: "/users",
+        requestHeaders: { "content-type": "application/json" },
+        requestBody: Buffer.from('{"name":"shared-term"}'),
+      });
+      repo.updateRequestResponse(id1, {
+        status: 201,
+        headers: { "content-type": "application/json" },
+        body: Buffer.from("{}"),
+        durationMs: 10,
+      });
+
+      const id2 = repo.saveRequest({
+        sessionId,
+        timestamp: Date.now(),
+        method: "GET",
+        url: "https://api.example.com/search",
+        host: "api.example.com",
+        path: "/search",
+        requestHeaders: {},
+      });
+      repo.updateRequestResponse(id2, {
+        status: 200,
+        headers: { "content-type": "application/json" },
+        body: Buffer.from('{"result":"shared-term"}'),
+        durationMs: 10,
+      });
+
+      // Both match the query, but filter to POST only
+      const results = repo.searchBodies({
+        query: "shared-term",
+        filter: { methods: ["POST"] },
+      });
+      expect(results).toHaveLength(1);
+      expect(results[0]?.id).toBe(id1);
+    });
+
+    it("handles LIKE wildcards in query", () => {
+      const id = repo.saveRequest({
+        sessionId,
+        timestamp: Date.now(),
+        method: "POST",
+        url: "https://api.example.com/data",
+        host: "api.example.com",
+        path: "/data",
+        requestHeaders: { "content-type": "application/json" },
+        requestBody: Buffer.from('{"rate":"100%"}'),
+      });
+      repo.updateRequestResponse(id, {
+        status: 200,
+        headers: { "content-type": "application/json" },
+        body: Buffer.from("{}"),
+        durationMs: 10,
+      });
+
+      // The % is a SQL wildcard — should be escaped
+      const results = repo.searchBodies({ query: "100%" });
+      expect(results).toHaveLength(1);
+      expect(results[0]?.id).toBe(id);
+    });
+
+    it("skips binary bodies when content-type is set", () => {
+      const id = repo.saveRequest({
+        sessionId,
+        timestamp: Date.now(),
+        method: "GET",
+        url: "https://example.com/image.png",
+        host: "example.com",
+        path: "/image.png",
+        requestHeaders: {},
+      });
+      // The response body happens to contain the search term as bytes,
+      // but the content-type is binary — should not be searched
+      repo.updateRequestResponse(id, {
+        status: 200,
+        headers: { "content-type": "image/png" },
+        body: Buffer.from("findme"),
+        durationMs: 10,
+      });
+
+      const results = repo.searchBodies({ query: "findme" });
+      expect(results).toHaveLength(0);
+    });
+
+    it("searches rows with NULL content-type (legacy/unknown data)", () => {
+      // Directly insert a row without content-type columns to simulate pre-migration data
+      const id = repo.saveRequest({
+        sessionId,
+        timestamp: Date.now(),
+        method: "POST",
+        url: "https://api.example.com/legacy",
+        host: "api.example.com",
+        path: "/legacy",
+        requestHeaders: {},
+        requestBody: Buffer.from('{"legacy":"data"}'),
+      });
+
+      // No updateRequestResponse call — request_content_type is set but
+      // response_content_type is NULL. The request_content_type will also be NULL
+      // since no content-type header was provided. NULL = unknown = searched.
+      const results = repo.searchBodies({ query: "legacy" });
+      expect(results).toHaveLength(1);
+      expect(results[0]?.id).toBe(id);
+    });
+
+    it("supports pagination", () => {
+      for (let i = 0; i < 5; i++) {
+        const id = repo.saveRequest({
+          sessionId,
+          timestamp: Date.now() + i,
+          method: "POST",
+          url: `https://api.example.com/item/${i}`,
+          host: "api.example.com",
+          path: `/item/${i}`,
+          requestHeaders: { "content-type": "application/json" },
+          requestBody: Buffer.from(`{"index":${i},"common":"needle"}`),
+        });
+        repo.updateRequestResponse(id, {
+          status: 200,
+          headers: { "content-type": "application/json" },
+          body: Buffer.from("{}"),
+          durationMs: 10,
+        });
+      }
+
+      const page1 = repo.searchBodies({ query: "needle", limit: 2 });
+      const page2 = repo.searchBodies({ query: "needle", limit: 2, offset: 2 });
+
+      expect(page1).toHaveLength(2);
+      expect(page2).toHaveLength(2);
+    });
+  });
+
+  describe("queryJsonBodies", () => {
+    let sessionId: string;
+
+    beforeEach(() => {
+      const session = repo.registerSession("test", 1);
+      sessionId = session.id;
+    });
+
+    function seedJsonRequests(): void {
+      // JSON request body
+      const id1 = repo.saveRequest({
+        sessionId,
+        timestamp: Date.now(),
+        method: "POST",
+        url: "https://api.example.com/users",
+        host: "api.example.com",
+        path: "/users",
+        requestHeaders: { "content-type": "application/json" },
+        requestBody: Buffer.from('{"name":"Alice","age":30}'),
+      });
+      repo.updateRequestResponse(id1, {
+        status: 201,
+        headers: { "content-type": "application/json" },
+        body: Buffer.from('{"id":1,"name":"Alice"}'),
+        durationMs: 50,
+      });
+
+      // Another JSON request
+      const id2 = repo.saveRequest({
+        sessionId,
+        timestamp: Date.now() + 1,
+        method: "POST",
+        url: "https://api.example.com/users",
+        host: "api.example.com",
+        path: "/users",
+        requestHeaders: { "content-type": "application/json" },
+        requestBody: Buffer.from('{"name":"Bob","age":25}'),
+      });
+      repo.updateRequestResponse(id2, {
+        status: 201,
+        headers: { "content-type": "application/json" },
+        body: Buffer.from('{"id":2,"name":"Bob"}'),
+        durationMs: 30,
+      });
+
+      // Non-JSON request (HTML response)
+      const id3 = repo.saveRequest({
+        sessionId,
+        timestamp: Date.now() + 2,
+        method: "GET",
+        url: "https://example.com/page",
+        host: "example.com",
+        path: "/page",
+        requestHeaders: {},
+      });
+      repo.updateRequestResponse(id3, {
+        status: 200,
+        headers: { "content-type": "text/html" },
+        body: Buffer.from("<h1>Hello</h1>"),
+        durationMs: 10,
+      });
+    }
+
+    it("extracts values from request body", () => {
+      seedJsonRequests();
+      const results = repo.queryJsonBodies({
+        jsonPath: "$.name",
+        target: "request",
+      });
+      expect(results).toHaveLength(2);
+      const values = results.map((r) => r.extractedValue);
+      expect(values).toContain("Alice");
+      expect(values).toContain("Bob");
+    });
+
+    it("extracts values from response body", () => {
+      seedJsonRequests();
+      const results = repo.queryJsonBodies({
+        jsonPath: "$.id",
+        target: "response",
+      });
+      expect(results).toHaveLength(2);
+      const values = results.map((r) => r.extractedValue);
+      expect(values).toContain(1);
+      expect(values).toContain(2);
+    });
+
+    it("extracts from both request and response (default)", () => {
+      seedJsonRequests();
+      const results = repo.queryJsonBodies({
+        jsonPath: "$.name",
+      });
+      // Both rows have "name" in request body; response body also has "name"
+      expect(results).toHaveLength(2);
+    });
+
+    it("filters by extracted value", () => {
+      seedJsonRequests();
+      const results = repo.queryJsonBodies({
+        jsonPath: "$.name",
+        value: "Alice",
+        target: "request",
+      });
+      expect(results).toHaveLength(1);
+      expect(results[0]?.extractedValue).toBe("Alice");
+    });
+
+    it("skips non-JSON bodies", () => {
+      seedJsonRequests();
+      // The HTML response should not be queried
+      const results = repo.queryJsonBodies({
+        jsonPath: "$.name",
+        target: "response",
+      });
+      // Only the two JSON responses have "name"
+      expect(results).toHaveLength(2);
+      expect(results.every((r) => r.host === "api.example.com")).toBe(true);
+    });
+
+    it("returns empty for missing path", () => {
+      seedJsonRequests();
+      const results = repo.queryJsonBodies({
+        jsonPath: "$.nonexistent",
+        target: "request",
+      });
+      expect(results).toHaveLength(0);
+    });
+
+    it("handles nested paths", () => {
+      const id = repo.saveRequest({
+        sessionId,
+        timestamp: Date.now(),
+        method: "POST",
+        url: "https://api.example.com/nested",
+        host: "api.example.com",
+        path: "/nested",
+        requestHeaders: { "content-type": "application/json" },
+        requestBody: Buffer.from('{"user":{"address":{"city":"London"}}}'),
+      });
+      repo.updateRequestResponse(id, {
+        status: 200,
+        headers: { "content-type": "application/json" },
+        body: Buffer.from("{}"),
+        durationMs: 5,
+      });
+
+      const results = repo.queryJsonBodies({
+        jsonPath: "$.user.address.city",
+        target: "request",
+      });
+      expect(results).toHaveLength(1);
+      expect(results[0]?.extractedValue).toBe("London");
+    });
+
+    it("handles array index paths", () => {
+      const id = repo.saveRequest({
+        sessionId,
+        timestamp: Date.now(),
+        method: "POST",
+        url: "https://api.example.com/array",
+        host: "api.example.com",
+        path: "/array",
+        requestHeaders: { "content-type": "application/json" },
+        requestBody: Buffer.from('{"items":["first","second","third"]}'),
+      });
+      repo.updateRequestResponse(id, {
+        status: 200,
+        headers: { "content-type": "application/json" },
+        body: Buffer.from("{}"),
+        durationMs: 5,
+      });
+
+      const results = repo.queryJsonBodies({
+        jsonPath: "$.items[1]",
+        target: "request",
+      });
+      expect(results).toHaveLength(1);
+      expect(results[0]?.extractedValue).toBe("second");
+    });
+
+    it("combines with other filters", () => {
+      seedJsonRequests();
+      const results = repo.queryJsonBodies({
+        jsonPath: "$.name",
+        target: "request",
+        filter: { methods: ["POST"], host: "api.example.com" },
+      });
+      expect(results).toHaveLength(2);
+    });
+
+    it("supports pagination", () => {
+      seedJsonRequests();
+      const page1 = repo.queryJsonBodies({
+        jsonPath: "$.name",
+        target: "request",
+        limit: 1,
+      });
+      const page2 = repo.queryJsonBodies({
+        jsonPath: "$.name",
+        target: "request",
+        limit: 1,
+        offset: 1,
+      });
+      expect(page1).toHaveLength(1);
+      expect(page2).toHaveLength(1);
+      expect(page1[0]?.extractedValue).not.toBe(page2[0]?.extractedValue);
     });
   });
 });

@@ -3,6 +3,7 @@ import type {
   CapturedRequest,
   CapturedRequestSummary,
   DaemonStatus,
+  JsonQueryResult,
   RequestFilter,
   Session,
 } from "./types.js";
@@ -162,6 +163,13 @@ export class ControlClient {
   }
 
   /**
+   * List all active sessions.
+   */
+  async listSessions(): Promise<Session[]> {
+    return this.request<Session[]>("listSessions");
+  }
+
+  /**
    * List captured requests (full data including bodies).
    */
   async listRequests(options?: {
@@ -203,6 +211,32 @@ export class ControlClient {
     filter?: RequestFilter;
   }): Promise<number> {
     return this.request<number>("countRequests", options);
+  }
+
+  /**
+   * Search through request/response body content.
+   */
+  async searchBodies(options: {
+    query: string;
+    limit?: number;
+    offset?: number;
+    filter?: RequestFilter;
+  }): Promise<CapturedRequestSummary[]> {
+    return this.request<CapturedRequestSummary[]>("searchBodies", options);
+  }
+
+  /**
+   * Query JSON bodies using json_extract.
+   */
+  async queryJsonBodies(options: {
+    jsonPath: string;
+    value?: string;
+    target?: "request" | "response" | "both";
+    limit?: number;
+    offset?: number;
+    filter?: RequestFilter;
+  }): Promise<JsonQueryResult[]> {
+    return this.request<JsonQueryResult[]>("queryJsonBodies", options);
   }
 
   /**

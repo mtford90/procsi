@@ -32,16 +32,17 @@
 
 Let AI discover `.htpx/` and inspect captured traffic. No mocking yet — purely read-only.
 
-**Tools to expose:**
-- [ ] `htpx_list_requests` — search/filter captured requests (by URL, method, status, content-type, time range)
-- [ ] `htpx_get_request` — fetch full request details (headers, body, timing)
-- [ ] `htpx_search_bodies` — search through request/response body content
-- [ ] `htpx_get_status` — proxy status, port, captured request count
+**Tools exposed:**
+- [x] `htpx_list_requests` — search/filter captured requests (by URL, method, status)
+- [x] `htpx_get_request` — fetch full request details (headers, body, timing)
+- [x] `htpx_search_bodies` — search through request/response body content (text types only)
+- [x] `htpx_get_status` — proxy status, port, captured request count
 
 **Architecture:**
 - MCP server connects to the daemon's existing control socket
-- Reuse existing SQLite query infrastructure from the TUI's data layer
-- Ship as `htpx mcp` subcommand or stdio-based MCP server
+- Reuses existing SQLite query infrastructure from the TUI's data layer
+- Ships as `htpx mcp` subcommand (stdio-based MCP server)
+- Content-type columns added to DB for efficient body search filtering
 
 ---
 

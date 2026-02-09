@@ -7,6 +7,10 @@ export function isFilterActive(filter: RequestFilter): boolean {
   return (
     (filter.methods !== undefined && filter.methods.length > 0) ||
     filter.statusRange !== undefined ||
-    (filter.search !== undefined && filter.search.length > 0)
+    (filter.search !== undefined && filter.search.length > 0) ||
+    filter.host !== undefined ||
+    filter.pathPrefix !== undefined ||
+    filter.since !== undefined ||
+    filter.before !== undefined
   );
 }

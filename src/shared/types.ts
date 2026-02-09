@@ -59,6 +59,20 @@ export interface DaemonStatus {
 
 export interface RequestFilter {
   methods?: string[]; // e.g. ["GET", "POST"]
-  statusRange?: string; // e.g. "2xx", "4xx"
+  statusRange?: string; // e.g. "2xx", "4xx", "401", "500-503"
   search?: string; // substring match on url/path
+  host?: string; // exact match, or suffix if starts with "."
+  pathPrefix?: string; // prefix match on path column
+  since?: number; // epoch ms, inclusive lower bound
+  before?: number; // epoch ms, exclusive upper bound
+  headerName?: string; // header name to filter by (lowercased before querying)
+  headerValue?: string; // header value to match (requires headerName)
+  headerTarget?: "request" | "response" | "both"; // which headers to search (default "both")
+}
+
+/**
+ * Result from a JSON body query — a summary with the extracted value appended.
+ */
+export interface JsonQueryResult extends CapturedRequestSummary {
+  extractedValue: unknown;
 }
