@@ -43,7 +43,7 @@
     "terminal"
   ],
   "author": "",
-  "license": "MIT",
+  "license": "AGPL-3.0-or-later",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/mtford90/htpx.git"
