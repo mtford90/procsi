@@ -73,17 +73,63 @@ htpx tui
 
 ### TUI Keybindings
 
+Mouse support: click to select requests, click panels to focus, scroll wheel to navigate lists and sections.
+
+**Main View:**
+
 | Key | Action |
 |-----|--------|
-| `j`/`k` | Navigate up/down |
-| `Tab` or `1`/`2` | Switch panels |
-| `u` | Toggle full URL |
-| `c` | Copy as curl |
-| `h` | Export HAR |
+| `j`/`k` or `↑`/`↓` | Navigate up/down |
+| `g` / `G` | Jump to first / last item |
+| `Ctrl+u` / `Ctrl+d` | Half-page up / down |
+| `Ctrl+f` / `Ctrl+b` | Full-page down / up |
+| `Tab` / `Shift+Tab` | Next / previous panel |
+| `1`–`5` | Jump to section (list / request / request body / response / response body) |
+| `Enter` | Open body in full-screen viewer |
+| `/` | Open filter bar |
+| `u` | Toggle full URL display |
+| `c` | Copy request as curl |
+| `y` | Copy body to clipboard |
+| `s` | Export body (opens export modal) |
+| `H` | Export all as HAR |
 | `r` | Refresh |
+| `?` | Help |
+| `i` | Proxy connection info |
 | `q` | Quit |
 
-Mouse support: click to select requests, scroll wheel to navigate, click panels to focus.
+**Filter Bar** (`/`):
+
+| Key | Action |
+|-----|--------|
+| `Tab` / `Shift+Tab` | Cycle between search, method, status fields |
+| `←` / `→` | Cycle method (ALL/GET/POST/PUT/PATCH/DELETE) or status (ALL/2xx–5xx) |
+| `Return` | Apply filter |
+| `Esc` | Cancel and revert |
+
+**JSON Explorer** (Enter on a JSON body):
+
+| Key | Action |
+|-----|--------|
+| `j`/`k` | Navigate nodes |
+| `Enter`/`l` | Expand/collapse node |
+| `h` | Collapse node |
+| `e` / `c` | Expand / collapse all |
+| `/` | Filter by path |
+| `n` / `N` | Next / previous match |
+| `y` | Copy value |
+| `q` / `Esc` | Close |
+
+**Text Viewer** (Enter on a non-JSON body):
+
+| Key | Action |
+|-----|--------|
+| `j`/`k` | Scroll line by line |
+| `Space` | Page down |
+| `g` / `G` | Top / bottom |
+| `/` | Search text |
+| `n` / `N` | Next / previous match |
+| `y` | Copy to clipboard |
+| `q` / `Esc` | Close |
 
 ### Other Commands
 
@@ -135,6 +181,20 @@ When you run `htpx intercept`:
 3. HTTP clients that respect these variables route traffic through the proxy
 4. Requests are captured and stored in a local SQLite database
 5. The TUI connects via Unix socket to display captured traffic
+
+### Environment Variables
+
+`htpx intercept` sets the following in your shell:
+
+| Variable | Purpose |
+|----------|---------|
+| `HTTP_PROXY` | Proxy URL for HTTP clients |
+| `HTTPS_PROXY` | Proxy URL for HTTPS clients |
+| `SSL_CERT_FILE` | CA certificate path (curl, git, etc.) |
+| `REQUESTS_CA_BUNDLE` | CA certificate path (Python requests) |
+| `NODE_EXTRA_CA_CERTS` | CA certificate path (Node.js) |
+| `HTPX_SESSION_ID` | UUID identifying the current session |
+| `HTPX_LABEL` | Session label (when `-l` flag used) |
 
 ### Project Isolation
 
@@ -246,8 +306,18 @@ export default {
 |----------|-------------|
 | `ctx.request` | The incoming request (frozen — read-only) |
 | `ctx.forward()` | Forward to upstream, returns the response |
-| `ctx.htpx` | Query API — `countRequests()`, `listRequests()`, `getRequest()`, `searchBodies()`, `queryJsonBodies()` |
+| `ctx.htpx` | Query API for captured traffic (see below) |
 | `ctx.log(msg)` | Write to `.htpx/htpx.log` |
+
+#### `ctx.htpx` — Query API
+
+| Method | Description |
+|--------|-------------|
+| `countRequests(filter?)` | Count matching captured requests |
+| `listRequests({ filter?, limit?, offset? })` | List request summaries |
+| `getRequest(id)` | Fetch full request details by ID |
+| `searchBodies({ query, ...filter? })` | Full-text search through bodies |
+| `queryJsonBodies({ json_path, ...filter? })` | Extract values from JSON bodies using JSONPath |
 
 ### How It Works
 
@@ -288,7 +358,17 @@ curl -X POST 'https://api.example.com/users' \
 
 ### HAR
 
-Press `h` to export all captured requests as a HAR file, compatible with browser dev tools and HTTP analysis tools.
+Press `H` to export all captured requests as a HAR file, compatible with browser dev tools and HTTP analysis tools.
+
+### Body Export
+
+Press `s` on a body section to open the export modal:
+
+1. **Copy to clipboard**
+2. **Save to `.htpx/exports/`**
+3. **Save to `~/Downloads/`**
+4. **Custom path** — specify a directory
+5. **Open externally** — open in default application
 
 ## MCP Integration
 
@@ -342,6 +422,17 @@ Most tools support a common set of filters that can be combined:
 | `header_value` | Exact header value (requires `header_name`) | `"application/json"` |
 | `header_target` | Which headers to search | `"request"`, `"response"`, `"both"` |
 | `intercepted_by` | Filter by interceptor name | `"mock-users"` |
+| `offset` | Pagination offset (0-based) | `0` |
+| `limit` | Max results (default 50, max 500) | `100` |
+
+`htpx_get_request` accepts comma-separated IDs (e.g. `"id1,id2,id3"`) for batch fetching.
+
+`htpx_query_json` supports additional parameters:
+
+| Parameter | Description | Example |
+|-----------|-------------|---------|
+| `target` | Which body to query: `"request"`, `"response"`, or `"both"` (default) | `"response"` |
+| `value` | Filter for exact value match after JSONPath extraction | `"active"` |
 
 ### Output Formats
 
@@ -399,6 +490,13 @@ npx agents export --target claude
 
 ## CLI Reference
 
+### Global Options
+
+| Flag | Description |
+|------|-------------|
+| `-v, --verbose` | Increase log verbosity (stackable: `-vv`, `-vvv`) |
+| `-d, --dir <path>` | Override project root directory |
+
 ### `htpx init`
 
 Output shell configuration for your `.zshrc`/`.bashrc`.
@@ -407,9 +505,18 @@ Output shell configuration for your `.zshrc`/`.bashrc`.
 
 Start intercepting HTTP traffic.
 
+| Flag | Description |
+|------|-------------|
+| `-l, --label <label>` | Label this session (visible in TUI and MCP) |
+| `--no-restart` | Don't auto-restart daemon on version mismatch |
+
 ### `htpx tui`
 
 Open the interactive TUI.
+
+| Flag | Description |
+|------|-------------|
+| `--ci` | CI mode: render once and exit (for testing) |
 
 ### `htpx status`
 
@@ -419,9 +526,17 @@ Show daemon status, including proxy port, active sessions, and request count.
 
 Stop the daemon gracefully.
 
+### `htpx restart`
+
+Restart the daemon (or start it if not running).
+
 ### `htpx clear`
 
 Clear all captured requests from the database.
+
+### `htpx debug-dump`
+
+Collect diagnostic information (system info, daemon status, recent logs) into `.htpx/debug-dump-<timestamp>.json`.
 
 ### `htpx mcp`
 
@@ -485,6 +600,10 @@ htpx status
 htpx stop
 htpx intercept
 ```
+
+### Terminal too small
+
+The TUI requires a minimum terminal size of 60 columns × 10 rows. If your terminal is smaller, it will display a resize prompt instead of the main interface.
 
 ### Requests not appearing
 
