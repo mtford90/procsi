@@ -4,19 +4,19 @@
 [![CI](https://github.com/mtford90/htpx/actions/workflows/ci.yml/badge.svg)](https://github.com/mtford90/htpx/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A terminal-based HTTP interception toolkit with project-scoped isolation and a lazygit-style TUI.
+Terminal HTTP interception toolkit with project-scoped isolation and a lazygit-style TUI.
 
-Capture HTTP/HTTPS traffic through a MITM proxy and inspect it in an interactive terminal interface. No browser extensions, no separate apps—just your terminal.
+Captures HTTP/HTTPS traffic through a MITM proxy and displays it in an interactive terminal interface. No browser extensions, no separate apps.
 
 ## Features
 
-- **Project-scoped isolation** — Each project gets its own `.htpx/` directory, keeping traffic separate
-- **Interactive TUI** — Browse, inspect, and export requests with vim-style keybindings and mouse support
-- **Full HTTPS support** — Automatic CA certificate generation and trust
-- **Export anywhere** — Generate curl commands or HAR files from captured requests
-- **AI-native** — Built-in MCP server lets AI agents search, filter, and inspect your traffic
-- **Config-as-code interceptors** — Mock, modify, or observe HTTP traffic with TypeScript files in `.htpx/interceptors/`
-- **Zero config** — Works out of the box with curl, wget, Node.js, Python, and more
+- **Project-scoped isolation** - each project gets its own `.htpx/` directory, keeping traffic separate
+- **Interactive TUI** - browse, inspect & export requests with vim-style keybindings and mouse support
+- **Full HTTPS support** - automatic CA certificate generation and trust
+- **Export** - curl commands, HAR files, or save bodies to disk
+- **AI-native** - built-in MCP server lets AI agents search, filter & inspect your traffic
+- **Config-as-code interceptors** - mock, modify or observe HTTP traffic with TypeScript files in `.htpx/interceptors/`
+- **Zero config** - works out of the box with curl, wget, Node.js, Python and more
 
 ## Quick Start
 
@@ -30,10 +30,10 @@ eval "$(htpx init)"
 # Start intercepting in your project directory
 htpx intercept
 
-# Make some requests...
+# Make some requests
 curl https://api.example.com/users
 
-# Open the TUI to inspect
+# Open the TUI
 htpx tui
 ```
 
@@ -43,7 +43,7 @@ htpx tui
 npm install -g htpx-cli
 ```
 
-**Requirements:** Node.js 20 or later
+Requires Node.js 20 or later.
 
 ### Shell Setup
 
@@ -53,7 +53,7 @@ Add the following to your `~/.zshrc` or `~/.bashrc`:
 eval "$(htpx init)"
 ```
 
-This creates a shell function that properly sets up proxy environment variables in your current session.
+This creates a shell function that sets up proxy environment variables in your current session.
 
 ## Usage
 
@@ -63,7 +63,7 @@ This creates a shell function that properly sets up proxy environment variables 
 htpx intercept
 ```
 
-This auto-starts the daemon, sets up the proxy, and configures your shell to route HTTP traffic through htpx.
+Auto-starts the daemon, sets up the proxy, and configures your shell to route HTTP traffic through htpx.
 
 ### Browse Captured Traffic
 
@@ -73,9 +73,9 @@ htpx tui
 
 ### TUI Keybindings
 
-Mouse support: click to select requests, click panels to focus, scroll wheel to navigate lists and sections.
+Mouse support: click to select requests, click panels to focus, scroll wheel to navigate.
 
-**Main View:**
+**Main View**
 
 | Key | Action |
 |-----|--------|
@@ -84,7 +84,7 @@ Mouse support: click to select requests, click panels to focus, scroll wheel to 
 | `Ctrl+u` / `Ctrl+d` | Half-page up / down |
 | `Ctrl+f` / `Ctrl+b` | Full-page down / up |
 | `Tab` / `Shift+Tab` | Next / previous panel |
-| `1`–`5` | Jump to section (list / request / request body / response / response body) |
+| `1`-`5` | Jump to section (list / request / request body / response / response body) |
 | `Enter` | Open body in full-screen viewer |
 | `/` | Open filter bar |
 | `u` | Toggle full URL display |
@@ -97,16 +97,16 @@ Mouse support: click to select requests, click panels to focus, scroll wheel to 
 | `i` | Proxy connection info |
 | `q` | Quit |
 
-**Filter Bar** (`/`):
+**Filter Bar** (`/`)
 
 | Key | Action |
 |-----|--------|
 | `Tab` / `Shift+Tab` | Cycle between search, method, status fields |
-| `←` / `→` | Cycle method (ALL/GET/POST/PUT/PATCH/DELETE) or status (ALL/2xx–5xx) |
+| `←` / `→` | Cycle method (ALL/GET/POST/PUT/PATCH/DELETE) or status (ALL/2xx-5xx) |
 | `Return` | Apply filter |
 | `Esc` | Cancel and revert |
 
-**JSON Explorer** (Enter on a JSON body):
+**JSON Explorer** (Enter on a JSON body)
 
 | Key | Action |
 |-----|--------|
@@ -119,7 +119,7 @@ Mouse support: click to select requests, click panels to focus, scroll wheel to 
 | `y` | Copy value |
 | `q` / `Esc` | Close |
 
-**Text Viewer** (Enter on a non-JSON body):
+**Text Viewer** (Enter on a non-JSON body)
 
 | Key | Action |
 |-----|--------|
@@ -136,6 +136,7 @@ Mouse support: click to select requests, click panels to focus, scroll wheel to 
 ```bash
 htpx status    # Check daemon status
 htpx stop      # Stop the daemon
+htpx restart   # Restart the daemon
 htpx clear     # Clear captured requests
 ```
 
@@ -190,9 +191,9 @@ When you run `htpx intercept`:
 |----------|---------|
 | `HTTP_PROXY` | Proxy URL for HTTP clients |
 | `HTTPS_PROXY` | Proxy URL for HTTPS clients |
-| `SSL_CERT_FILE` | CA certificate path (curl, git, etc.) |
-| `REQUESTS_CA_BUNDLE` | CA certificate path (Python requests) |
-| `NODE_EXTRA_CA_CERTS` | CA certificate path (Node.js) |
+| `SSL_CERT_FILE` | CA cert path (curl, git, etc.) |
+| `REQUESTS_CA_BUNDLE` | CA cert path (Python requests) |
+| `NODE_EXTRA_CA_CERTS` | CA cert path (Node.js) |
 | `HTPX_SESSION_ID` | UUID identifying the current session |
 | `HTPX_LABEL` | Session label (when `-l` flag used) |
 
@@ -213,7 +214,7 @@ your-project/
 └── src/...
 ```
 
-Different projects have completely separate daemons, databases, and certificates.
+Different projects have completely separate daemons, databases and certificates.
 
 ### Configuration
 
@@ -239,7 +240,7 @@ If the file is missing or contains invalid values, defaults are used.
 
 ## Interceptors
 
-TypeScript files in `.htpx/interceptors/` that can mock, modify, or observe HTTP traffic.
+TypeScript files in `.htpx/interceptors/` that can mock, modify or observe HTTP traffic.
 
 ### Getting Started
 
@@ -252,7 +253,9 @@ htpx interceptors reload
 # Or just restart: htpx stop && htpx intercept
 ```
 
-### Mock — Return a Response Without Hitting Upstream
+### Mock
+
+Return a response without hitting upstream:
 
 ```typescript
 import type { Interceptor } from "htpx-cli/interceptors";
@@ -268,7 +271,9 @@ export default {
 } satisfies Interceptor;
 ```
 
-### Modify — Forward to Upstream, Alter the Response
+### Modify
+
+Forward to upstream, alter the response:
 
 ```typescript
 import type { Interceptor } from "htpx-cli/interceptors";
@@ -283,7 +288,9 @@ export default {
 } satisfies Interceptor;
 ```
 
-### Observe — Inspect Traffic Without Altering It
+### Observe
+
+Inspect traffic without altering it:
 
 ```typescript
 import type { Interceptor } from "htpx-cli/interceptors";
@@ -304,12 +311,14 @@ export default {
 
 | Property | Description |
 |----------|-------------|
-| `ctx.request` | The incoming request (frozen — read-only) |
+| `ctx.request` | The incoming request (frozen, read-only) |
 | `ctx.forward()` | Forward to upstream, returns the response |
 | `ctx.htpx` | Query API for captured traffic (see below) |
 | `ctx.log(msg)` | Write to `.htpx/htpx.log` |
 
-#### `ctx.htpx` — Query API
+#### `ctx.htpx`
+
+Query captured traffic from within your interceptor:
 
 | Method | Description |
 |--------|-------------|
@@ -323,7 +332,7 @@ export default {
 
 - Any `.ts` file in `.htpx/interceptors/` is loaded as an interceptor
 - Files are loaded alphabetically; the first matching interceptor wins
-- `match` is optional — omit it to match all requests
+- `match` is optional. Omit it to match all requests
 - Interceptors hot-reload on file changes, or run `htpx interceptors reload`
 - Handler timeout is 30s, match timeout is 5s
 - Errors in interceptors result in graceful pass-through (never crashes the proxy)
@@ -332,16 +341,16 @@ export default {
 
 ## Supported HTTP Clients
 
-htpx works with any client that respects the `HTTP_PROXY` environment variable:
+htpx works with any client that respects `HTTP_PROXY`:
 
 | Client | Support |
 |--------|---------|
-| curl | ✅ Automatic |
-| wget | ✅ Automatic |
-| Node.js (fetch, axios, etc.) | ✅ With `NODE_EXTRA_CA_CERTS` |
-| Python (requests, httpx) | ✅ With `REQUESTS_CA_BUNDLE` |
-| Go | ✅ Automatic |
-| Rust (reqwest) | ✅ Automatic |
+| curl | Automatic |
+| wget | Automatic |
+| Node.js (fetch, axios, etc.) | With `NODE_EXTRA_CA_CERTS` |
+| Python (requests, httpx) | With `REQUESTS_CA_BUNDLE` |
+| Go | Automatic |
+| Rust (reqwest) | Automatic |
 
 ## Export Formats
 
@@ -358,21 +367,21 @@ curl -X POST 'https://api.example.com/users' \
 
 ### HAR
 
-Press `H` to export all captured requests as a HAR file, compatible with browser dev tools and HTTP analysis tools.
+Press `H` to export all captured requests as a HAR file. Compatible with browser dev tools and HTTP analysis tools.
 
 ### Body Export
 
 Press `s` on a body section to open the export modal:
 
-1. **Copy to clipboard**
-2. **Save to `.htpx/exports/`**
-3. **Save to `~/Downloads/`**
-4. **Custom path** — specify a directory
-5. **Open externally** — open in default application
+1. Copy to clipboard
+2. Save to `.htpx/exports/`
+3. Save to `~/Downloads/`
+4. Custom path
+5. Open in default application
 
 ## MCP Integration
 
-htpx includes a built-in [Model Context Protocol](https://modelcontextprotocol.io/) server, allowing AI agents and IDE integrations to search, filter, and inspect captured HTTP traffic programmatically.
+htpx includes a built-in [Model Context Protocol](https://modelcontextprotocol.io/) server. AI agents and IDE integrations can search, filter & inspect captured HTTP traffic programmatically.
 
 ### Setup
 
@@ -395,7 +404,7 @@ The MCP server connects to the same daemon that serves the TUI, so `htpx interce
 
 | Tool | Description |
 |------|-------------|
-| `htpx_get_status` | Check if the daemon is running, get proxy port and request count |
+| `htpx_get_status` | Check if the daemon is running, get proxy port & request count |
 | `htpx_list_requests` | Search and filter captured requests (returns summaries) |
 | `htpx_get_request` | Fetch full request details by ID (headers, bodies, timing) |
 | `htpx_search_bodies` | Full-text search through request/response body content |
@@ -403,12 +412,12 @@ The MCP server connects to the same daemon that serves the TUI, so `htpx interce
 | `htpx_count_requests` | Count requests matching a filter |
 | `htpx_clear_requests` | Delete all captured requests |
 | `htpx_list_sessions` | List active proxy sessions |
-| `htpx_list_interceptors` | List loaded interceptors with status and errors |
+| `htpx_list_interceptors` | List loaded interceptors with status & errors |
 | `htpx_reload_interceptors` | Reload interceptors from disk |
 
 ### Filtering
 
-Most tools support a common set of filters that can be combined:
+Most tools support a common set of filters:
 
 | Parameter | Description | Example |
 |-----------|-------------|---------|
@@ -438,30 +447,30 @@ Most tools support a common set of filters that can be combined:
 
 All query tools accept a `format` parameter:
 
-- **`text`** (default) — Human/AI-readable markdown summaries
-- **`json`** — Structured JSON for programmatic consumption
+- `text` (default) - human/AI-readable markdown summaries
+- `json` - structured JSON for programmatic consumption
 
 ### Example Workflows
 
-**Find all failed API requests:**
+Find all failed API requests:
 
 ```
 htpx_list_requests({ status_range: "5xx", path: "/api" })
 ```
 
-**Search for a specific value in response bodies:**
+Search for a specific value in response bodies:
 
 ```
 htpx_search_bodies({ query: "error_code", method: "POST" })
 ```
 
-**Extract user IDs from JSON responses:**
+Extract user IDs from JSON responses:
 
 ```
 htpx_query_json({ json_path: "$.user.id", target: "response" })
 ```
 
-**Find requests with a specific auth header:**
+Find requests with a specific auth header:
 
 ```
 htpx_list_requests({ header_name: "authorization", header_target: "request" })
@@ -469,7 +478,7 @@ htpx_list_requests({ header_name: "authorization", header_target: "request" })
 
 ## Agent Skill
 
-htpx ships with an agent skill that teaches AI assistants how to use htpx's MCP tools effectively. Install it to get better results from Claude Code, Cursor, and other AI coding tools.
+htpx ships with an agent skill that teaches AI assistants how to use htpx's MCP tools effectively. Install it to get better results from Claude Code, Cursor and other AI coding tools.
 
 ### Claude Code Plugin
 
@@ -481,7 +490,7 @@ htpx ships with an agent skill that teaches AI assistants how to use htpx's MCP 
 
 ### npm-agentskills (cross-agent)
 
-Works with Claude Code, Cursor, Copilot, Codex, and more:
+Works with Claude Code, Cursor, Copilot, Codex and more:
 
 ```bash
 # If htpx-cli is already installed in your project
@@ -520,7 +529,7 @@ Open the interactive TUI.
 
 ### `htpx status`
 
-Show daemon status, including proxy port, active sessions, and request count.
+Show daemon status, including proxy port, active sessions and request count.
 
 ### `htpx stop`
 
@@ -540,7 +549,7 @@ Collect diagnostic information (system info, daemon status, recent logs) into `.
 
 ### `htpx mcp`
 
-Start the MCP server (stdio transport) for AI tool integration. See [MCP Integration](#mcp-integration) for details.
+Start the MCP server (stdio transport) for AI tool integration. See [MCP Integration](#mcp-integration).
 
 ### `htpx project init`
 
@@ -561,23 +570,15 @@ Reload interceptors from disk without restarting the daemon.
 ## Development
 
 ```bash
-# Clone and install
 git clone https://github.com/mtford90/htpx.git
 cd htpx
 npm install
 
-# Build
-npm run build
-
-# Run tests
-npm test
-
-# Type check and lint
-npm run typecheck
-npm run lint
-
-# Development mode (watch)
-npm run dev
+npm run build        # Compile TypeScript
+npm test             # Run all tests
+npm run typecheck    # Type checking only
+npm run lint         # ESLint
+npm run dev          # Watch mode
 ```
 
 ## Troubleshooting
@@ -603,11 +604,11 @@ htpx intercept
 
 ### Terminal too small
 
-The TUI requires a minimum terminal size of 60 columns × 10 rows. If your terminal is smaller, it will display a resize prompt instead of the main interface.
+The TUI requires a minimum terminal size of 60 columns x 10 rows. If your terminal is smaller it will display a resize prompt instead of the main interface.
 
 ### Requests not appearing
 
-Ensure your HTTP client respects proxy environment variables. Some clients (like browsers) ignore `HTTP_PROXY` by default.
+Make sure your HTTP client respects proxy environment variables. Some clients (like browsers) ignore `HTTP_PROXY` by default.
 
 ## Licence
 
