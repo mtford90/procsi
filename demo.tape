@@ -7,10 +7,12 @@ Set Height 700
 Set Padding 20
 Set TypingSpeed 40ms
 
-# TUI is already running with data — just open it
+# Launch TUI off-screen, then show once it's rendered
+Hide
 Type "htpx tui"
 Enter
 Sleep 2s
+Show
 
 # Scroll through request list to show variety
 Type "j"
