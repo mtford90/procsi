@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatEnvVars } from "./intercept.js";
+import { formatEnvVars } from "./on.js";
 
 describe("formatEnvVars", () => {
   it("formats single env var", () => {

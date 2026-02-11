@@ -11,7 +11,7 @@ const EXAMPLE_INTERCEPTOR_FILENAME = "example.ts";
 const EXAMPLE_INTERCEPTOR_CONTENT = `// Example htpx interceptor
 // Uncomment and modify one of the patterns below to get started.
 //
-// Run \`htpx interceptors reload\` after editing, or restart the daemon.
+// Run \`htpx interceptors reload\` after editing, or run \`htpx daemon restart\`.
 
 import type { Interceptor } from "htpx-cli/interceptors";
 
@@ -167,7 +167,7 @@ const initSubcommand = new Command("init")
     console.log(`Created ${exampleFile}`);
     console.log("");
     console.log("Edit the file to define your interceptor, then either:");
-    console.log("  - Restart the daemon (htpx restart)");
+    console.log("  - Restart the daemon (htpx daemon restart)");
     console.log("  - Run: htpx interceptors reload");
   });
 

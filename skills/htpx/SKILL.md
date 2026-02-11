@@ -8,7 +8,7 @@ If htpx is not installed or the daemon is not running, you can set it up:
 
 1. **Install**: `npm install -g htpx-cli`
 2. **Shell setup** (one-time): Add `eval "$(htpx init)"` to the user's shell config (`~/.zshrc` or `~/.bashrc`), then source it or ask them to restart their shell
-3. **Start intercepting**: `htpx intercept` in the project directory
+3. **Start intercepting**: `htpx on` in the project directory
 4. **MCP config**: Add htpx to the MCP configuration:
    ```json
    {
@@ -33,7 +33,7 @@ After setup, call `htpx_get_status` to verify the daemon is running.
 
 ## Preflight
 
-Always call `htpx_get_status` first to confirm the daemon is running. If it is not running, try to start it by running `htpx intercept` in the project directory. If htpx is not installed, follow the Installation & Setup steps above.
+Always call `htpx_get_status` first to confirm the daemon is running. If it is not running, try to start it by running `htpx on` in the project directory. If htpx is not installed, follow the Installation & Setup steps above.
 
 ## MCP Tool Reference
 
@@ -215,7 +215,7 @@ This allows interceptors to make decisions based on previously captured traffic.
 - Handler timeout: 30 seconds. Match timeout: 5 seconds.
 - Errors in handlers result in graceful pass-through -- never crashes the proxy
 - `ctx.log()` writes to `.htpx/htpx.log` (since `console.log` goes nowhere in the daemon)
-- Hot-reload on file changes, or run `htpx interceptors reload` / `htpx_reload_interceptors`
+- Hot-reload on file changes, or run `htpx interceptors reload` / `htpx_reload_interceptors` / `htpx daemon restart`
 
 ## Tips
 

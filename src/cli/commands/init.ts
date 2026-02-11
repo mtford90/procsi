@@ -2,15 +2,14 @@ import { Command } from "commander";
 
 /**
  * Generate the shell function for htpx.
- * This function wraps htpx intercept with eval so that environment
+ * This function wraps htpx on/off with eval so that environment
  * variables can be set in the current shell.
  */
 export function generateShellFunction(): string {
   const lines = [
     "htpx() {",
-    '  if [[ "$1" == "intercept" ]]; then',
-    "    shift",
-    '    eval "$(command htpx intercept "$@")"',
+    '  if [[ "$1" == "on" || "$1" == "off" ]]; then',
+    '    eval "$(command htpx "$@")"',
     "  else",
     '    command htpx "$@"',
     "  fi",

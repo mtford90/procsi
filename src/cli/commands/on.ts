@@ -29,8 +29,8 @@ export function formatEnvVars(vars: Record<string, string>): string {
     .join("\n");
 }
 
-export const interceptCommand = new Command("intercept")
-  .description("Output environment variables to intercept HTTP traffic")
+export const onCommand = new Command("on")
+  .description("Start intercepting HTTP traffic in this shell")
   .option("-l, --label <label>", "Label for this session")
   .option("--no-restart", "Do not auto-restart daemon on version mismatch")
   .action(async (options: { label?: string; restart: boolean }, command: Command) => {
@@ -38,7 +38,7 @@ export const interceptCommand = new Command("intercept")
     if (process.stdout.isTTY) {
       console.log("To intercept HTTP traffic, run:");
       console.log("");
-      console.log("  eval $(htpx intercept)");
+      console.log("  eval $(htpx on)");
       console.log("");
       console.log("This sets the required environment variables in your shell.");
       return;
@@ -68,7 +68,7 @@ export const interceptCommand = new Command("intercept")
             console.log(
               `# htpx warning: daemon version mismatch (running: ${running}, CLI: ${cli})`
             );
-            console.log(`# Use 'htpx restart' to update.`);
+            console.log(`# Use 'htpx daemon restart' to update.`);
           }
         },
       });

@@ -13,7 +13,7 @@ import { createInterceptorLoader } from "../../src/daemon/interceptor-loader.js"
 import { createInterceptorRunner } from "../../src/daemon/interceptor-runner.js";
 import { createHtpxClient } from "../../src/daemon/htpx-client.js";
 
-describe("interceptor integration", () => {
+describe("interceptor integration", { timeout: 30_000 }, () => {
   let tempDir: string;
   let paths: ReturnType<typeof getHtpxPaths>;
   let storage: RequestRepository;

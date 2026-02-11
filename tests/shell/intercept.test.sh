@@ -71,9 +71,9 @@ test_init_outputs_function() {
   fi
 
   if echo "$output" | grep -q 'eval'; then
-    pass "htpx init includes eval for intercept"
+    pass "htpx init includes eval for on/off"
   else
-    fail "htpx init includes eval for intercept" "Output: $output"
+    fail "htpx init includes eval for on/off" "Output: $output"
   fi
 }
 
@@ -92,69 +92,69 @@ test_sourcing_creates_function() {
 }
 
 # ------------------------------------------------------------------------------
-# Test: htpx intercept outputs env vars
+# Test: htpx on outputs env vars
 # ------------------------------------------------------------------------------
-test_intercept_outputs_env_vars() {
+test_on_outputs_env_vars() {
   init_test_project
 
   local output
-  output=$(node "$HTPX_BIN" intercept --label=test-session 2>&1)
+  output=$(node "$HTPX_BIN" on --label=test-session 2>&1)
 
   # Check for HTTP_PROXY
   if echo "$output" | grep -q 'export HTTP_PROXY='; then
-    pass "htpx intercept outputs HTTP_PROXY"
+    pass "htpx on outputs HTTP_PROXY"
   else
-    fail "htpx intercept outputs HTTP_PROXY" "Output: $output"
+    fail "htpx on outputs HTTP_PROXY" "Output: $output"
     return
   fi
 
   # Check for HTTPS_PROXY
   if echo "$output" | grep -q 'export HTTPS_PROXY='; then
-    pass "htpx intercept outputs HTTPS_PROXY"
+    pass "htpx on outputs HTTPS_PROXY"
   else
-    fail "htpx intercept outputs HTTPS_PROXY" "Output: $output"
+    fail "htpx on outputs HTTPS_PROXY" "Output: $output"
   fi
 
   # Check for SSL_CERT_FILE
   if echo "$output" | grep -q 'export SSL_CERT_FILE='; then
-    pass "htpx intercept outputs SSL_CERT_FILE"
+    pass "htpx on outputs SSL_CERT_FILE"
   else
-    fail "htpx intercept outputs SSL_CERT_FILE" "Output: $output"
+    fail "htpx on outputs SSL_CERT_FILE" "Output: $output"
   fi
 
   # Check for NODE_EXTRA_CA_CERTS
   if echo "$output" | grep -q 'export NODE_EXTRA_CA_CERTS='; then
-    pass "htpx intercept outputs NODE_EXTRA_CA_CERTS"
+    pass "htpx on outputs NODE_EXTRA_CA_CERTS"
   else
-    fail "htpx intercept outputs NODE_EXTRA_CA_CERTS" "Output: $output"
+    fail "htpx on outputs NODE_EXTRA_CA_CERTS" "Output: $output"
   fi
 
   # Check for session ID
   if echo "$output" | grep -q 'export HTPX_SESSION_ID='; then
-    pass "htpx intercept outputs HTPX_SESSION_ID"
+    pass "htpx on outputs HTPX_SESSION_ID"
   else
-    fail "htpx intercept outputs HTPX_SESSION_ID" "Output: $output"
+    fail "htpx on outputs HTPX_SESSION_ID" "Output: $output"
   fi
 
   # Check for label
   if echo "$output" | grep -q 'export HTPX_LABEL='; then
-    pass "htpx intercept outputs HTPX_LABEL when provided"
+    pass "htpx on outputs HTPX_LABEL when provided"
   else
-    fail "htpx intercept outputs HTPX_LABEL when provided" "Output: $output"
+    fail "htpx on outputs HTPX_LABEL when provided" "Output: $output"
   fi
 
   # Stop daemon after test
-  node "$HTPX_BIN" stop >/dev/null 2>&1 || true
+  node "$HTPX_BIN" daemon stop >/dev/null 2>&1 || true
 }
 
 # ------------------------------------------------------------------------------
-# Test: htpx intercept env vars can be evaluated
+# Test: htpx on env vars can be evaluated
 # ------------------------------------------------------------------------------
-test_intercept_env_vars_evaluable() {
+test_on_env_vars_evaluable() {
   init_test_project
 
   # Evaluate the output
-  eval "$(node "$HTPX_BIN" intercept --label=eval-test 2>&1 | grep '^export')"
+  eval "$(node "$HTPX_BIN" on --label=eval-test 2>&1 | grep '^export')"
 
   # Check env vars are set
   if [[ -n "${HTTP_PROXY:-}" ]]; then
@@ -177,7 +177,7 @@ test_intercept_env_vars_evaluable() {
   fi
 
   # Stop daemon after test
-  node "$HTPX_BIN" stop >/dev/null 2>&1 || true
+  node "$HTPX_BIN" daemon stop >/dev/null 2>&1 || true
 }
 
 # ------------------------------------------------------------------------------
@@ -186,14 +186,14 @@ test_intercept_env_vars_evaluable() {
 test_status_shows_running() {
   init_test_project
 
-  # Start daemon via intercept
-  eval "$(node "$HTPX_BIN" intercept 2>&1 | grep '^export')"
+  # Start daemon via on
+  eval "$(node "$HTPX_BIN" on 2>&1 | grep '^export')"
 
   # Check status
   local output
   output=$(node "$HTPX_BIN" status 2>&1)
 
-  if echo "$output" | grep -q "Daemon is running"; then
+  if echo "$output" | grep -q "running"; then
     pass "htpx status shows daemon is running"
   else
     fail "htpx status shows daemon is running" "Output: $output"
@@ -207,26 +207,26 @@ test_status_shows_running() {
   fi
 
   # Stop daemon after test
-  node "$HTPX_BIN" stop >/dev/null 2>&1 || true
+  node "$HTPX_BIN" daemon stop >/dev/null 2>&1 || true
 }
 
 # ------------------------------------------------------------------------------
-# Test: htpx stop stops the daemon
+# Test: htpx daemon stop stops the daemon
 # ------------------------------------------------------------------------------
 test_stop_daemon() {
   init_test_project
 
-  # Start daemon via intercept
-  eval "$(node "$HTPX_BIN" intercept 2>&1 | grep '^export')"
+  # Start daemon via on
+  eval "$(node "$HTPX_BIN" on 2>&1 | grep '^export')"
 
   # Stop daemon
   local output
-  output=$(node "$HTPX_BIN" stop 2>&1)
+  output=$(node "$HTPX_BIN" daemon stop 2>&1)
 
   if echo "$output" | grep -q "Daemon stopped"; then
-    pass "htpx stop confirms daemon stopped"
+    pass "htpx daemon stop confirms daemon stopped"
   else
-    fail "htpx stop confirms daemon stopped" "Output: $output"
+    fail "htpx daemon stop confirms daemon stopped" "Output: $output"
     return
   fi
 
@@ -235,9 +235,9 @@ test_stop_daemon() {
   output=$(node "$HTPX_BIN" status 2>&1)
 
   if echo "$output" | grep -q "not running"; then
-    pass "daemon is stopped after htpx stop"
+    pass "daemon is stopped after htpx daemon stop"
   else
-    fail "daemon is stopped after htpx stop" "Output: $output"
+    fail "daemon is stopped after htpx daemon stop" "Output: $output"
   fi
 }
 
@@ -247,8 +247,8 @@ test_stop_daemon() {
 test_clear_requests() {
   init_test_project
 
-  # Start daemon via intercept
-  eval "$(node "$HTPX_BIN" intercept 2>&1 | grep '^export')"
+  # Start daemon via on
+  eval "$(node "$HTPX_BIN" on 2>&1 | grep '^export')"
 
   # Clear requests
   local output
@@ -264,14 +264,14 @@ test_clear_requests() {
   # Verify request count is 0
   output=$(node "$HTPX_BIN" status 2>&1)
 
-  if echo "$output" | grep -q "Requests captured: 0"; then
+  if echo "$output" | grep -q "Requests:      0"; then
     pass "request count is 0 after clear"
   else
     fail "request count is 0 after clear" "Output: $output"
   fi
 
   # Stop daemon after test
-  node "$HTPX_BIN" stop >/dev/null 2>&1 || true
+  node "$HTPX_BIN" daemon stop >/dev/null 2>&1 || true
 }
 
 # ------------------------------------------------------------------------------
@@ -282,8 +282,8 @@ echo ""
 
 test_init_outputs_function
 test_sourcing_creates_function
-test_intercept_outputs_env_vars
-test_intercept_env_vars_evaluable
+test_on_outputs_env_vars
+test_on_env_vars_evaluable
 test_status_shows_running
 test_clear_requests
 test_stop_daemon

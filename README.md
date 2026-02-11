@@ -6,7 +6,7 @@
 
 HTTP interception for the terminal. Each project gets its own proxy, its own traffic database, its own mocks — all in a `.htpx/` directory that lives alongside your code.
 
-<!-- TODO: screenshot/gif -->
+![htpx demo](demo.gif)
 
 No browser extensions, no global system proxy, no separate apps. A MITM proxy captures your traffic, a lazygit-style TUI lets you browse it, TypeScript files let you mock it, and AI agents can query and manipulate all of it via MCP.
 
@@ -19,7 +19,7 @@ npm install -g htpx-cli
 eval "$(htpx init)"
 
 # In your project directory
-htpx intercept
+htpx on
 curl https://api.example.com/users
 htpx tui
 ```
@@ -217,7 +217,7 @@ Add htpx to your MCP client config:
 }
 ```
 
-`htpx intercept` must be running — the MCP server connects to the same daemon as the TUI.
+`htpx on` must be running — the MCP server connects to the same daemon as the TUI.
 
 ### Agent Skill
 
@@ -330,11 +330,11 @@ htpx_list_requests({ header_name: "authorization", header_target: "request" })
 └─────────────────────────────────────────────────────────────┘
 ```
 
-`htpx intercept` starts a daemon, sets `HTTP_PROXY`/`HTTPS_PROXY` in your shell, and captures everything that flows through. The TUI connects to the daemon via Unix socket.
+`htpx on` starts a daemon, sets `HTTP_PROXY`/`HTTPS_PROXY` in your shell, and captures everything that flows through. `htpx off` unsets them. The TUI connects to the daemon via Unix socket.
 
 ### Environment Variables
 
-`htpx intercept` sets these in your shell:
+`htpx on` sets these in your shell (`htpx off` unsets them):
 
 | Variable | Purpose |
 |----------|---------|
@@ -476,14 +476,18 @@ Mouse support: click to select, scroll to navigate, click panels to focus.
 
 Output shell configuration for your `.zshrc`/`.bashrc`.
 
-### `htpx intercept`
+### `htpx on`
 
-Start intercepting HTTP traffic.
+Start intercepting HTTP traffic. Sets proxy environment variables in your shell.
 
 | Flag | Description |
 |------|-------------|
 | `-l, --label <label>` | Label this session (visible in TUI and MCP) |
 | `--no-restart` | Don't auto-restart daemon on version mismatch |
+
+### `htpx off`
+
+Stop intercepting HTTP traffic. Unsets proxy environment variables.
 
 ### `htpx tui`
 
@@ -495,13 +499,13 @@ Open the interactive TUI.
 
 ### `htpx status`
 
-Show daemon status, proxy port, active sessions and request count.
+Show comprehensive status: daemon state, interception state, sessions, request count, loaded interceptors.
 
-### `htpx stop`
+### `htpx daemon stop`
 
 Stop the daemon.
 
-### `htpx restart`
+### `htpx daemon restart`
 
 Restart the daemon (or start it if not running).
 
@@ -563,8 +567,8 @@ Check if something else is using the socket:
 
 ```bash
 htpx status
-htpx stop
-htpx intercept
+htpx daemon stop
+htpx on
 ```
 
 ### Terminal too small

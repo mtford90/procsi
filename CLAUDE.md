@@ -26,7 +26,7 @@ These define what htpx is and how it should feel — keep them in mind when maki
 - **Lives in your terminal** — TUI, not another GUI app; fits your existing workflow
 - **AI-native** — MCP integration, AI writes your mocks, inspects your traffic
 - **Config-as-code** — mocks and interceptors are TypeScript files, not GUI toggles
-- **Zero-config** — `eval $(htpx intercept)` and go; auto-starts daemon, auto-generates certs
+- **Zero-config** — `htpx on` and go; auto-starts daemon, auto-generates certs
 - **Developer-first** — built for how you already work, not bolted on
 
 ### Strategic Direction
@@ -52,7 +52,7 @@ Key design decisions:
 - **Unix socket for control API** - avoids port conflicts
 - **TCP for proxy** - required by HTTP_PROXY standard
 - **SQLite for persistence** - simple, embedded storage
-- **Auto-start daemon** - starts on first `htpx intercept`
+- **Auto-start daemon** - starts on first `htpx on`
 
 ## Technology Stack
 

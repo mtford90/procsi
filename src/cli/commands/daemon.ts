@@ -1,6 +1,7 @@
 import { Command } from "commander";
 import {
   isDaemonRunning,
+  stopDaemon,
   restartDaemon,
   startDaemon,
   getDaemonVersion,
@@ -9,7 +10,29 @@ import { parseVerbosity } from "../../shared/logger.js";
 import { getHtpxVersion } from "../../shared/version.js";
 import { requireProjectRoot, getErrorMessage, getGlobalOptions } from "./helpers.js";
 
-export const restartCommand = new Command("restart")
+const stopSubCommand = new Command("stop")
+  .description("Stop the daemon")
+  .action(async (_, command: Command) => {
+    const globalOpts = getGlobalOptions(command);
+    const projectRoot = requireProjectRoot(globalOpts.dir);
+
+    // Check if daemon is running
+    const running = await isDaemonRunning(projectRoot);
+    if (!running) {
+      console.log("Daemon is not running");
+      process.exit(0);
+    }
+
+    try {
+      await stopDaemon(projectRoot);
+      console.log("Daemon stopped");
+    } catch (err) {
+      console.error(`Error stopping daemon: ${getErrorMessage(err)}`);
+      process.exit(1);
+    }
+  });
+
+const restartSubCommand = new Command("restart")
   .description("Restart the daemon")
   .action(async (_, command: Command) => {
     const globalOpts = getGlobalOptions(command);
@@ -41,3 +64,8 @@ export const restartCommand = new Command("restart")
       process.exit(1);
     }
   });
+
+export const daemonCommand = new Command("daemon")
+  .description("Manage the htpx daemon")
+  .addCommand(stopSubCommand)
+  .addCommand(restartSubCommand);
