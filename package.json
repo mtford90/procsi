@@ -1,11 +1,11 @@
 {
-  "name": "htpx-cli",
+  "name": "procsi",
   "version": "0.2.6",
   "description": "Terminal HTTP interception toolkit",
   "type": "module",
   "main": "dist/cli/index.js",
   "bin": {
-    "htpx": "dist/cli/index.js"
+    "procsi": "dist/cli/index.js"
   },
   "exports": {
     ".": "./dist/cli/index.js",
@@ -21,8 +21,8 @@
   "agents": {
     "skills": [
       {
-        "name": "htpx",
-        "path": "./skills/htpx"
+        "name": "procsi",
+        "path": "./skills/procsi"
       }
     ]
   },
@@ -62,12 +62,12 @@
   "license": "AGPL-3.0-or-later",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/mtford90/htpx.git"
+    "url": "git+https://github.com/mtford90/procsi.git"
   },
   "bugs": {
-    "url": "https://github.com/mtford90/htpx/issues"
+    "url": "https://github.com/mtford90/procsi/issues"
   },
-  "homepage": "https://github.com/mtford90/htpx#readme",
+  "homepage": "https://github.com/mtford90/procsi#readme",
   "packageManager": "pnpm@10.13.1",
   "engines": {
     "node": ">=20"

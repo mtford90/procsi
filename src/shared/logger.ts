@@ -222,7 +222,7 @@ export function createLogger(
   level: LogLevel = "warn",
   options?: LoggerOptions
 ): Logger {
-  const logFile = path.join(projectRoot, ".htpx", "htpx.log");
+  const logFile = path.join(projectRoot, ".procsi", "procsi.log");
   return new Logger(component, logFile, level, options);
 }
 

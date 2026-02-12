@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import * as os from "node:os";
 import { createInterceptorRunner, isValidInterceptorResponse } from "./interceptor-runner.js";
 import type { InterceptorLoader, LoadedInterceptor } from "./interceptor-loader.js";
-import type { HtpxClient, InterceptorRequest, InterceptorResponse } from "../shared/types.js";
+import type { ProcsiClient, InterceptorRequest, InterceptorResponse } from "../shared/types.js";
 
 function createMockLoader(interceptors: LoadedInterceptor[]): InterceptorLoader {
   return {
@@ -18,7 +18,7 @@ function createMockLoader(interceptors: LoadedInterceptor[]): InterceptorLoader 
   };
 }
 
-function createMockHtpxClient(): HtpxClient {
+function createMockProcsiClient(): ProcsiClient {
   return {
     countRequests: vi.fn().mockResolvedValue(0),
     listRequests: vi.fn().mockResolvedValue([]),
@@ -39,11 +39,11 @@ function createTestRequest(): InterceptorRequest {
 }
 
 describe("interceptor-runner", () => {
-  let mockHtpxClient: HtpxClient;
+  let mockProcsiClient: ProcsiClient;
   let projectRoot: string;
 
   beforeEach(() => {
-    mockHtpxClient = createMockHtpxClient();
+    mockProcsiClient = createMockProcsiClient();
     projectRoot = os.tmpdir();
   });
 
@@ -126,7 +126,7 @@ describe("interceptor-runner", () => {
         const loader = createMockLoader([interceptor]);
         const runner = createInterceptorRunner({
           loader,
-          htpxClient: mockHtpxClient,
+          procsiClient: mockProcsiClient,
           projectRoot,
           logLevel: "silent",
         });
@@ -160,7 +160,7 @@ describe("interceptor-runner", () => {
         const loader = createMockLoader([interceptor]);
         const runner = createInterceptorRunner({
           loader,
-          htpxClient: mockHtpxClient,
+          procsiClient: mockProcsiClient,
           projectRoot,
           logLevel: "silent",
         });
@@ -191,7 +191,7 @@ describe("interceptor-runner", () => {
         const loader = createMockLoader([interceptor]);
         const runner = createInterceptorRunner({
           loader,
-          htpxClient: mockHtpxClient,
+          procsiClient: mockProcsiClient,
           projectRoot,
           logLevel: "silent",
         });
@@ -229,7 +229,7 @@ describe("interceptor-runner", () => {
         const loader = createMockLoader([interceptor]);
         const runner = createInterceptorRunner({
           loader,
-          htpxClient: mockHtpxClient,
+          procsiClient: mockProcsiClient,
           projectRoot,
           logLevel: "silent",
         });
@@ -250,7 +250,7 @@ describe("interceptor-runner", () => {
         const loader = createMockLoader([interceptor]);
         const runner = createInterceptorRunner({
           loader,
-          htpxClient: mockHtpxClient,
+          procsiClient: mockProcsiClient,
           projectRoot,
           logLevel: "silent",
         });
@@ -276,7 +276,7 @@ describe("interceptor-runner", () => {
         const loader = createMockLoader([interceptor]);
         const runner = createInterceptorRunner({
           loader,
-          htpxClient: mockHtpxClient,
+          procsiClient: mockProcsiClient,
           projectRoot,
           logLevel: "silent",
         });
@@ -309,7 +309,7 @@ describe("interceptor-runner", () => {
         const loader = createMockLoader([]);
         const runner = createInterceptorRunner({
           loader,
-          htpxClient: mockHtpxClient,
+          procsiClient: mockProcsiClient,
           projectRoot,
           logLevel: "silent",
         });
@@ -339,7 +339,7 @@ describe("interceptor-runner", () => {
         const loader = createMockLoader(interceptors);
         const runner = createInterceptorRunner({
           loader,
-          htpxClient: mockHtpxClient,
+          procsiClient: mockProcsiClient,
           projectRoot,
           logLevel: "silent",
         });
@@ -369,7 +369,7 @@ describe("interceptor-runner", () => {
         const loader = createMockLoader(interceptors);
         const runner = createInterceptorRunner({
           loader,
-          htpxClient: mockHtpxClient,
+          procsiClient: mockProcsiClient,
           projectRoot,
           logLevel: "silent",
         });
@@ -391,7 +391,7 @@ describe("interceptor-runner", () => {
         const loader = createMockLoader([interceptor]);
         const runner = createInterceptorRunner({
           loader,
-          htpxClient: mockHtpxClient,
+          procsiClient: mockProcsiClient,
           projectRoot,
           logLevel: "silent",
         });
@@ -423,7 +423,7 @@ describe("interceptor-runner", () => {
         const loader = createMockLoader(interceptors);
         const runner = createInterceptorRunner({
           loader,
-          htpxClient: mockHtpxClient,
+          procsiClient: mockProcsiClient,
           projectRoot,
           logLevel: "silent",
         });
@@ -449,7 +449,7 @@ describe("interceptor-runner", () => {
         const loader = createMockLoader([interceptor]);
         const runner = createInterceptorRunner({
           loader,
-          htpxClient: mockHtpxClient,
+          procsiClient: mockProcsiClient,
           projectRoot,
           logLevel: "silent",
         });
@@ -470,7 +470,7 @@ describe("interceptor-runner", () => {
         const loader = createMockLoader([interceptor]);
         const runner = createInterceptorRunner({
           loader,
-          htpxClient: mockHtpxClient,
+          procsiClient: mockProcsiClient,
           projectRoot,
           logLevel: "silent",
         });
@@ -494,7 +494,7 @@ describe("interceptor-runner", () => {
         const loader = createMockLoader([interceptor]);
         const runner = createInterceptorRunner({
           loader,
-          htpxClient: mockHtpxClient,
+          procsiClient: mockProcsiClient,
           projectRoot,
           logLevel: "silent",
         });
@@ -525,7 +525,7 @@ describe("interceptor-runner", () => {
         const loader = createMockLoader([interceptor]);
         const runner = createInterceptorRunner({
           loader,
-          htpxClient: mockHtpxClient,
+          procsiClient: mockProcsiClient,
           projectRoot,
           logLevel: "silent",
         });
@@ -559,7 +559,7 @@ describe("interceptor-runner", () => {
         const loader = createMockLoader([interceptor]);
         const runner = createInterceptorRunner({
           loader,
-          htpxClient: mockHtpxClient,
+          procsiClient: mockProcsiClient,
           projectRoot,
           logLevel: "silent",
         });
@@ -594,7 +594,7 @@ describe("interceptor-runner", () => {
         const loader = createMockLoader([interceptor]);
         const runner = createInterceptorRunner({
           loader,
-          htpxClient: mockHtpxClient,
+          procsiClient: mockProcsiClient,
           projectRoot,
           logLevel: "silent",
         });
@@ -639,7 +639,7 @@ describe("interceptor-runner", () => {
         const loader = createMockLoader([interceptor]);
         const runner = createInterceptorRunner({
           loader,
-          htpxClient: mockHtpxClient,
+          procsiClient: mockProcsiClient,
           projectRoot,
           logLevel: "silent",
         });
@@ -670,7 +670,7 @@ describe("interceptor-runner", () => {
         const loader = createMockLoader([interceptor]);
         const runner = createInterceptorRunner({
           loader,
-          htpxClient: mockHtpxClient,
+          procsiClient: mockProcsiClient,
           projectRoot,
           logLevel: "silent",
         });
@@ -699,7 +699,7 @@ describe("interceptor-runner", () => {
         const loader = createMockLoader([interceptor]);
         const runner = createInterceptorRunner({
           loader,
-          htpxClient: mockHtpxClient,
+          procsiClient: mockProcsiClient,
           projectRoot,
           logLevel: "silent",
         });
@@ -711,22 +711,22 @@ describe("interceptor-runner", () => {
       });
     });
 
-    describe("context.htpx", () => {
-      it("should provide htpx client to handler", async () => {
+    describe("context.procsi", () => {
+      it("should provide procsi client to handler", async () => {
         const interceptor: LoadedInterceptor = {
-          name: "htpx-test",
+          name: "procsi-test",
           handler: async (ctx) => {
-            const count = await ctx.htpx.countRequests();
+            const count = await ctx.procsi.countRequests();
             expect(count).toBe(0);
             return { status: 200 };
           },
-          sourceFile: "htpx.ts",
+          sourceFile: "procsi.ts",
         };
 
         const loader = createMockLoader([interceptor]);
         const runner = createInterceptorRunner({
           loader,
-          htpxClient: mockHtpxClient,
+          procsiClient: mockProcsiClient,
           projectRoot,
           logLevel: "silent",
         });
@@ -734,7 +734,7 @@ describe("interceptor-runner", () => {
         const request = createTestRequest();
         await runner.handleRequest("req-21", request);
 
-        expect(mockHtpxClient.countRequests).toHaveBeenCalled();
+        expect(mockProcsiClient.countRequests).toHaveBeenCalled();
       });
     });
 
@@ -743,7 +743,7 @@ describe("interceptor-runner", () => {
         const loader = createMockLoader([]);
         const runner = createInterceptorRunner({
           loader,
-          htpxClient: mockHtpxClient,
+          procsiClient: mockProcsiClient,
           projectRoot,
           logLevel: "silent",
         });
@@ -761,7 +761,7 @@ describe("interceptor-runner", () => {
         const loader = createMockLoader([]);
         const runner = createInterceptorRunner({
           loader,
-          htpxClient: mockHtpxClient,
+          procsiClient: mockProcsiClient,
           projectRoot,
           logLevel: "silent",
         });
@@ -785,7 +785,7 @@ describe("interceptor-runner", () => {
         const loader = createMockLoader([interceptor]);
         const runner = createInterceptorRunner({
           loader,
-          htpxClient: mockHtpxClient,
+          procsiClient: mockProcsiClient,
           projectRoot,
           logLevel: "silent",
         });
@@ -812,7 +812,7 @@ describe("interceptor-runner", () => {
         const loader = createMockLoader([interceptor]);
         const runner = createInterceptorRunner({
           loader,
-          htpxClient: mockHtpxClient,
+          procsiClient: mockProcsiClient,
           projectRoot,
           logLevel: "error",
           handlerTimeoutMs: 50,
@@ -847,7 +847,7 @@ describe("interceptor-runner", () => {
         const loader = createMockLoader(interceptors);
         const runner = createInterceptorRunner({
           loader,
-          htpxClient: mockHtpxClient,
+          procsiClient: mockProcsiClient,
           projectRoot,
           logLevel: "error",
           matchTimeoutMs: 50,
@@ -876,7 +876,7 @@ describe("interceptor-runner", () => {
         const loader = createMockLoader([interceptor]);
         const runner = createInterceptorRunner({
           loader,
-          htpxClient: mockHtpxClient,
+          procsiClient: mockProcsiClient,
           projectRoot,
           logLevel: "error",
           handlerTimeoutMs: 50,
@@ -915,7 +915,7 @@ describe("interceptor-runner", () => {
         const loader = createMockLoader([interceptor]);
         const runner = createInterceptorRunner({
           loader,
-          htpxClient: mockHtpxClient,
+          procsiClient: mockProcsiClient,
           projectRoot,
           logLevel: "error",
         });

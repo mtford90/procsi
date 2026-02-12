@@ -8,7 +8,7 @@ const tick = (ms = 50) => new Promise((resolve) => setTimeout(resolve, ms));
 describe("InfoModal", () => {
   const defaultProps = {
     proxyPort: 54321 as number | undefined,
-    caCertPath: "/path/to/.htpx/ca.pem",
+    caCertPath: "/path/to/.procsi/ca.pem",
     width: 100,
     height: 40,
     onClose: vi.fn(),
@@ -27,7 +27,7 @@ describe("InfoModal", () => {
 
   it("renders the CA cert path", () => {
     const { lastFrame } = render(<InfoModal {...defaultProps} />);
-    expect(lastFrame()).toContain("/path/to/.htpx/ca.pem");
+    expect(lastFrame()).toContain("/path/to/.procsi/ca.pem");
   });
 
   it("renders environment variables", () => {
@@ -71,7 +71,7 @@ describe("InfoModal", () => {
     );
     const frame = lastFrame();
     expect(frame).toContain("Proxy is not running");
-    expect(frame).toContain("eval $(htpx vars)");
+    expect(frame).toContain("eval $(procsi vars)");
   });
 
   it("does not show proxy URL in not-running state", () => {

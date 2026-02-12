@@ -37,10 +37,10 @@ Extend the filter pipeline through the full stack: `RequestFilter` → `applyFil
 
 New tool registrations plus making list responses more useful.
 
-- [x] **`htpx_count_requests`** — expose existing `ControlClient.countRequests()`. Accepts same filter params as `htpx_list_requests`.
-- [x] **`htpx_clear_requests`** — expose existing `ControlClient.clearRequests()`. No params.
-- [x] **`htpx_list_sessions`** — add `listSessions()` to `ControlClient` (handler already exists on control server).
-- [x] **Batch `htpx_get_request`** — accept comma-separated IDs, return multiple formatted requests.
+- [x] **`procsi_count_requests`** — expose existing `ControlClient.countRequests()`. Accepts same filter params as `procsi_list_requests`.
+- [x] **`procsi_clear_requests`** — expose existing `ControlClient.clearRequests()`. No params.
+- [x] **`procsi_list_sessions`** — add `listSessions()` to `ControlClient` (handler already exists on control server).
+- [x] **Batch `procsi_get_request`** — accept comma-separated IDs, return multiple formatted requests.
 - [x] **Total count in list responses** — include total alongside paginated results ("Showing 50 of 1,234 request(s):").
 - [x] **Richer summary format** — include timestamp, body sizes in `formatSummary`.
 - [x] **Tests** — unit + integration tests for all new tools and updated format
@@ -63,5 +63,5 @@ Improve how data is presented to agents.
 Advanced querying — both involve querying into JSON-encoded data in SQLite.
 
 - [ ] **Header filtering** — `header_name` + optional `header_value` + optional `header_target` (`"request"` | `"response"` | `"both"`, default `"both"`). SQL: `json_extract` on request/response header blobs.
-- [ ] **JSON body querying** — new tool `htpx_query_json` with `json_path` (e.g. `$.data.users`), optional `value`, `target` (`"request"` | `"response"` | `"both"`). Uses SQLite `json_extract()`.
+- [ ] **JSON body querying** — new tool `procsi_query_json` with `json_path` (e.g. `$.data.users`), optional `value`, `target` (`"request"` | `"response"` | `"both"`). Uses SQLite `json_extract()`.
 - [ ] **Tests** — storage tests with JSON bodies, MCP unit + integration tests

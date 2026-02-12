@@ -3,16 +3,16 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { RequestRepository } from "./storage.js";
-import { createHtpxClient } from "./htpx-client.js";
-import type { HtpxClient } from "../shared/types.js";
+import { createProcsiClient } from "./procsi-client.js";
+import type { ProcsiClient } from "../shared/types.js";
 
-describe("createHtpxClient", () => {
+describe("createProcsiClient", () => {
   let tmpDir: string;
   let storage: RequestRepository;
-  let client: HtpxClient;
+  let client: ProcsiClient;
 
   beforeEach(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "htpx-client-test-"));
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "procsi-client-test-"));
     const dbPath = path.join(tmpDir, "test.db");
     storage = new RequestRepository(dbPath);
     const session = storage.registerSession("test");
@@ -40,7 +40,7 @@ describe("createHtpxClient", () => {
       requestBody: Buffer.from('{"name":"test"}'),
     });
 
-    client = createHtpxClient(storage);
+    client = createProcsiClient(storage);
   });
 
   afterEach(() => {

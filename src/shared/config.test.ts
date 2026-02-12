@@ -8,8 +8,8 @@ describe("loadConfig", () => {
   let tempDir: string;
 
   beforeEach(() => {
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "htpx-config-test-"));
-    fs.mkdirSync(path.join(tempDir, ".htpx"), { recursive: true });
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "procsi-config-test-"));
+    fs.mkdirSync(path.join(tempDir, ".procsi"), { recursive: true });
   });
 
   afterEach(() => {
@@ -29,7 +29,7 @@ describe("loadConfig", () => {
 
   it("loads and merges partial config", () => {
     fs.writeFileSync(
-      path.join(tempDir, ".htpx", "config.json"),
+      path.join(tempDir, ".procsi", "config.json"),
       JSON.stringify({ maxStoredRequests: 1000 })
     );
 
@@ -47,28 +47,28 @@ describe("loadConfig", () => {
       maxLogSize: 1048576,
       pollInterval: 500,
     };
-    fs.writeFileSync(path.join(tempDir, ".htpx", "config.json"), JSON.stringify(custom));
+    fs.writeFileSync(path.join(tempDir, ".procsi", "config.json"), JSON.stringify(custom));
 
     const config = loadConfig(tempDir);
     expect(config).toEqual(custom);
   });
 
   it("returns defaults on malformed JSON", () => {
-    fs.writeFileSync(path.join(tempDir, ".htpx", "config.json"), "not valid json {{{");
+    fs.writeFileSync(path.join(tempDir, ".procsi", "config.json"), "not valid json {{{");
 
     const config = loadConfig(tempDir);
     expect(config).toEqual(DEFAULT_CONFIG);
   });
 
   it("returns defaults when config is an array", () => {
-    fs.writeFileSync(path.join(tempDir, ".htpx", "config.json"), JSON.stringify([1, 2, 3]));
+    fs.writeFileSync(path.join(tempDir, ".procsi", "config.json"), JSON.stringify([1, 2, 3]));
 
     const config = loadConfig(tempDir);
     expect(config).toEqual(DEFAULT_CONFIG);
   });
 
   it("returns defaults when config is null", () => {
-    fs.writeFileSync(path.join(tempDir, ".htpx", "config.json"), "null");
+    fs.writeFileSync(path.join(tempDir, ".procsi", "config.json"), "null");
 
     const config = loadConfig(tempDir);
     expect(config).toEqual(DEFAULT_CONFIG);
@@ -76,7 +76,7 @@ describe("loadConfig", () => {
 
   it("ignores negative numbers", () => {
     fs.writeFileSync(
-      path.join(tempDir, ".htpx", "config.json"),
+      path.join(tempDir, ".procsi", "config.json"),
       JSON.stringify({ maxStoredRequests: -100 })
     );
 
@@ -86,7 +86,7 @@ describe("loadConfig", () => {
 
   it("ignores zero values", () => {
     fs.writeFileSync(
-      path.join(tempDir, ".htpx", "config.json"),
+      path.join(tempDir, ".procsi", "config.json"),
       JSON.stringify({ pollInterval: 0 })
     );
 
@@ -96,7 +96,7 @@ describe("loadConfig", () => {
 
   it("ignores non-integer numbers", () => {
     fs.writeFileSync(
-      path.join(tempDir, ".htpx", "config.json"),
+      path.join(tempDir, ".procsi", "config.json"),
       JSON.stringify({ maxStoredRequests: 100.5 })
     );
 
@@ -106,7 +106,7 @@ describe("loadConfig", () => {
 
   it("ignores wrong types", () => {
     fs.writeFileSync(
-      path.join(tempDir, ".htpx", "config.json"),
+      path.join(tempDir, ".procsi", "config.json"),
       JSON.stringify({
         maxStoredRequests: "lots",
         maxBodySize: true,
@@ -121,7 +121,7 @@ describe("loadConfig", () => {
 
   it("ignores unknown fields", () => {
     fs.writeFileSync(
-      path.join(tempDir, ".htpx", "config.json"),
+      path.join(tempDir, ".procsi", "config.json"),
       JSON.stringify({ unknownField: 42, maxStoredRequests: 3000 })
     );
 

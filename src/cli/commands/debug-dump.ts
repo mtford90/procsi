@@ -2,16 +2,16 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { Command } from "commander";
-import { getHtpxPaths, readDaemonPid, isProcessRunning } from "../../shared/project.js";
+import { getProcsiPaths, readDaemonPid, isProcessRunning } from "../../shared/project.js";
 import { readProxyPort } from "../../shared/project.js";
-import { getHtpxVersion } from "../../shared/version.js";
+import { getProcsiVersion } from "../../shared/version.js";
 import { requireProjectRoot, getErrorMessage, getGlobalOptions } from "./helpers.js";
 
 const DEBUG_LOG_LINES = 200;
 
 interface DebugDump {
   timestamp: string;
-  htpxVersion: string;
+  procsiVersion: string;
   system: {
     platform: string;
     release: string;
@@ -22,7 +22,7 @@ interface DebugDump {
     pid?: number;
     proxyPort?: number;
   };
-  htpxDir: {
+  procsiDir: {
     exists: boolean;
     files: string[];
   };
@@ -33,11 +33,11 @@ interface DebugDump {
  * Collect debug information for a project.
  */
 export function collectDebugInfo(projectRoot: string | undefined): DebugDump {
-  const htpxVersion = getHtpxVersion();
+  const procsiVersion = getProcsiVersion();
 
   const dump: DebugDump = {
     timestamp: new Date().toISOString(),
-    htpxVersion,
+    procsiVersion,
     system: {
       platform: os.platform(),
       release: os.release(),
@@ -46,7 +46,7 @@ export function collectDebugInfo(projectRoot: string | undefined): DebugDump {
     daemon: {
       running: false,
     },
-    htpxDir: {
+    procsiDir: {
       exists: false,
       files: [],
     },
@@ -57,13 +57,13 @@ export function collectDebugInfo(projectRoot: string | undefined): DebugDump {
     return dump;
   }
 
-  const paths = getHtpxPaths(projectRoot);
+  const paths = getProcsiPaths(projectRoot);
 
-  // Check .htpx directory
-  if (fs.existsSync(paths.htpxDir)) {
-    dump.htpxDir.exists = true;
+  // Check .procsi directory
+  if (fs.existsSync(paths.procsiDir)) {
+    dump.procsiDir.exists = true;
     try {
-      dump.htpxDir.files = fs.readdirSync(paths.htpxDir);
+      dump.procsiDir.files = fs.readdirSync(paths.procsiDir);
     } catch {
       // Ignore errors reading directory
     }
@@ -111,17 +111,17 @@ export const debugDumpCommand = new Command("debug-dump")
   .action((_, command: Command) => {
     const globalOpts = getGlobalOptions(command);
     const projectRoot = requireProjectRoot(globalOpts.dir);
-    const paths = getHtpxPaths(projectRoot);
+    const paths = getProcsiPaths(projectRoot);
     const dump = collectDebugInfo(projectRoot);
 
     // Write dump to file
     const filename = generateDumpFilename();
-    const filepath = path.join(paths.htpxDir, filename);
+    const filepath = path.join(paths.procsiDir, filename);
 
     try {
-      // Ensure .htpx directory exists
-      if (!fs.existsSync(paths.htpxDir)) {
-        fs.mkdirSync(paths.htpxDir, { recursive: true });
+      // Ensure .procsi directory exists
+      if (!fs.existsSync(paths.procsiDir)) {
+        fs.mkdirSync(paths.procsiDir, { recursive: true });
       }
 
       fs.writeFileSync(filepath, JSON.stringify(dump, null, 2), "utf-8");

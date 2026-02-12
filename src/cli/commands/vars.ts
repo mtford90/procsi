@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { findOrCreateProjectRoot, ensureHtpxDir, getHtpxPaths } from "../../shared/project.js";
+import { findOrCreateProjectRoot, ensureProcsiDir, getProcsiPaths } from "../../shared/project.js";
 import { startDaemon } from "../../shared/daemon.js";
 import { ControlClient } from "../../shared/control-client.js";
 import { parseVerbosity } from "../../shared/logger.js";
@@ -42,8 +42,8 @@ export function formatUnsetVars(vars: string[]): string {
  * Generate shell statements that save the current NODE_OPTIONS value
  * and append a --require flag for the preload script.
  *
- * Uses HTPX_ORIG_NODE_OPTIONS as a guard — only saves the original
- * value on the first call, so repeated `htpx vars` invocations are
+ * Uses PROCSI_ORIG_NODE_OPTIONS as a guard — only saves the original
+ * value on the first call, so repeated `procsi vars` invocations are
  * idempotent.
  *
  * This must be raw shell (not through formatEnvVars) because it needs
@@ -58,27 +58,27 @@ export function formatNodeOptionsExport(preloadPath: string): string {
   const escaped = escapeDoubleQuoted(preloadPath);
   return [
     // Save original NODE_OPTIONS on first invocation only (${param-word} keeps existing value when set)
-    `export HTPX_ORIG_NODE_OPTIONS="\${HTPX_ORIG_NODE_OPTIONS-\${NODE_OPTIONS:-}}"`,
+    `export PROCSI_ORIG_NODE_OPTIONS="\${PROCSI_ORIG_NODE_OPTIONS-\${NODE_OPTIONS:-}}"`,
     // Append --require to NODE_OPTIONS, preserving any existing value
     // No inner quotes needed — the entire RHS is double-quoted so the shell won't word-split
-    `export NODE_OPTIONS="\${HTPX_ORIG_NODE_OPTIONS:+\${HTPX_ORIG_NODE_OPTIONS} }--require ${escaped}"`,
+    `export NODE_OPTIONS="\${PROCSI_ORIG_NODE_OPTIONS:+\${PROCSI_ORIG_NODE_OPTIONS} }--require ${escaped}"`,
   ].join("\n");
 }
 
 /**
  * Generate shell statements that restore NODE_OPTIONS to its original
- * value (or unset it if it was empty before htpx set it).
+ * value (or unset it if it was empty before procsi set it).
  */
 export function formatNodeOptionsRestore(): string {
   return [
     // Restore to saved value; unset if the original was empty
-    `test -n "\${HTPX_ORIG_NODE_OPTIONS:-}" && export NODE_OPTIONS="\${HTPX_ORIG_NODE_OPTIONS}" || unset NODE_OPTIONS 2>/dev/null`,
-    "unset HTPX_ORIG_NODE_OPTIONS 2>/dev/null",
+    `test -n "\${PROCSI_ORIG_NODE_OPTIONS:-}" && export NODE_OPTIONS="\${PROCSI_ORIG_NODE_OPTIONS}" || unset NODE_OPTIONS 2>/dev/null`,
+    "unset PROCSI_ORIG_NODE_OPTIONS 2>/dev/null",
   ].join("\n");
 }
 
-// Environment variables managed by htpx (used for --clear unset)
-const HTPX_ENV_VARS = [
+// Environment variables managed by procsi (used for --clear unset)
+const PROCSI_ENV_VARS = [
   "HTTP_PROXY",
   "HTTPS_PROXY",
   "http_proxy",
@@ -89,8 +89,8 @@ const HTPX_ENV_VARS = [
   "GLOBAL_AGENT_HTTP_PROXY",
   "GLOBAL_AGENT_HTTPS_PROXY",
   "NODE_USE_ENV_PROXY",
-  "HTPX_SESSION_ID",
-  "HTPX_LABEL",
+  "PROCSI_SESSION_ID",
+  "PROCSI_LABEL",
 ];
 
 export const varsCommand = new Command("vars")
@@ -105,7 +105,7 @@ export const varsCommand = new Command("vars")
         if (process.stdout.isTTY) {
           console.log("To stop intercepting HTTP traffic, run:");
           console.log("");
-          console.log("  eval $(htpx vars --clear)");
+          console.log("  eval $(procsi vars --clear)");
           return;
         }
 
@@ -113,10 +113,10 @@ export const varsCommand = new Command("vars")
         console.log(formatNodeOptionsRestore());
 
         // Output unset statements for eval
-        console.log(formatUnsetVars(HTPX_ENV_VARS));
+        console.log(formatUnsetVars(PROCSI_ENV_VARS));
 
         // Output confirmation as a comment (shown but not executed)
-        console.log("# htpx: interception stopped");
+        console.log("# procsi: interception stopped");
         return;
       }
 
@@ -124,7 +124,7 @@ export const varsCommand = new Command("vars")
       if (process.stdout.isTTY) {
         console.log("To intercept HTTP traffic, run:");
         console.log("");
-        console.log("  eval $(htpx vars)");
+        console.log("  eval $(procsi vars)");
         console.log("");
         console.log("This sets the required environment variables in your shell.");
         return;
@@ -136,11 +136,11 @@ export const varsCommand = new Command("vars")
       const verbosity = globalOpts.verbose;
       const logLevel = parseVerbosity(verbosity);
 
-      // Find project root (auto-creates .htpx if needed)
+      // Find project root (auto-creates .procsi if needed)
       const projectRoot = findOrCreateProjectRoot(undefined, globalOpts.dir);
-      ensureHtpxDir(projectRoot);
+      ensureProcsiDir(projectRoot);
 
-      const paths = getHtpxPaths(projectRoot);
+      const paths = getProcsiPaths(projectRoot);
 
       try {
         // Start daemon if not already running
@@ -149,18 +149,18 @@ export const varsCommand = new Command("vars")
           autoRestart,
           onVersionMismatch: (running, cli) => {
             if (autoRestart) {
-              console.log(`# htpx: restarting daemon (version mismatch: ${running} -> ${cli})`);
+              console.log(`# procsi: restarting daemon (version mismatch: ${running} -> ${cli})`);
             } else {
               console.log(
-                `# htpx warning: daemon version mismatch (running: ${running}, CLI: ${cli})`
+                `# procsi warning: daemon version mismatch (running: ${running}, CLI: ${cli})`
               );
-              console.log(`# Use 'htpx daemon restart' to update.`);
+              console.log(`# Use 'procsi daemon restart' to update.`);
             }
           },
         });
         const proxyUrl = `http://127.0.0.1:${proxyPort}`;
 
-        // Write the Node.js preload script to .htpx/
+        // Write the Node.js preload script to .procsi/
         writeNodePreloadScript(paths.proxyPreloadFile);
 
         // Register session with daemon
@@ -182,12 +182,12 @@ export const varsCommand = new Command("vars")
             NODE_EXTRA_CA_CERTS: paths.caCertFile,
             // Node.js runtime overrides (global-agent + undici)
             ...getNodeEnvVars(proxyUrl),
-            // htpx session tracking
-            HTPX_SESSION_ID: session.id,
+            // procsi session tracking
+            PROCSI_SESSION_ID: session.id,
           };
 
           if (label) {
-            envVars["HTPX_LABEL"] = label;
+            envVars["PROCSI_LABEL"] = label;
           }
 
           // Report interceptor status
@@ -198,10 +198,10 @@ export const varsCommand = new Command("vars")
               const loadedCount = interceptors.length - errorCount;
               if (errorCount > 0) {
                 console.log(
-                  `# Loaded ${loadedCount} interceptors (${errorCount} failed) from .htpx/interceptors/`
+                  `# Loaded ${loadedCount} interceptors (${errorCount} failed) from .procsi/interceptors/`
                 );
               } else {
-                console.log(`# Loaded ${loadedCount} interceptors from .htpx/interceptors/`);
+                console.log(`# Loaded ${loadedCount} interceptors from .procsi/interceptors/`);
               }
             }
           } catch {
@@ -216,14 +216,14 @@ export const varsCommand = new Command("vars")
 
           // Output confirmation as a comment (shown but not executed)
           const labelInfo = label ? ` (label: ${label})` : "";
-          console.log(`# htpx: intercepting traffic${labelInfo}`);
+          console.log(`# procsi: intercepting traffic${labelInfo}`);
           console.log(`# Proxy: ${proxyUrl}`);
           console.log(`# Session: ${session.id}`);
         } finally {
           client.close();
         }
       } catch (err) {
-        console.error(`# htpx error: ${getErrorMessage(err)}`);
+        console.error(`# procsi error: ${getErrorMessage(err)}`);
         process.exit(1);
       }
     }

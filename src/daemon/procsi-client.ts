@@ -1,11 +1,11 @@
 import type { RequestRepository } from "./storage.js";
-import type { HtpxClient } from "../shared/types.js";
+import type { ProcsiClient } from "../shared/types.js";
 
 /**
- * Create an in-process HtpxClient that wraps RequestRepository directly.
+ * Create an in-process ProcsiClient that wraps RequestRepository directly.
  * Used by interceptors running inside the daemon process.
  */
-export function createHtpxClient(storage: RequestRepository): HtpxClient {
+export function createProcsiClient(storage: RequestRepository): ProcsiClient {
   return {
     countRequests: async (filter) => storage.countRequests({ filter }),
     listRequests: async (options) =>

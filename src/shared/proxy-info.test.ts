@@ -3,23 +3,23 @@ import { buildProxyInfo } from "./proxy-info.js";
 
 describe("buildProxyInfo", () => {
   it("returns correct proxy URL from port", () => {
-    const info = buildProxyInfo(54321, "/path/to/.htpx/ca.pem");
+    const info = buildProxyInfo(54321, "/path/to/.procsi/ca.pem");
     expect(info.proxyUrl).toBe("http://127.0.0.1:54321");
   });
 
   it("passes through the CA cert path", () => {
-    const info = buildProxyInfo(54321, "/path/to/.htpx/ca.pem");
-    expect(info.caCertPath).toBe("/path/to/.htpx/ca.pem");
+    const info = buildProxyInfo(54321, "/path/to/.procsi/ca.pem");
+    expect(info.caCertPath).toBe("/path/to/.procsi/ca.pem");
   });
 
   it("includes all required env vars in envBlock", () => {
-    const info = buildProxyInfo(8080, "/home/user/.htpx/ca.pem");
+    const info = buildProxyInfo(8080, "/home/user/.procsi/ca.pem");
 
     expect(info.envBlock).toContain('export HTTP_PROXY="http://127.0.0.1:8080"');
     expect(info.envBlock).toContain('export HTTPS_PROXY="http://127.0.0.1:8080"');
-    expect(info.envBlock).toContain('export SSL_CERT_FILE="/home/user/.htpx/ca.pem"');
-    expect(info.envBlock).toContain('export REQUESTS_CA_BUNDLE="/home/user/.htpx/ca.pem"');
-    expect(info.envBlock).toContain('export NODE_EXTRA_CA_CERTS="/home/user/.htpx/ca.pem"');
+    expect(info.envBlock).toContain('export SSL_CERT_FILE="/home/user/.procsi/ca.pem"');
+    expect(info.envBlock).toContain('export REQUESTS_CA_BUNDLE="/home/user/.procsi/ca.pem"');
+    expect(info.envBlock).toContain('export NODE_EXTRA_CA_CERTS="/home/user/.procsi/ca.pem"');
   });
 
   it("produces exactly five lines in envBlock", () => {

@@ -9,23 +9,23 @@ import { RequestRepository } from "../../src/daemon/storage.js";
 import { createProxy } from "../../src/daemon/proxy.js";
 import { createControlServer } from "../../src/daemon/control.js";
 import { ControlClient } from "../../src/shared/control-client.js";
-import { ensureHtpxDir, getHtpxPaths } from "../../src/shared/project.js";
-import { getHtpxVersion } from "../../src/shared/version.js";
+import { ensureProcsiDir, getProcsiPaths } from "../../src/shared/project.js";
+import { getProcsiVersion } from "../../src/shared/version.js";
 
 describe("daemon integration", () => {
   let tempDir: string;
-  let paths: ReturnType<typeof getHtpxPaths>;
+  let paths: ReturnType<typeof getProcsiPaths>;
   let storage: RequestRepository;
   let cleanup: (() => Promise<void>)[] = [];
 
   beforeEach(async () => {
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "htpx-daemon-test-"));
-    ensureHtpxDir(tempDir);
-    paths = getHtpxPaths(tempDir);
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "procsi-daemon-test-"));
+    ensureProcsiDir(tempDir);
+    paths = getProcsiPaths(tempDir);
 
     // Generate CA certificate
     const ca = await generateCACertificate({
-      subject: { commonName: "htpx Test CA" },
+      subject: { commonName: "procsi Test CA" },
     });
     fs.writeFileSync(paths.caKeyFile, ca.key);
     fs.writeFileSync(paths.caCertFile, ca.cert);
@@ -455,7 +455,7 @@ describe("daemon integration", () => {
       });
       cleanup.push(proxy.stop);
 
-      const testVersion = getHtpxVersion();
+      const testVersion = getProcsiVersion();
       const controlServer = createControlServer({
         socketPath: paths.controlSocketFile,
         storage,

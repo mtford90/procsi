@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Shell integration tests for htpx
+# Shell integration tests for procsi
 #
 # Run with: bash tests/shell/intercept.test.sh
 #
@@ -13,7 +13,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-HTPX_BIN="$PROJECT_ROOT/dist/cli/index.js"
+PROCSI_BIN="$PROJECT_ROOT/dist/cli/index.js"
 
 # Colours for output
 RED='\033[0;31m'
@@ -29,9 +29,9 @@ trap 'cleanup' EXIT
 
 cleanup() {
   # Stop any daemon that might be running
-  if [[ -f "$TEST_DIR/.htpx/daemon.pid" ]]; then
+  if [[ -f "$TEST_DIR/.procsi/daemon.pid" ]]; then
     local pid
-    pid=$(cat "$TEST_DIR/.htpx/daemon.pid" 2>/dev/null || true)
+    pid=$(cat "$TEST_DIR/.procsi/daemon.pid" 2>/dev/null || true)
     if [[ -n "$pid" ]]; then
       kill "$pid" 2>/dev/null || true
     fi
@@ -57,104 +57,104 @@ init_test_project() {
 }
 
 # ------------------------------------------------------------------------------
-# Test: htpx init outputs valid shell function
+# Test: procsi init outputs valid shell function
 # ------------------------------------------------------------------------------
 test_init_outputs_function() {
   local output
-  output=$(node "$HTPX_BIN" init)
+  output=$(node "$PROCSI_BIN" init)
 
-  if echo "$output" | grep -q "htpx()"; then
-    pass "htpx init outputs function definition"
+  if echo "$output" | grep -q "procsi()"; then
+    pass "procsi init outputs function definition"
   else
-    fail "htpx init outputs function definition" "Output: $output"
+    fail "procsi init outputs function definition" "Output: $output"
     return
   fi
 
   if echo "$output" | grep -q 'eval'; then
-    pass "htpx init includes eval for on/off"
+    pass "procsi init includes eval for on/off"
   else
-    fail "htpx init includes eval for on/off" "Output: $output"
+    fail "procsi init includes eval for on/off" "Output: $output"
   fi
 }
 
 # ------------------------------------------------------------------------------
-# Test: sourcing htpx init creates function
+# Test: sourcing procsi init creates function
 # ------------------------------------------------------------------------------
 test_sourcing_creates_function() {
   # Source the init output
-  eval "$(node "$HTPX_BIN" init)"
+  eval "$(node "$PROCSI_BIN" init)"
 
-  if type htpx &>/dev/null; then
-    pass "sourcing htpx init creates htpx function"
+  if type procsi &>/dev/null; then
+    pass "sourcing procsi init creates procsi function"
   else
-    fail "sourcing htpx init creates htpx function" "htpx function not found after sourcing"
+    fail "sourcing procsi init creates procsi function" "procsi function not found after sourcing"
   fi
 }
 
 # ------------------------------------------------------------------------------
-# Test: htpx vars outputs env vars
+# Test: procsi vars outputs env vars
 # ------------------------------------------------------------------------------
 test_vars_outputs_env_vars() {
   init_test_project
 
   local output
-  output=$(node "$HTPX_BIN" vars --label=test-session 2>&1)
+  output=$(node "$PROCSI_BIN" vars --label=test-session 2>&1)
 
   # Check for HTTP_PROXY
   if echo "$output" | grep -q 'export HTTP_PROXY='; then
-    pass "htpx vars outputs HTTP_PROXY"
+    pass "procsi vars outputs HTTP_PROXY"
   else
-    fail "htpx vars outputs HTTP_PROXY" "Output: $output"
+    fail "procsi vars outputs HTTP_PROXY" "Output: $output"
     return
   fi
 
   # Check for HTTPS_PROXY
   if echo "$output" | grep -q 'export HTTPS_PROXY='; then
-    pass "htpx vars outputs HTTPS_PROXY"
+    pass "procsi vars outputs HTTPS_PROXY"
   else
-    fail "htpx vars outputs HTTPS_PROXY" "Output: $output"
+    fail "procsi vars outputs HTTPS_PROXY" "Output: $output"
   fi
 
   # Check for SSL_CERT_FILE
   if echo "$output" | grep -q 'export SSL_CERT_FILE='; then
-    pass "htpx vars outputs SSL_CERT_FILE"
+    pass "procsi vars outputs SSL_CERT_FILE"
   else
-    fail "htpx vars outputs SSL_CERT_FILE" "Output: $output"
+    fail "procsi vars outputs SSL_CERT_FILE" "Output: $output"
   fi
 
   # Check for NODE_EXTRA_CA_CERTS
   if echo "$output" | grep -q 'export NODE_EXTRA_CA_CERTS='; then
-    pass "htpx vars outputs NODE_EXTRA_CA_CERTS"
+    pass "procsi vars outputs NODE_EXTRA_CA_CERTS"
   else
-    fail "htpx vars outputs NODE_EXTRA_CA_CERTS" "Output: $output"
+    fail "procsi vars outputs NODE_EXTRA_CA_CERTS" "Output: $output"
   fi
 
   # Check for session ID
-  if echo "$output" | grep -q 'export HTPX_SESSION_ID='; then
-    pass "htpx vars outputs HTPX_SESSION_ID"
+  if echo "$output" | grep -q 'export PROCSI_SESSION_ID='; then
+    pass "procsi vars outputs PROCSI_SESSION_ID"
   else
-    fail "htpx vars outputs HTPX_SESSION_ID" "Output: $output"
+    fail "procsi vars outputs PROCSI_SESSION_ID" "Output: $output"
   fi
 
   # Check for label
-  if echo "$output" | grep -q 'export HTPX_LABEL='; then
-    pass "htpx vars outputs HTPX_LABEL when provided"
+  if echo "$output" | grep -q 'export PROCSI_LABEL='; then
+    pass "procsi vars outputs PROCSI_LABEL when provided"
   else
-    fail "htpx vars outputs HTPX_LABEL when provided" "Output: $output"
+    fail "procsi vars outputs PROCSI_LABEL when provided" "Output: $output"
   fi
 
   # Stop daemon after test
-  node "$HTPX_BIN" daemon stop >/dev/null 2>&1 || true
+  node "$PROCSI_BIN" daemon stop >/dev/null 2>&1 || true
 }
 
 # ------------------------------------------------------------------------------
-# Test: htpx vars env vars can be evaluated
+# Test: procsi vars env vars can be evaluated
 # ------------------------------------------------------------------------------
 test_vars_env_vars_evaluable() {
   init_test_project
 
   # Evaluate the output
-  eval "$(node "$HTPX_BIN" vars --label=eval-test 2>&1 | grep '^export')"
+  eval "$(node "$PROCSI_BIN" vars --label=eval-test 2>&1 | grep '^export')"
 
   # Check env vars are set
   if [[ -n "${HTTP_PROXY:-}" ]]; then
@@ -170,99 +170,99 @@ test_vars_env_vars_evaluable() {
     fail "HTTPS_PROXY is set after eval" "HTTPS_PROXY is empty or unset"
   fi
 
-  if [[ -n "${HTPX_SESSION_ID:-}" ]]; then
-    pass "HTPX_SESSION_ID is set after eval"
+  if [[ -n "${PROCSI_SESSION_ID:-}" ]]; then
+    pass "PROCSI_SESSION_ID is set after eval"
   else
-    fail "HTPX_SESSION_ID is set after eval" "HTPX_SESSION_ID is empty or unset"
+    fail "PROCSI_SESSION_ID is set after eval" "PROCSI_SESSION_ID is empty or unset"
   fi
 
   # Stop daemon after test
-  node "$HTPX_BIN" daemon stop >/dev/null 2>&1 || true
+  node "$PROCSI_BIN" daemon stop >/dev/null 2>&1 || true
 }
 
 # ------------------------------------------------------------------------------
-# Test: htpx status shows running daemon
+# Test: procsi status shows running daemon
 # ------------------------------------------------------------------------------
 test_status_shows_running() {
   init_test_project
 
   # Start daemon via vars
-  eval "$(node "$HTPX_BIN" vars 2>&1 | grep '^export')"
+  eval "$(node "$PROCSI_BIN" vars 2>&1 | grep '^export')"
 
   # Check status
   local output
-  output=$(node "$HTPX_BIN" status 2>&1)
+  output=$(node "$PROCSI_BIN" status 2>&1)
 
   if echo "$output" | grep -q "running"; then
-    pass "htpx status shows daemon is running"
+    pass "procsi status shows daemon is running"
   else
-    fail "htpx status shows daemon is running" "Output: $output"
+    fail "procsi status shows daemon is running" "Output: $output"
     return
   fi
 
   if echo "$output" | grep -q "Proxy port:"; then
-    pass "htpx status shows proxy port"
+    pass "procsi status shows proxy port"
   else
-    fail "htpx status shows proxy port" "Output: $output"
+    fail "procsi status shows proxy port" "Output: $output"
   fi
 
   # Stop daemon after test
-  node "$HTPX_BIN" daemon stop >/dev/null 2>&1 || true
+  node "$PROCSI_BIN" daemon stop >/dev/null 2>&1 || true
 }
 
 # ------------------------------------------------------------------------------
-# Test: htpx daemon stop stops the daemon
+# Test: procsi daemon stop stops the daemon
 # ------------------------------------------------------------------------------
 test_stop_daemon() {
   init_test_project
 
   # Start daemon via vars
-  eval "$(node "$HTPX_BIN" vars 2>&1 | grep '^export')"
+  eval "$(node "$PROCSI_BIN" vars 2>&1 | grep '^export')"
 
   # Stop daemon
   local output
-  output=$(node "$HTPX_BIN" daemon stop 2>&1)
+  output=$(node "$PROCSI_BIN" daemon stop 2>&1)
 
   if echo "$output" | grep -q "Daemon stopped"; then
-    pass "htpx daemon stop confirms daemon stopped"
+    pass "procsi daemon stop confirms daemon stopped"
   else
-    fail "htpx daemon stop confirms daemon stopped" "Output: $output"
+    fail "procsi daemon stop confirms daemon stopped" "Output: $output"
     return
   fi
 
   # Verify it's actually stopped
   sleep 1
-  output=$(node "$HTPX_BIN" status 2>&1)
+  output=$(node "$PROCSI_BIN" status 2>&1)
 
   if echo "$output" | grep -q "not running"; then
-    pass "daemon is stopped after htpx daemon stop"
+    pass "daemon is stopped after procsi daemon stop"
   else
-    fail "daemon is stopped after htpx daemon stop" "Output: $output"
+    fail "daemon is stopped after procsi daemon stop" "Output: $output"
   fi
 }
 
 # ------------------------------------------------------------------------------
-# Test: htpx clear clears captured requests
+# Test: procsi clear clears captured requests
 # ------------------------------------------------------------------------------
 test_clear_requests() {
   init_test_project
 
   # Start daemon via vars
-  eval "$(node "$HTPX_BIN" vars 2>&1 | grep '^export')"
+  eval "$(node "$PROCSI_BIN" vars 2>&1 | grep '^export')"
 
   # Clear requests
   local output
-  output=$(node "$HTPX_BIN" clear 2>&1)
+  output=$(node "$PROCSI_BIN" clear 2>&1)
 
   if echo "$output" | grep -q "Requests cleared"; then
-    pass "htpx clear confirms requests cleared"
+    pass "procsi clear confirms requests cleared"
   else
-    fail "htpx clear confirms requests cleared" "Output: $output"
+    fail "procsi clear confirms requests cleared" "Output: $output"
     return
   fi
 
   # Verify request count is 0
-  output=$(node "$HTPX_BIN" status 2>&1)
+  output=$(node "$PROCSI_BIN" status 2>&1)
 
   if echo "$output" | grep -q "Requests:      0"; then
     pass "request count is 0 after clear"
@@ -271,13 +271,13 @@ test_clear_requests() {
   fi
 
   # Stop daemon after test
-  node "$HTPX_BIN" daemon stop >/dev/null 2>&1 || true
+  node "$PROCSI_BIN" daemon stop >/dev/null 2>&1 || true
 }
 
 # ------------------------------------------------------------------------------
 # Run all tests
 # ------------------------------------------------------------------------------
-echo "=== htpx shell integration tests ==="
+echo "=== procsi shell integration tests ==="
 echo ""
 
 test_init_outputs_function

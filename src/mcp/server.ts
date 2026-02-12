@@ -1,5 +1,5 @@
 /**
- * htpx MCP server — exposes read-only traffic inspection tools
+ * procsi MCP server — exposes read-only traffic inspection tools
  * to MCP clients (AI agents, IDE integrations, etc.).
  *
  * Connects to the daemon's existing control socket to query captured traffic.
@@ -9,8 +9,8 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { ControlClient } from "../shared/control-client.js";
-import { getHtpxPaths } from "../shared/project.js";
-import { getHtpxVersion } from "../shared/version.js";
+import { getProcsiPaths } from "../shared/project.js";
+import { getProcsiVersion } from "../shared/version.js";
 import { isTextContentType, isJsonContentType } from "../shared/content-type.js";
 import type {
   CapturedRequest,
@@ -410,25 +410,25 @@ export interface McpServerOptions {
 }
 
 /**
- * Create and configure the htpx MCP server.
+ * Create and configure the procsi MCP server.
  * Returns the server instance (call `start()` to connect transport).
  */
-export function createHtpxMcpServer(options: McpServerOptions) {
+export function createProcsiMcpServer(options: McpServerOptions) {
   const { projectRoot } = options;
-  const paths = getHtpxPaths(projectRoot);
-  const version = getHtpxVersion();
+  const paths = getProcsiPaths(projectRoot);
+  const version = getProcsiVersion();
 
   const server = new McpServer({
-    name: "htpx",
+    name: "procsi",
     version,
   });
 
   const client = new ControlClient(paths.controlSocketFile);
 
-  // --- htpx_get_status ---
+  // --- procsi_get_status ---
   server.tool(
-    "htpx_get_status",
-    "Get the current status of the htpx proxy daemon — running state, proxy port, session count, and total captured request count. Use this to check if the daemon is running before calling other tools.",
+    "procsi_get_status",
+    "Get the current status of the procsi proxy daemon — running state, proxy port, session count, and total captured request count. Use this to check if the daemon is running before calling other tools.",
     {},
     async () => {
       try {
@@ -446,17 +446,17 @@ export function createHtpxMcpServer(options: McpServerOptions) {
         return textResult(lines.join("\n"));
       } catch (err) {
         return textResult(
-          `Failed to connect to htpx daemon. Is it running? Error: ${err instanceof Error ? err.message : "Unknown error"}`,
+          `Failed to connect to procsi daemon. Is it running? Error: ${err instanceof Error ? err.message : "Unknown error"}`,
           true
         );
       }
     }
   );
 
-  // --- htpx_list_requests ---
+  // --- procsi_list_requests ---
   server.tool(
-    "htpx_list_requests",
-    "Search and filter captured HTTP requests. Returns summaries (method, URL, status, timing). Supports filtering by HTTP method(s), status code (range, exact, or Nxx pattern), host, path prefix, time window, URL substring, and headers. Use htpx_get_request with a request ID to fetch full headers and bodies.",
+    "procsi_list_requests",
+    "Search and filter captured HTTP requests. Returns summaries (method, URL, status, timing). Supports filtering by HTTP method(s), status code (range, exact, or Nxx pattern), host, path prefix, time window, URL substring, and headers. Use procsi_get_request with a request ID to fetch full headers and bodies.",
     {
       method: z
         .string()
@@ -567,10 +567,10 @@ export function createHtpxMcpServer(options: McpServerOptions) {
     }
   );
 
-  // --- htpx_get_request ---
+  // --- procsi_get_request ---
   server.tool(
-    "htpx_get_request",
-    "Fetch full details of captured HTTP request(s) by ID — including all headers, request/response bodies, timing, and status. Supports comma-separated IDs for batch fetching. Get request IDs from htpx_list_requests or htpx_search_bodies.",
+    "procsi_get_request",
+    "Fetch full details of captured HTTP request(s) by ID — including all headers, request/response bodies, timing, and status. Supports comma-separated IDs for batch fetching. Get request IDs from procsi_list_requests or procsi_search_bodies.",
     {
       id: z
         .string()
@@ -627,10 +627,10 @@ export function createHtpxMcpServer(options: McpServerOptions) {
     }
   );
 
-  // --- htpx_search_bodies ---
+  // --- procsi_search_bodies ---
   server.tool(
-    "htpx_search_bodies",
-    "Search through request and response body content for a text substring. Only searches text-based bodies (JSON, HTML, XML, etc.), skipping binary content. Supports filtering by method(s), status code, host, path prefix, time window, and headers. Returns summaries — use htpx_get_request for full details.",
+    "procsi_search_bodies",
+    "Search through request and response body content for a text substring. Only searches text-based bodies (JSON, HTML, XML, etc.), skipping binary content. Supports filtering by method(s), status code, host, path prefix, time window, and headers. Returns summaries — use procsi_get_request for full details.",
     {
       query: z
         .string()
@@ -738,9 +738,9 @@ export function createHtpxMcpServer(options: McpServerOptions) {
     }
   );
 
-  // --- htpx_count_requests ---
+  // --- procsi_count_requests ---
   server.tool(
-    "htpx_count_requests",
+    "procsi_count_requests",
     "Count captured HTTP requests, optionally filtered. Useful for checking total traffic volume or verifying how many requests match a filter before paginating through them.",
     {
       method: z
@@ -820,9 +820,9 @@ export function createHtpxMcpServer(options: McpServerOptions) {
     }
   );
 
-  // --- htpx_query_json ---
+  // --- procsi_query_json ---
   server.tool(
-    "htpx_query_json",
+    "procsi_query_json",
     "Extract values from JSON request/response bodies using JSONPath syntax (SQLite json_extract). Only queries bodies with JSON content types. Use this to find requests where a specific JSON field exists or has a particular value.",
     {
       json_path: z
@@ -941,9 +941,9 @@ export function createHtpxMcpServer(options: McpServerOptions) {
     }
   );
 
-  // --- htpx_clear_requests ---
+  // --- procsi_clear_requests ---
   server.tool(
-    "htpx_clear_requests",
+    "procsi_clear_requests",
     "Clear all captured HTTP requests from storage. This is irreversible.",
     {},
     async () => {
@@ -959,10 +959,10 @@ export function createHtpxMcpServer(options: McpServerOptions) {
     }
   );
 
-  // --- htpx_list_sessions ---
+  // --- procsi_list_sessions ---
   server.tool(
-    "htpx_list_sessions",
-    "List all active proxy sessions. Each session represents a process that registered with the daemon (e.g. a shell running `eval $(htpx vars)`).",
+    "procsi_list_sessions",
+    "List all active proxy sessions. Each session represents a process that registered with the daemon (e.g. a shell running `eval $(procsi vars)`).",
     {},
     async () => {
       try {
@@ -984,9 +984,9 @@ export function createHtpxMcpServer(options: McpServerOptions) {
     }
   );
 
-  // --- htpx_list_interceptors ---
+  // --- procsi_list_interceptors ---
   server.tool(
-    "htpx_list_interceptors",
+    "procsi_list_interceptors",
     "List all loaded interceptors — their names, source files, whether they have a match function, and any load errors. Use this to check which interceptors are active.",
     {
       format: FORMAT_SCHEMA,
@@ -1015,9 +1015,9 @@ export function createHtpxMcpServer(options: McpServerOptions) {
     }
   );
 
-  // --- htpx_reload_interceptors ---
+  // --- procsi_reload_interceptors ---
   server.tool(
-    "htpx_reload_interceptors",
+    "procsi_reload_interceptors",
     "Reload interceptors from disk. Use after editing interceptor files to apply changes without restarting the daemon.",
     {
       format: FORMAT_SCHEMA,

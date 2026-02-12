@@ -5,7 +5,7 @@
  *
  * Provides five options:
  * [1] Copy to clipboard
- * [2] .htpx/exports/ - Project exports folder
+ * [2] .procsi/exports/ - Project exports folder
  * [3] ~/Downloads/ - Downloads folder
  * [4] Custom path... - Text input
  * [5] Open externally - Default app
@@ -52,7 +52,7 @@ const OPTIONS: Option[] = [
   {
     key: "2",
     action: "exports",
-    label: ".htpx/exports/",
+    label: ".procsi/exports/",
     description: "Project exports folder",
   },
   {

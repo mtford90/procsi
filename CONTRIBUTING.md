@@ -1,10 +1,10 @@
-# Contributing to htpx
+# Contributing to procsi
 
-Thanks for your interest in contributing to htpx! This document covers the basics you need to know.
+Thanks for your interest in contributing to procsi! This document covers the basics you need to know.
 
 ## Licence
 
-htpx is licensed under the [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0).
+procsi is licensed under the [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0).
 
 ## Contributor Licence Agreement (CLA)
 
@@ -51,4 +51,4 @@ See the testing section in [CLAUDE.md](CLAUDE.md) for detailed guidance on test 
 
 ## Reporting Issues
 
-Open an issue at [github.com/mtford90/htpx/issues](https://github.com/mtford90/htpx/issues). Include steps to reproduce, expected behaviour, and actual behaviour.
+Open an issue at [github.com/mtford90/procsi/issues](https://github.com/mtford90/procsi/issues). Include steps to reproduce, expected behaviour, and actual behaviour.

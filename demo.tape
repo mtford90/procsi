@@ -9,7 +9,7 @@ Set TypingSpeed 40ms
 
 # Launch TUI off-screen, then show once it's rendered
 Hide
-Type "htpx tui"
+Type "procsi tui"
 Enter
 Sleep 2s
 Show

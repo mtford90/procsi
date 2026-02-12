@@ -7,8 +7,8 @@ import { RequestRepository } from "../../src/daemon/storage.js";
 import { createProxy } from "../../src/daemon/proxy.js";
 import { createControlServer } from "../../src/daemon/control.js";
 import {
-  ensureHtpxDir,
-  getHtpxPaths,
+  ensureProcsiDir,
+  getProcsiPaths,
   writeDaemonPid,
   writeProxyPort,
 } from "../../src/shared/project.js";
@@ -17,18 +17,18 @@ import { createLogger } from "../../src/shared/logger.js";
 
 describe("debug-dump integration", () => {
   let tempDir: string;
-  let paths: ReturnType<typeof getHtpxPaths>;
+  let paths: ReturnType<typeof getProcsiPaths>;
   let storage: RequestRepository;
   let cleanup: (() => Promise<void>)[] = [];
 
   beforeEach(async () => {
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "htpx-debug-dump-test-"));
-    ensureHtpxDir(tempDir);
-    paths = getHtpxPaths(tempDir);
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "procsi-debug-dump-test-"));
+    ensureProcsiDir(tempDir);
+    paths = getProcsiPaths(tempDir);
 
     // Generate CA certificate
     const ca = await generateCACertificate({
-      subject: { commonName: "htpx Test CA" },
+      subject: { commonName: "procsi Test CA" },
     });
     fs.writeFileSync(paths.caKeyFile, ca.key);
     fs.writeFileSync(paths.caCertFile, ca.cert);
@@ -84,7 +84,7 @@ describe("debug-dump integration", () => {
     expect(dump.daemon.proxyPort).toBeUndefined();
   });
 
-  it("includes actual log content from htpx.log", () => {
+  it("includes actual log content from procsi.log", () => {
     // Create some log entries
     const logger = createLogger("daemon", tempDir, "trace");
     logger.info("Test message 1", { key: "value1" });
@@ -112,18 +112,18 @@ describe("debug-dump integration", () => {
     expect(allLogs).toContain("Test message 3");
   });
 
-  it("lists all files in .htpx directory", () => {
+  it("lists all files in .procsi directory", () => {
     // Create some test files
-    fs.writeFileSync(path.join(paths.htpxDir, "custom.file"), "test");
+    fs.writeFileSync(path.join(paths.procsiDir, "custom.file"), "test");
 
     const dump = collectDebugInfo(tempDir);
 
-    expect(dump.htpxDir.exists).toBe(true);
+    expect(dump.procsiDir.exists).toBe(true);
     // Should include standard files created in setup
-    expect(dump.htpxDir.files).toContain("ca.pem");
-    expect(dump.htpxDir.files).toContain("ca-key.pem");
-    expect(dump.htpxDir.files).toContain("requests.db");
-    expect(dump.htpxDir.files).toContain("custom.file");
+    expect(dump.procsiDir.files).toContain("ca.pem");
+    expect(dump.procsiDir.files).toContain("ca-key.pem");
+    expect(dump.procsiDir.files).toContain("requests.db");
+    expect(dump.procsiDir.files).toContain("custom.file");
   });
 
   it("dump contains all expected fields", () => {
@@ -131,10 +131,10 @@ describe("debug-dump integration", () => {
 
     // Check all top-level fields
     expect(dump.timestamp).toBeDefined();
-    expect(dump.htpxVersion).toBeDefined();
+    expect(dump.procsiVersion).toBeDefined();
     expect(dump.system).toBeDefined();
     expect(dump.daemon).toBeDefined();
-    expect(dump.htpxDir).toBeDefined();
+    expect(dump.procsiDir).toBeDefined();
     expect(dump.recentLogs).toBeDefined();
 
     // Check nested fields
@@ -142,8 +142,8 @@ describe("debug-dump integration", () => {
     expect(dump.system.release).toBeDefined();
     expect(dump.system.nodeVersion).toBeDefined();
     expect(typeof dump.daemon.running).toBe("boolean");
-    expect(typeof dump.htpxDir.exists).toBe("boolean");
-    expect(Array.isArray(dump.htpxDir.files)).toBe(true);
+    expect(typeof dump.procsiDir.exists).toBe("boolean");
+    expect(Array.isArray(dump.procsiDir.files)).toBe(true);
     expect(Array.isArray(dump.recentLogs)).toBe(true);
   });
 });

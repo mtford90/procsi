@@ -1,4 +1,4 @@
-# htpx - Terminal HTTP Interception Toolkit
+# procsi - Terminal HTTP Interception Toolkit
 
 ## Planning & Status
 
@@ -10,36 +10,36 @@
 - Keep task descriptions concise but informative
 - Code reviews are stored in `docs/reviews/<date>/`
 
-Published to npm as `htpx-cli` (v0.1.0). The name `htpx` was taken.
+Published to npm as `procsi` (v0.1.0). The name `procsi` was taken.
 
 ## Project Overview
 
-htpx is a terminal-based HTTP interception/inspection tool with project-scoped isolation and a lazygit-style TUI. It captures HTTP/HTTPS traffic through a MITM proxy and displays it in an interactive terminal interface.
+procsi is a terminal-based HTTP interception/inspection tool with project-scoped isolation and a lazygit-style TUI. It captures HTTP/HTTPS traffic through a MITM proxy and displays it in an interactive terminal interface.
 
 ## Product Vision
 
 ### Messaging Pillars
 
-These define what htpx is and how it should feel — keep them in mind when making design and UX decisions:
+These define what procsi is and how it should feel — keep them in mind when making design and UX decisions:
 
-- **Workspace-isolated** — per-project `.htpx/` directory, no cross-project bleed
+- **Workspace-isolated** — per-project `.procsi/` directory, no cross-project bleed
 - **Lives in your terminal** — TUI, not another GUI app; fits your existing workflow
 - **AI-native** — MCP integration, AI writes your mocks, inspects your traffic
 - **Config-as-code** — mocks and interceptors are TypeScript files, not GUI toggles
-- **Zero-config** — `htpx on` and go; auto-starts daemon, auto-generates certs
+- **Zero-config** — `procsi on` and go; auto-starts daemon, auto-generates certs
 - **Developer-first** — built for how you already work, not bolted on
 
 ### Strategic Direction
 
-The long-term vision centres on **mocks & interceptors as code** — TypeScript config files inside `.htpx/` that define middleware/intercept/mock behaviour, with full programmatic access to the htpx client. The TUI visualises what's configured, but logic lives in code.
+The long-term vision centres on **mocks & interceptors as code** — TypeScript config files inside `.procsi/` that define middleware/intercept/mock behaviour, with full programmatic access to the procsi client. The TUI visualises what's configured, but logic lives in code.
 
-**MCP integration** is a first-class concern: AI agents should be able to discover `.htpx`, communicate with the proxy, search through captured traffic, and write/manage mock rules via the config-as-code system.
+**MCP integration** is a first-class concern: AI agents should be able to discover `.procsi`, communicate with the proxy, search through captured traffic, and write/manage mock rules via the config-as-code system.
 
 ## Architecture
 
 ```
 ~/projects/client-a/
-├── .htpx/
+├── .procsi/
 │   ├── proxy.port        # TCP port for HTTP_PROXY
 │   ├── control.sock      # Unix socket for TUI <-> daemon
 │   ├── requests.db       # SQLite - captured traffic
@@ -48,11 +48,11 @@ The long-term vision centres on **mocks & interceptors as code** — TypeScript 
 ```
 
 Key design decisions:
-- **Project-scoped isolation** - each project gets its own `.htpx/` directory
+- **Project-scoped isolation** - each project gets its own `.procsi/` directory
 - **Unix socket for control API** - avoids port conflicts
 - **TCP for proxy** - required by HTTP_PROXY standard
 - **SQLite for persistence** - simple, embedded storage
-- **Auto-start daemon** - starts on first `htpx on`
+- **Auto-start daemon** - starts on first `procsi on`
 
 ## Technology Stack
 
@@ -161,7 +161,7 @@ npm run typecheck && npm run lint && npm test
 | `src/cli/commands/` | Command implementations |
 | `src/daemon/` | Proxy daemon (mockttp, control API) |
 | `src/tui/` | ink TUI components |
-| `src/shared/project.ts` | Project root detection, .htpx paths |
+| `src/shared/project.ts` | Project root detection, .procsi paths |
 | `src/shared/daemon.ts` | Daemon lifecycle management |
 
 ## Code Quality Guidelines
@@ -245,5 +245,5 @@ CI will automatically publish to npm on version tags (requires `NPM_TOKEN` secre
 
 ## Repository
 
-- **npm**: https://www.npmjs.com/package/htpx-cli
-- **GitHub**: https://github.com/mtford90/htpx
+- **npm**: https://www.npmjs.com/package/procsi
+- **GitHub**: https://github.com/mtford90/procsi

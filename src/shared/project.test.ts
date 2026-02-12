@@ -5,9 +5,9 @@ import * as os from "node:os";
 import {
   findProjectRoot,
   findOrCreateProjectRoot,
-  getHtpxDir,
-  ensureHtpxDir,
-  getHtpxPaths,
+  getProcsiDir,
+  ensureProcsiDir,
+  getProcsiPaths,
   readProxyPort,
   writeProxyPort,
   readDaemonPid,
@@ -20,7 +20,7 @@ describe("project utilities", () => {
   let tempDir: string;
 
   beforeEach(() => {
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "htpx-test-"));
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "procsi-test-"));
   });
 
   afterEach(() => {
@@ -28,14 +28,14 @@ describe("project utilities", () => {
   });
 
   describe("findProjectRoot", () => {
-    it("returns undefined when no .htpx or .git directory exists", () => {
+    it("returns undefined when no .procsi or .git directory exists", () => {
       const result = findProjectRoot(tempDir);
       expect(result).toBeUndefined();
     });
 
-    it("finds project root when .htpx directory exists", () => {
-      const htpxDir = path.join(tempDir, ".htpx");
-      fs.mkdirSync(htpxDir);
+    it("finds project root when .procsi directory exists", () => {
+      const procsiDir = path.join(tempDir, ".procsi");
+      fs.mkdirSync(procsiDir);
 
       const result = findProjectRoot(tempDir);
       expect(result).toBe(tempDir);
@@ -49,10 +49,10 @@ describe("project utilities", () => {
       expect(result).toBe(tempDir);
     });
 
-    it("prefers .htpx over .git when both exist", () => {
-      const htpxDir = path.join(tempDir, ".htpx");
+    it("prefers .procsi over .git when both exist", () => {
+      const procsiDir = path.join(tempDir, ".procsi");
       const gitDir = path.join(tempDir, ".git");
-      fs.mkdirSync(htpxDir);
+      fs.mkdirSync(procsiDir);
       fs.mkdirSync(gitDir);
 
       const result = findProjectRoot(tempDir);
@@ -60,9 +60,9 @@ describe("project utilities", () => {
     });
 
     it("walks up directory tree to find project root", () => {
-      const htpxDir = path.join(tempDir, ".htpx");
+      const procsiDir = path.join(tempDir, ".procsi");
       const subDir = path.join(tempDir, "src", "components");
-      fs.mkdirSync(htpxDir);
+      fs.mkdirSync(procsiDir);
       fs.mkdirSync(subDir, { recursive: true });
 
       const result = findProjectRoot(subDir);
@@ -71,15 +71,15 @@ describe("project utilities", () => {
   });
 
   describe("findOrCreateProjectRoot", () => {
-    it("returns directory with existing .htpx", () => {
-      const htpxDir = path.join(tempDir, ".htpx");
-      fs.mkdirSync(htpxDir);
+    it("returns directory with existing .procsi", () => {
+      const procsiDir = path.join(tempDir, ".procsi");
+      fs.mkdirSync(procsiDir);
 
       const result = findOrCreateProjectRoot(tempDir);
       expect(result).toBe(tempDir);
     });
 
-    it("returns git root when .git exists but no .htpx", () => {
+    it("returns git root when .git exists but no .procsi", () => {
       const gitDir = path.join(tempDir, ".git");
       fs.mkdirSync(gitDir);
 
@@ -87,7 +87,7 @@ describe("project utilities", () => {
       expect(result).toBe(tempDir);
     });
 
-    it("returns startDir when neither .htpx nor .git exists in isolated tree", () => {
+    it("returns startDir when neither .procsi nor .git exists in isolated tree", () => {
       // Note: This test verifies the fallback logic. In practice, when run inside
       // a git repo (like during development), the function will find that repo's
       // .git directory. This test documents the expected behaviour when truly
@@ -95,22 +95,22 @@ describe("project utilities", () => {
       const subDir = path.join(tempDir, "some", "nested", "dir");
       fs.mkdirSync(subDir, { recursive: true });
 
-      // Since we're running inside the htpx git repo, the function will walk up
+      // Since we're running inside the procsi git repo, the function will walk up
       // and find it. We verify it returns a valid path (the git root it found).
       const result = findOrCreateProjectRoot(subDir);
       expect(typeof result).toBe("string");
       expect(result.length).toBeGreaterThan(0);
     });
 
-    it("prefers .htpx over .git when both exist at different levels", () => {
-      // Git root at tempDir, .htpx at a subdirectory
+    it("prefers .procsi over .git when both exist at different levels", () => {
+      // Git root at tempDir, .procsi at a subdirectory
       const gitDir = path.join(tempDir, ".git");
       const projectDir = path.join(tempDir, "project");
-      const htpxDir = path.join(projectDir, ".htpx");
+      const procsiDir = path.join(projectDir, ".procsi");
       const workDir = path.join(projectDir, "src");
 
       fs.mkdirSync(gitDir);
-      fs.mkdirSync(htpxDir, { recursive: true });
+      fs.mkdirSync(procsiDir, { recursive: true });
       fs.mkdirSync(workDir, { recursive: true });
 
       const result = findOrCreateProjectRoot(workDir);
@@ -128,49 +128,49 @@ describe("project utilities", () => {
     });
   });
 
-  describe("getHtpxDir", () => {
-    it("returns path to .htpx directory", () => {
-      const result = getHtpxDir(tempDir);
-      expect(result).toBe(path.join(tempDir, ".htpx"));
+  describe("getProcsiDir", () => {
+    it("returns path to .procsi directory", () => {
+      const result = getProcsiDir(tempDir);
+      expect(result).toBe(path.join(tempDir, ".procsi"));
     });
   });
 
-  describe("ensureHtpxDir", () => {
-    it("creates .htpx directory if it does not exist", () => {
-      const htpxDir = ensureHtpxDir(tempDir);
+  describe("ensureProcsiDir", () => {
+    it("creates .procsi directory if it does not exist", () => {
+      const procsiDir = ensureProcsiDir(tempDir);
 
-      expect(htpxDir).toBe(path.join(tempDir, ".htpx"));
-      expect(fs.existsSync(htpxDir)).toBe(true);
+      expect(procsiDir).toBe(path.join(tempDir, ".procsi"));
+      expect(fs.existsSync(procsiDir)).toBe(true);
     });
 
-    it("returns existing .htpx directory if it exists", () => {
-      const existingDir = path.join(tempDir, ".htpx");
+    it("returns existing .procsi directory if it exists", () => {
+      const existingDir = path.join(tempDir, ".procsi");
       fs.mkdirSync(existingDir);
 
-      const htpxDir = ensureHtpxDir(tempDir);
+      const procsiDir = ensureProcsiDir(tempDir);
 
-      expect(htpxDir).toBe(existingDir);
-      expect(fs.existsSync(htpxDir)).toBe(true);
+      expect(procsiDir).toBe(existingDir);
+      expect(fs.existsSync(procsiDir)).toBe(true);
     });
   });
 
-  describe("getHtpxPaths", () => {
+  describe("getProcsiPaths", () => {
     it("returns all expected paths", () => {
-      const paths = getHtpxPaths(tempDir);
+      const paths = getProcsiPaths(tempDir);
 
-      expect(paths.htpxDir).toBe(path.join(tempDir, ".htpx"));
-      expect(paths.proxyPortFile).toBe(path.join(tempDir, ".htpx", "proxy.port"));
-      expect(paths.controlSocketFile).toBe(path.join(tempDir, ".htpx", "control.sock"));
-      expect(paths.databaseFile).toBe(path.join(tempDir, ".htpx", "requests.db"));
-      expect(paths.caKeyFile).toBe(path.join(tempDir, ".htpx", "ca-key.pem"));
-      expect(paths.caCertFile).toBe(path.join(tempDir, ".htpx", "ca.pem"));
-      expect(paths.pidFile).toBe(path.join(tempDir, ".htpx", "daemon.pid"));
+      expect(paths.procsiDir).toBe(path.join(tempDir, ".procsi"));
+      expect(paths.proxyPortFile).toBe(path.join(tempDir, ".procsi", "proxy.port"));
+      expect(paths.controlSocketFile).toBe(path.join(tempDir, ".procsi", "control.sock"));
+      expect(paths.databaseFile).toBe(path.join(tempDir, ".procsi", "requests.db"));
+      expect(paths.caKeyFile).toBe(path.join(tempDir, ".procsi", "ca-key.pem"));
+      expect(paths.caCertFile).toBe(path.join(tempDir, ".procsi", "ca.pem"));
+      expect(paths.pidFile).toBe(path.join(tempDir, ".procsi", "daemon.pid"));
     });
   });
 
   describe("proxy port file", () => {
     beforeEach(() => {
-      ensureHtpxDir(tempDir);
+      ensureProcsiDir(tempDir);
     });
 
     it("returns undefined when port file does not exist", () => {
@@ -185,7 +185,7 @@ describe("project utilities", () => {
     });
 
     it("returns undefined for invalid port content", () => {
-      const { proxyPortFile } = getHtpxPaths(tempDir);
+      const { proxyPortFile } = getProcsiPaths(tempDir);
       fs.writeFileSync(proxyPortFile, "not-a-number");
 
       const result = readProxyPort(tempDir);
@@ -195,7 +195,7 @@ describe("project utilities", () => {
 
   describe("daemon pid file", () => {
     beforeEach(() => {
-      ensureHtpxDir(tempDir);
+      ensureProcsiDir(tempDir);
     });
 
     it("returns undefined when pid file does not exist", () => {
@@ -237,9 +237,9 @@ describe("project utilities", () => {
   });
 
   describe("override parameter", () => {
-    it("findProjectRoot returns resolved override path when .htpx exists", () => {
-      const htpxDir = path.join(tempDir, ".htpx");
-      fs.mkdirSync(htpxDir);
+    it("findProjectRoot returns resolved override path when .procsi exists", () => {
+      const procsiDir = path.join(tempDir, ".procsi");
+      fs.mkdirSync(procsiDir);
       const result = findProjectRoot(undefined, tempDir);
       expect(result).toBe(tempDir);
     });
@@ -251,7 +251,7 @@ describe("project utilities", () => {
       expect(result).toBe(tempDir);
     });
 
-    it("findProjectRoot returns undefined when override has no .htpx or .git", () => {
+    it("findProjectRoot returns undefined when override has no .procsi or .git", () => {
       const result = findProjectRoot(undefined, tempDir);
       expect(result).toBeUndefined();
     });
@@ -288,7 +288,7 @@ describe("project utilities", () => {
   });
 
   describe("homedir fallback", () => {
-    it("findOrCreateProjectRoot falls back to homedir when no .htpx or .git found in isolated tree", () => {
+    it("findOrCreateProjectRoot falls back to homedir when no .procsi or .git found in isolated tree", () => {
       const subDir = path.join(tempDir, "some", "nested", "dir");
       fs.mkdirSync(subDir, { recursive: true });
       // In this test env we're inside a git repo, so this will find that.

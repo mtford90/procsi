@@ -9,7 +9,7 @@ describe("Logger", () => {
   let logFile: string;
 
   beforeEach(() => {
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "htpx-logger-test-"));
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "procsi-logger-test-"));
     logFile = path.join(tempDir, "test.log");
   });
 
@@ -295,7 +295,7 @@ describe("createLogger", () => {
   let tempDir: string;
 
   beforeEach(() => {
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "htpx-logger-test-"));
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "procsi-logger-test-"));
   });
 
   afterEach(() => {
@@ -307,7 +307,7 @@ describe("createLogger", () => {
     logger.info("Test message");
     logger.close();
 
-    const expectedPath = path.join(tempDir, ".htpx", "htpx.log");
+    const expectedPath = path.join(tempDir, ".procsi", "procsi.log");
     expect(fs.existsSync(expectedPath)).toBe(true);
   });
 });

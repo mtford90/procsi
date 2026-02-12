@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Populate htpx with real test requests for development/demo purposes.
+# Populate procsi with real test requests for development/demo purposes.
 # This script clears existing data, starts the daemon, makes various HTTP
 # requests through the proxy, and then stops the daemon.
 #
@@ -19,25 +19,25 @@ NC='\033[0m' # No colour
 # Get the project root (directory containing this script's parent)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-HTPX_DIR="$PROJECT_ROOT/.htpx"
+PROCSI_DIR="$PROJECT_ROOT/.procsi"
 
-echo -e "${BLUE}=== htpx Test Data Population Script ===${NC}"
+echo -e "${BLUE}=== procsi Test Data Population Script ===${NC}"
 echo ""
 
 # Step 1: Clean out existing data
-echo -e "${YELLOW}Step 1: Cleaning existing .htpx directory...${NC}"
-if [ -d "$HTPX_DIR" ]; then
+echo -e "${YELLOW}Step 1: Cleaning existing .procsi directory...${NC}"
+if [ -d "$PROCSI_DIR" ]; then
     # Stop daemon if running
-    if [ -f "$HTPX_DIR/daemon.pid" ]; then
+    if [ -f "$PROCSI_DIR/daemon.pid" ]; then
         echo "  Stopping existing daemon..."
         cd "$PROJECT_ROOT" && node dist/cli/index.js stop 2>/dev/null || true
     fi
 
-    echo "  Removing $HTPX_DIR..."
-    rm -rf "$HTPX_DIR"
+    echo "  Removing $PROCSI_DIR..."
+    rm -rf "$PROCSI_DIR"
     echo -e "  ${GREEN}Cleaned!${NC}"
 else
-    echo "  No existing .htpx directory found."
+    echo "  No existing .procsi directory found."
 fi
 echo ""
 
@@ -49,7 +49,7 @@ echo -e "${GREEN}Build complete!${NC}"
 echo ""
 
 # Step 3: Start the daemon and get proxy settings
-echo -e "${YELLOW}Step 3: Starting htpx daemon...${NC}"
+echo -e "${YELLOW}Step 3: Starting procsi daemon...${NC}"
 cd "$PROJECT_ROOT"
 
 # Run intercept command and capture the environment variables
@@ -115,7 +115,7 @@ make_request POST "https://httpbin.org/post" "POST with form data" \
 echo ""
 echo -e "  ${BLUE}--- Headers ---${NC}"
 make_request GET "https://httpbin.org/headers" "Headers inspection" \
-    -H "X-Custom-Header: hello-htpx" \
+    -H "X-Custom-Header: hello-procsi" \
     -H "Authorization: Bearer test-token-123"
 
 # Various status codes
@@ -179,7 +179,7 @@ echo -e "${GREEN}=== Complete! ===${NC}"
 echo ""
 echo "Test data has been populated. You can now run:"
 echo ""
-echo -e "  ${BLUE}htpx tui${NC}       # Open the TUI to inspect requests"
-echo -e "  ${BLUE}htpx status${NC}    # Check daemon status"
-echo -e "  ${BLUE}htpx daemon stop${NC}  # Stop the daemon"
+echo -e "  ${BLUE}procsi tui${NC}       # Open the TUI to inspect requests"
+echo -e "  ${BLUE}procsi status${NC}    # Check daemon status"
+echo -e "  ${BLUE}procsi daemon stop${NC}  # Stop the daemon"
 echo ""

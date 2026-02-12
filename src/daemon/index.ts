@@ -8,16 +8,16 @@ import { createProxy } from "./proxy.js";
 import { createControlServer } from "./control.js";
 import { createInterceptorLoader, type InterceptorLoader } from "./interceptor-loader.js";
 import { createInterceptorRunner } from "./interceptor-runner.js";
-import { createHtpxClient } from "./htpx-client.js";
+import { createProcsiClient } from "./procsi-client.js";
 import {
-  getHtpxPaths,
-  ensureHtpxDir,
+  getProcsiPaths,
+  ensureProcsiDir,
   writeProxyPort,
   writeDaemonPid,
   removeDaemonPid,
 } from "../shared/project.js";
 import { createLogger, isValidLogLevel, type LogLevel } from "../shared/logger.js";
-import { getHtpxVersion } from "../shared/version.js";
+import { getProcsiVersion } from "../shared/version.js";
 import { loadConfig } from "../shared/config.js";
 
 /**
@@ -31,11 +31,11 @@ async function main() {
     process.exit(1);
   }
 
-  // Ensure .htpx directory exists
-  ensureHtpxDir(projectRoot);
+  // Ensure .procsi directory exists
+  ensureProcsiDir(projectRoot);
 
   // Parse log level from environment
-  const envLogLevel = process.env["HTPX_LOG_LEVEL"];
+  const envLogLevel = process.env["PROCSI_LOG_LEVEL"];
   const logLevel: LogLevel = envLogLevel && isValidLogLevel(envLogLevel) ? envLogLevel : "warn";
 
   // Load project configuration
@@ -43,13 +43,13 @@ async function main() {
 
   const logger = createLogger("daemon", projectRoot, logLevel, { maxLogSize: config.maxLogSize });
 
-  const paths = getHtpxPaths(projectRoot);
+  const paths = getProcsiPaths(projectRoot);
 
   // Generate CA certificate if it doesn't exist
   if (!fs.existsSync(paths.caCertFile) || !fs.existsSync(paths.caKeyFile)) {
     logger.info("Generating CA certificate");
     const ca = await generateCACertificate({
-      subject: { commonName: "htpx Local CA - DO NOT TRUST" },
+      subject: { commonName: "procsi Local CA - DO NOT TRUST" },
     });
     fs.writeFileSync(paths.caKeyFile, ca.key);
     fs.writeFileSync(paths.caCertFile, ca.cert);
@@ -67,7 +67,7 @@ async function main() {
   let interceptorRunner: ReturnType<typeof createInterceptorRunner> | undefined;
 
   if (fs.existsSync(paths.interceptorsDir)) {
-    const htpxClient = createHtpxClient(storage);
+    const procsiClient = createProcsiClient(storage);
     interceptorLoader = await createInterceptorLoader({
       interceptorsDir: paths.interceptorsDir,
       projectRoot,
@@ -88,7 +88,7 @@ async function main() {
 
     interceptorRunner = createInterceptorRunner({
       loader: interceptorLoader,
-      htpxClient,
+      procsiClient,
       projectRoot,
       logLevel,
     });
@@ -119,7 +119,7 @@ async function main() {
   writeProxyPort(projectRoot, proxy.port);
 
   // Start control server
-  const daemonVersion = getHtpxVersion();
+  const daemonVersion = getProcsiVersion();
   logger.info("Starting control server", {
     socketPath: paths.controlSocketFile,
     version: daemonVersion,

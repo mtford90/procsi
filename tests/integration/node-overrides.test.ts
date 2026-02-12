@@ -8,7 +8,7 @@ import { promisify } from "node:util";
 import { generateCACertificate } from "mockttp";
 import { RequestRepository } from "../../src/daemon/storage.js";
 import { createProxy } from "../../src/daemon/proxy.js";
-import { ensureHtpxDir, getHtpxPaths } from "../../src/shared/project.js";
+import { ensureProcsiDir, getProcsiPaths } from "../../src/shared/project.js";
 import { writeNodePreloadScript, getNodeEnvVars } from "../../src/overrides/node.js";
 
 const execFileAsync = promisify(execFile);
@@ -18,25 +18,25 @@ const STORAGE_SETTLE_MS = 200;
 
 describe("node overrides integration", () => {
   let tempDir: string;
-  let paths: ReturnType<typeof getHtpxPaths>;
+  let paths: ReturnType<typeof getProcsiPaths>;
   let storage: RequestRepository;
   let cleanup: (() => Promise<void>)[] = [];
 
   /** Port of the upstream test server */
   let upstreamPort: number;
-  /** Port of the htpx proxy */
+  /** Port of the procsi proxy */
   let proxyPort: number;
   /** Proxy URL for env vars */
   let proxyUrl: string;
 
   beforeEach(async () => {
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "htpx-node-overrides-test-"));
-    ensureHtpxDir(tempDir);
-    paths = getHtpxPaths(tempDir);
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "procsi-node-overrides-test-"));
+    ensureProcsiDir(tempDir);
+    paths = getProcsiPaths(tempDir);
 
     // Generate CA certificate
     const ca = await generateCACertificate({
-      subject: { commonName: "htpx Test CA" },
+      subject: { commonName: "procsi Test CA" },
     });
     fs.writeFileSync(paths.caKeyFile, ca.key);
     fs.writeFileSync(paths.caCertFile, ca.cert);
@@ -193,7 +193,7 @@ describe("node overrides integration", () => {
   });
 
   it("crashes when NODE_OPTIONS contains literal single quotes around the path", async () => {
-    // Reproduces the bug: `eval $(htpx vars)` used to produce NODE_OPTIONS
+    // Reproduces the bug: `eval $(procsi vars)` used to produce NODE_OPTIONS
     // with literal single quotes inside a double-quoted shell string.
     // Node.js interprets the quotes as part of the filename and fails.
     const quotedNodeOptions = `--require '${paths.proxyPreloadFile}'`;
@@ -228,7 +228,7 @@ describe("node overrides integration", () => {
 
   it("preserves request body and headers through the proxy", async () => {
     const targetUrl = `http://127.0.0.1:${upstreamPort}/post-test`;
-    const postBody = JSON.stringify({ name: "htpx", version: 1 });
+    const postBody = JSON.stringify({ name: "procsi", version: 1 });
 
     // Use a more verbose inline script to POST with fetch()
     const script = `

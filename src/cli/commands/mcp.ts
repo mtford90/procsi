@@ -1,14 +1,14 @@
 import { Command } from "commander";
-import { createHtpxMcpServer } from "../../mcp/server.js";
+import { createProcsiMcpServer } from "../../mcp/server.js";
 import { getGlobalOptions, requireProjectRoot } from "./helpers.js";
 
 export const mcpCommand = new Command("mcp")
-  .description("Start the htpx MCP server (stdio transport for AI tool integration)")
+  .description("Start the procsi MCP server (stdio transport for AI tool integration)")
   .action(async (_, command: Command) => {
     const globalOpts = getGlobalOptions(command);
     const projectRoot = requireProjectRoot(globalOpts.dir);
 
-    const mcp = createHtpxMcpServer({ projectRoot });
+    const mcp = createProcsiMcpServer({ projectRoot });
 
     let closing = false;
     const shutdown = async () => {
@@ -23,5 +23,5 @@ export const mcpCommand = new Command("mcp")
     await mcp.start();
 
     // Log to stderr (stdout is reserved for MCP JSON-RPC protocol)
-    process.stderr.write(`htpx MCP server running (project: ${projectRoot})\n`);
+    process.stderr.write(`procsi MCP server running (project: ${projectRoot})\n`);
   });

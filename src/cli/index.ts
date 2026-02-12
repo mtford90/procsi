@@ -11,12 +11,12 @@ import { projectCommand } from "./commands/project.js";
 import { daemonCommand } from "./commands/daemon.js";
 import { tuiCommand } from "./commands/tui.js";
 import { statusCommand } from "./commands/status.js";
-import { getHtpxVersion } from "../shared/version.js";
+import { getProcsiVersion } from "../shared/version.js";
 
 program
-  .name("htpx")
+  .name("procsi")
   .description("Terminal HTTP interception toolkit")
-  .version(getHtpxVersion())
+  .version(getProcsiVersion())
   .option(
     "-v, --verbose",
     "increase verbosity (use -vv or -vvv for more)",
@@ -40,10 +40,10 @@ program.addHelpText(
   "after",
   `
 Quick start:
-  htpx on    Start intercepting HTTP traffic
-  htpx tui   Browse captured requests
+  procsi on    Start intercepting HTTP traffic
+  procsi tui   Browse captured requests
 
-Docs: https://github.com/mtford90/htpx`
+Docs: https://github.com/mtford90/procsi`
 );
 
 program.parse();

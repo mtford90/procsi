@@ -276,7 +276,7 @@ export function createControlServer(options: ControlServerOptions): ControlServe
           success: false,
           count: 0,
           error:
-            "Interceptors directory not found. Create .htpx/interceptors/ and restart the daemon.",
+            "Interceptors directory not found. Create .procsi/interceptors/ and restart the daemon.",
         };
       }
       try {

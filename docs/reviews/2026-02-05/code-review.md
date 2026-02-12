@@ -1,4 +1,4 @@
-# htpx Code Review - 2026-02-05
+# procsi Code Review - 2026-02-05
 
 Comprehensive code review conducted across 8 dimensions using parallel opus agents.
 
@@ -111,7 +111,7 @@ Comprehensive code review conducted across 8 dimensions using parallel opus agen
 
   **File:** `src/cli/tui/utils/har.ts:192-196`
 
-  **Fixed:** Now imports and uses `getHtpxVersion()`.
+  **Fixed:** Now imports and uses `getProcsiVersion()`.
 
 ---
 
@@ -329,7 +329,7 @@ Comprehensive code review conducted across 8 dimensions using parallel opus agen
 
   **Issue:** "No requests captured yet" provides no guidance on what to do next.
 
-  **Fix:** Add "Configure HTTP_PROXY to start capturing. See 'htpx help'."
+  **Fix:** Add "Configure HTTP_PROXY to start capturing. See 'procsi help'."
 
 ---
 
@@ -424,7 +424,7 @@ Comprehensive code review conducted across 8 dimensions using parallel opus agen
 
 - [x] 1.3 - Stale closure in toggle message ✓
 - [x] 1.4 - Add React.memo to RequestListItem ✓
-- [x] 3.2 - Use getHtpxVersion() in HAR export ✓
+- [x] 3.2 - Use getProcsiVersion() in HAR export ✓
 - [x] 3.3 - Add try-catch around URL parsing ✓
 - [x] 3.4 - Delete dead code files ✓
 - [x] 4.4 - Delete types.test.ts ✓

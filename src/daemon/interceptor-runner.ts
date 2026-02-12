@@ -4,7 +4,7 @@ import type {
   InterceptorResponse,
   InterceptorContext,
   InterceptionType,
-  HtpxClient,
+  ProcsiClient,
 } from "../shared/types.js";
 import type { InterceptorLoader, LoadedInterceptor } from "./interceptor-loader.js";
 
@@ -73,7 +73,7 @@ interface PendingEntry {
 
 interface InterceptorRunnerOptions {
   loader: InterceptorLoader;
-  htpxClient: HtpxClient;
+  procsiClient: ProcsiClient;
   projectRoot: string;
   logLevel?: LogLevel;
   /** Override handler timeout for testing */
@@ -148,7 +148,7 @@ function withTimeout<T>(
 // --- Factory ---
 
 export function createInterceptorRunner(options: InterceptorRunnerOptions): InterceptorRunner {
-  const { loader, htpxClient, projectRoot, logLevel } = options;
+  const { loader, procsiClient, projectRoot, logLevel } = options;
   const handlerTimeoutMs = options.handlerTimeoutMs ?? HANDLER_TIMEOUT_MS;
   const matchTimeoutMs = options.matchTimeoutMs ?? MATCH_TIMEOUT_MS;
   const logger = createLogger("interceptor", projectRoot, logLevel);
@@ -293,7 +293,7 @@ export function createInterceptorRunner(options: InterceptorRunnerOptions): Inte
     const ctx: InterceptorContext = {
       request,
       forward,
-      htpx: htpxClient,
+      procsi: procsiClient,
       log: ctxLog,
     };
 

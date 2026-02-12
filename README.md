@@ -1,27 +1,27 @@
-# htpx
+# procsi
 
-[![npm version](https://img.shields.io/npm/v/htpx-cli.svg)](https://www.npmjs.com/package/htpx-cli)
-[![CI](https://github.com/mtford90/htpx/actions/workflows/ci.yml/badge.svg)](https://github.com/mtford90/htpx/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/procsi.svg)](https://www.npmjs.com/package/procsi)
+[![CI](https://github.com/mtford90/procsi/actions/workflows/ci.yml/badge.svg)](https://github.com/mtford90/procsi/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-HTTP interception for the terminal. Each project gets its own proxy, its own traffic database, its own mocks — all in a `.htpx/` directory that lives alongside your code.
+HTTP interception for the terminal. Each project gets its own proxy, its own traffic database, its own mocks — all in a `.procsi/` directory that lives alongside your code.
 
-![htpx demo](demo.gif)
+![procsi demo](demo.gif)
 
 No browser extensions, no global system proxy, no separate apps. A MITM proxy captures your traffic, a lazygit-style TUI lets you browse it, TypeScript files let you mock it, and AI agents can query and manipulate all of it via MCP.
 
 ## Quick Start
 
 ```bash
-npm install -g htpx-cli
+npm install -g procsi
 
 # One-time shell setup
-eval "$(htpx init)"
+eval "$(procsi init)"
 
 # In your project directory
-htpx on
+procsi on
 curl https://api.example.com/users
-htpx tui
+procsi tui
 ```
 
 Requires Node.js 20+.
@@ -31,14 +31,14 @@ Requires Node.js 20+.
 Run this once per shell session (or add it to your shell profile):
 
 ```bash
-eval "$(htpx init)"
+eval "$(procsi init)"
 ```
 
-This creates a shell function that lets `htpx on`/`htpx off` set proxy environment variables in your current session.
+This creates a shell function that lets `procsi on`/`procsi off` set proxy environment variables in your current session.
 
 ## Features
 
-- **Project-scoped** — each project gets its own `.htpx/` directory with a separate daemon, database, CA cert and interceptors. No cross-project bleed.
+- **Project-scoped** — each project gets its own `.procsi/` directory with a separate daemon, database, CA cert and interceptors. No cross-project bleed.
 - **TypeScript interceptors** — mock, modify or observe traffic with `.ts` files. Match on anything, query past traffic from within handlers, compose complex scenarios.
 - **MCP server** — AI agents get full access to your captured traffic and can write interceptor files for you. Search, filter, inspect, mock — all via tool calls.
 - **Terminal TUI** — vim-style keybindings, mouse support, JSON explorer, filtering. Stays in your terminal where you're already working.
@@ -48,11 +48,11 @@ This creates a shell function that lets `htpx on`/`htpx off` set proxy environme
 
 ## Project Isolation
 
-htpx doesn't use a global system proxy. Each project gets its own `.htpx/` directory in the project root (detected by `.git` or an existing `.htpx/`):
+procsi doesn't use a global system proxy. Each project gets its own `.procsi/` directory in the project root (detected by `.git` or an existing `.procsi/`):
 
 ```
 your-project/
-├── .htpx/
+├── .procsi/
 │   ├── interceptors/   # TypeScript interceptor files
 │   ├── config.json     # Optional project config
 │   ├── proxy.port      # Proxy TCP port
@@ -63,15 +63,15 @@ your-project/
 └── src/...
 ```
 
-Separate daemon, separate database, separate certificates. You can run htpx in multiple projects at the same time without them interfering with each other.
+Separate daemon, separate database, separate certificates. You can run procsi in multiple projects at the same time without them interfering with each other.
 
 ## Interceptors
 
-TypeScript files in `.htpx/interceptors/` that intercept HTTP traffic as it passes through the proxy. They can return mock responses, modify upstream responses, or just observe.
+TypeScript files in `.procsi/interceptors/` that intercept HTTP traffic as it passes through the proxy. They can return mock responses, modify upstream responses, or just observe.
 
 ```bash
-htpx interceptors init    # scaffold an example
-htpx interceptors reload  # reload after editing
+procsi interceptors init    # scaffold an example
+procsi interceptors reload  # reload after editing
 ```
 
 ### Mock
@@ -79,7 +79,7 @@ htpx interceptors reload  # reload after editing
 Return a response without hitting upstream:
 
 ```typescript
-import type { Interceptor } from "htpx-cli/interceptors";
+import type { Interceptor } from "procsi/interceptors";
 
 export default {
   name: "mock-users",
@@ -97,14 +97,14 @@ export default {
 Forward to upstream, then alter the response:
 
 ```typescript
-import type { Interceptor } from "htpx-cli/interceptors";
+import type { Interceptor } from "procsi/interceptors";
 
 export default {
   name: "inject-header",
   match: (req) => req.host.includes("example.com"),
   handler: async (ctx) => {
     const response = await ctx.forward();
-    return { ...response, headers: { ...response.headers, "x-debug": "htpx" } };
+    return { ...response, headers: { ...response.headers, "x-debug": "procsi" } };
   },
 } satisfies Interceptor;
 ```
@@ -114,7 +114,7 @@ export default {
 Log traffic without altering it:
 
 ```typescript
-import type { Interceptor } from "htpx-cli/interceptors";
+import type { Interceptor } from "procsi/interceptors";
 
 export default {
   name: "log-api",
@@ -130,10 +130,10 @@ export default {
 
 ### Query Past Traffic
 
-Interceptors can query the traffic database via `ctx.htpx`. This lets you build mocks that react to what's already happened — rate limiting, conditional failures, responses based on prior requests:
+Interceptors can query the traffic database via `ctx.procsi`. This lets you build mocks that react to what's already happened — rate limiting, conditional failures, responses based on prior requests:
 
 ```typescript
-import type { Interceptor } from "htpx-cli/interceptors";
+import type { Interceptor } from "procsi/interceptors";
 
 export default {
   name: "rate-limit",
@@ -141,7 +141,7 @@ export default {
   handler: async (ctx) => {
     // Count how many requests this endpoint has seen in the last minute
     const since = new Date(Date.now() - 60_000).toISOString();
-    const count = await ctx.htpx.countRequests({
+    const count = await ctx.procsi.countRequests({
       path: ctx.request.path,
       since,
     });
@@ -165,10 +165,10 @@ export default {
 |----------|-------------|
 | `ctx.request` | The incoming request (frozen, read-only) |
 | `ctx.forward()` | Forward to upstream, returns the response |
-| `ctx.htpx` | Query captured traffic (see below) |
-| `ctx.log(msg)` | Write to `.htpx/htpx.log` |
+| `ctx.procsi` | Query captured traffic (see below) |
+| `ctx.log(msg)` | Write to `.procsi/procsi.log` |
 
-#### `ctx.htpx`
+#### `ctx.procsi`
 
 | Method | Description |
 |--------|-------------|
@@ -180,18 +180,18 @@ export default {
 
 ### How Interceptors Work
 
-- Any `.ts` file in `.htpx/interceptors/` is loaded automatically
+- Any `.ts` file in `.procsi/interceptors/` is loaded automatically
 - Files load alphabetically; first match wins
 - `match` is optional — omit it to match everything
-- Hot-reloads on file changes, or run `htpx interceptors reload`
+- Hot-reloads on file changes, or run `procsi interceptors reload`
 - 30s handler timeout, 5s match timeout
 - Errors fall through gracefully (never crashes the proxy)
-- `ctx.log()` writes to `.htpx/htpx.log` since `console.log` goes nowhere in the daemon
+- `ctx.log()` writes to `.procsi/procsi.log` since `console.log` goes nowhere in the daemon
 - Use `satisfies Interceptor` for full intellisense
 
 ## MCP Integration
 
-htpx has a built-in [MCP](https://modelcontextprotocol.io/) server that gives AI agents full access to your captured traffic and interceptor system. Agents can search through requests, inspect headers and bodies, and write interceptor files directly into `.htpx/interceptors/`.
+procsi has a built-in [MCP](https://modelcontextprotocol.io/) server that gives AI agents full access to your captured traffic and interceptor system. Agents can search through requests, inspect headers and bodies, and write interceptor files directly into `.procsi/interceptors/`.
 
 This means you can ask things like:
 
@@ -200,34 +200,34 @@ This means you can ask things like:
 - "What's the average response time for requests to the auth service in the last hour?"
 - "Write an interceptor that logs all requests with missing auth headers"
 
-The agent reads your traffic, writes the TypeScript, and htpx hot-reloads it.
+The agent reads your traffic, writes the TypeScript, and procsi hot-reloads it.
 
 ### Setup
 
-Add htpx to your MCP client config:
+Add procsi to your MCP client config:
 
 ```json
 {
   "mcpServers": {
-    "htpx": {
-      "command": "htpx",
+    "procsi": {
+      "command": "procsi",
       "args": ["mcp"]
     }
   }
 }
 ```
 
-The proxy must be running (`htpx on` or `eval "$(htpx vars)"`) — the MCP server connects to the same daemon as the TUI.
+The proxy must be running (`procsi on` or `eval "$(procsi vars)"`) — the MCP server connects to the same daemon as the TUI.
 
 ### Agent Skill
 
-htpx also ships an agent skill that teaches AI assistants how to use the MCP tools properly. Gets you better results out of the box.
+procsi also ships an agent skill that teaches AI assistants how to use the MCP tools properly. Gets you better results out of the box.
 
 **Claude Code:**
 
 ```bash
-/plugin marketplace add mtford90/htpx
-/plugin install htpx
+/plugin marketplace add mtford90/procsi
+/plugin install procsi
 ```
 
 **npm-agentskills** (works with Cursor, Copilot, Codex, etc.):
@@ -240,16 +240,16 @@ npx agents export --target claude
 
 | Tool | Description |
 |------|-------------|
-| `htpx_get_status` | Daemon status, proxy port, request count |
-| `htpx_list_requests` | Search and filter captured requests |
-| `htpx_get_request` | Full request details by ID (headers, bodies, timing) |
-| `htpx_search_bodies` | Full-text search through body content |
-| `htpx_query_json` | Extract values from JSON bodies via JSONPath |
-| `htpx_count_requests` | Count matching requests |
-| `htpx_clear_requests` | Delete all captured requests |
-| `htpx_list_sessions` | List active proxy sessions |
-| `htpx_list_interceptors` | List loaded interceptors with status and errors |
-| `htpx_reload_interceptors` | Reload interceptors from disk |
+| `procsi_get_status` | Daemon status, proxy port, request count |
+| `procsi_list_requests` | Search and filter captured requests |
+| `procsi_get_request` | Full request details by ID (headers, bodies, timing) |
+| `procsi_search_bodies` | Full-text search through body content |
+| `procsi_query_json` | Extract values from JSON bodies via JSONPath |
+| `procsi_count_requests` | Count matching requests |
+| `procsi_clear_requests` | Delete all captured requests |
+| `procsi_list_sessions` | List active proxy sessions |
+| `procsi_list_interceptors` | List loaded interceptors with status and errors |
+| `procsi_reload_interceptors` | Reload interceptors from disk |
 
 ### Filtering
 
@@ -270,9 +270,9 @@ Most tools accept these filters:
 | `offset` | Pagination offset (0-based) | `0` |
 | `limit` | Max results (default 50, max 500) | `100` |
 
-`htpx_get_request` accepts comma-separated IDs for batch fetching (e.g. `"id1,id2,id3"`).
+`procsi_get_request` accepts comma-separated IDs for batch fetching (e.g. `"id1,id2,id3"`).
 
-`htpx_query_json` also takes:
+`procsi_query_json` also takes:
 
 | Parameter | Description | Example |
 |-----------|-------------|---------|
@@ -289,10 +289,10 @@ All query tools accept a `format` parameter:
 ### Examples
 
 ```
-htpx_list_requests({ status_range: "5xx", path: "/api" })
-htpx_search_bodies({ query: "error_code", method: "POST" })
-htpx_query_json({ json_path: "$.user.id", target: "response" })
-htpx_list_requests({ header_name: "authorization", header_target: "request" })
+procsi_list_requests({ status_range: "5xx", path: "/api" })
+procsi_search_bodies({ query: "error_code", method: "POST" })
+procsi_query_json({ json_path: "$.user.id", target: "response" })
+procsi_list_requests({ header_name: "authorization", header_target: "request" })
 ```
 
 ## How It Works
@@ -310,7 +310,7 @@ htpx_list_requests({ header_name: "authorization", header_target: "request" })
 └──────────────────────────┼──────────────────────────────────┘
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
-│  htpx daemon                                                │
+│  procsi daemon                                                │
 │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐     │
 │  │ MITM Proxy  │───▶│   SQLite    │◀───│ Control API │     │
 │  │  (mockttp)  │    │  requests   │    │ (unix sock) │     │
@@ -319,7 +319,7 @@ htpx_list_requests({ header_name: "authorization", header_target: "request" })
                            ▲
                            │
 ┌──────────────────────────┼──────────────────────────────────┐
-│  htpx tui                │                                  │
+│  procsi tui                │                                  │
 │  ┌───────────────────────┴─────────────────────────────┐   │
 │  │ ● POST /api/users   │ POST https://api.example.com  │   │
 │  │   GET  /health      │ Status: 200 │ Duration: 45ms  │   │
@@ -330,11 +330,11 @@ htpx_list_requests({ header_name: "authorization", header_target: "request" })
 └─────────────────────────────────────────────────────────────┘
 ```
 
-`htpx on` (via the shell wrapper) starts a daemon, sets `HTTP_PROXY`/`HTTPS_PROXY` in your shell, and captures everything that flows through. `htpx off` unsets them. The TUI connects to the daemon via Unix socket.
+`procsi on` (via the shell wrapper) starts a daemon, sets `HTTP_PROXY`/`HTTPS_PROXY` in your shell, and captures everything that flows through. `procsi off` unsets them. The TUI connects to the daemon via Unix socket.
 
 ### Environment Variables
 
-`htpx on` sets these in your shell (`htpx off` unsets them). Without the shell wrapper, use `eval "$(htpx vars)"` and `eval "$(htpx vars --clear)"`:
+`procsi on` sets these in your shell (`procsi off` unsets them). Without the shell wrapper, use `eval "$(procsi vars)"` and `eval "$(procsi vars --clear)"`:
 
 | Variable | Purpose |
 |----------|---------|
@@ -343,12 +343,12 @@ htpx_list_requests({ header_name: "authorization", header_target: "request" })
 | `SSL_CERT_FILE` | CA cert path (curl, git, etc.) |
 | `REQUESTS_CA_BUNDLE` | CA cert path (Python requests) |
 | `NODE_EXTRA_CA_CERTS` | CA cert path (Node.js) |
-| `HTPX_SESSION_ID` | UUID identifying the current session |
-| `HTPX_LABEL` | Session label (when `-l` flag used) |
+| `PROCSI_SESSION_ID` | UUID identifying the current session |
+| `PROCSI_LABEL` | Session label (when `-l` flag used) |
 
 ## Configuration
 
-Create `.htpx/config.json` to override defaults. All fields are optional:
+Create `.procsi/config.json` to override defaults. All fields are optional:
 
 ```json
 {
@@ -394,7 +394,7 @@ curl -X POST 'https://api.example.com/users' \
 
 Press `H` to export all requests as a HAR file. Compatible with browser dev tools.
 
-Press `s` on a body to open the export modal — clipboard, `.htpx/exports/`, `~/Downloads/`, custom path, or open in default application.
+Press `s` on a body to open the export modal — clipboard, `.procsi/exports/`, `~/Downloads/`, custom path, or open in default application.
 
 ## TUI Keybindings
 
@@ -472,19 +472,19 @@ Mouse support: click to select, scroll to navigate, click panels to focus.
 | `-v, --verbose` | Increase log verbosity (stackable: `-vv`, `-vvv`) |
 | `-d, --dir <path>` | Override project root directory |
 
-### `htpx init`
+### `procsi init`
 
-Output shell wrapper function. Enables `htpx on`/`htpx off` to set environment variables in the current shell.
+Output shell wrapper function. Enables `procsi on`/`procsi off` to set environment variables in the current shell.
 
-### `htpx vars`
+### `procsi vars`
 
 Output shell `export` statements to set proxy environment variables. Use with `eval`:
 
 ```bash
-eval "$(htpx vars)"
+eval "$(procsi vars)"
 ```
 
-With the shell wrapper from `htpx init`, you can use the simpler `htpx on` instead.
+With the shell wrapper from `procsi init`, you can use the simpler `procsi on` instead.
 
 | Flag | Description |
 |------|-------------|
@@ -492,7 +492,7 @@ With the shell wrapper from `htpx init`, you can use the simpler `htpx on` inste
 | `--no-restart` | Don't auto-restart daemon on version mismatch |
 | `--clear` | Output `unset` statements to stop interception |
 
-### `htpx tui`
+### `procsi tui`
 
 Open the interactive TUI.
 
@@ -500,51 +500,51 @@ Open the interactive TUI.
 |------|-------------|
 | `--ci` | CI mode: render once and exit (for testing) |
 
-### `htpx status`
+### `procsi status`
 
 Show comprehensive status: daemon state, interception state, sessions, request count, loaded interceptors.
 
-### `htpx daemon stop`
+### `procsi daemon stop`
 
 Stop the daemon.
 
-### `htpx daemon restart`
+### `procsi daemon restart`
 
 Restart the daemon (or start it if not running).
 
-### `htpx clear`
+### `procsi clear`
 
 Clear all captured requests.
 
-### `htpx debug-dump`
+### `procsi debug-dump`
 
-Collect diagnostics (system info, daemon status, recent logs) into `.htpx/debug-dump-<timestamp>.json`.
+Collect diagnostics (system info, daemon status, recent logs) into `.procsi/debug-dump-<timestamp>.json`.
 
-### `htpx mcp`
+### `procsi mcp`
 
 Start the MCP server (stdio transport). See [MCP Integration](#mcp-integration).
 
-### `htpx project init`
+### `procsi project init`
 
-Manually initialise a `.htpx` directory in the current location.
+Manually initialise a `.procsi` directory in the current location.
 
-### `htpx interceptors`
+### `procsi interceptors`
 
 List loaded interceptors, or manage them with subcommands.
 
-### `htpx interceptors init`
+### `procsi interceptors init`
 
-Scaffold an example interceptor in `.htpx/interceptors/`.
+Scaffold an example interceptor in `.procsi/interceptors/`.
 
-### `htpx interceptors reload`
+### `procsi interceptors reload`
 
 Reload interceptors from disk without restarting the daemon.
 
 ## Development
 
 ```bash
-git clone https://github.com/mtford90/htpx.git
-cd htpx
+git clone https://github.com/mtford90/procsi.git
+cd procsi
 npm install
 
 npm run build        # Compile TypeScript
@@ -558,10 +558,10 @@ npm run dev          # Watch mode
 
 ### Certificate errors
 
-htpx sets common CA environment variables automatically, but some tools need manual configuration:
+procsi sets common CA environment variables automatically, but some tools need manual configuration:
 
 ```bash
-cat .htpx/ca.pem
+cat .procsi/ca.pem
 ```
 
 ### Daemon won't start
@@ -569,9 +569,9 @@ cat .htpx/ca.pem
 Check if something else is using the socket:
 
 ```bash
-htpx status
-htpx daemon stop
-htpx on  # or: eval "$(htpx vars)"
+procsi status
+procsi daemon stop
+procsi on  # or: eval "$(procsi vars)"
 ```
 
 ### Terminal too small

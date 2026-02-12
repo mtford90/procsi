@@ -1,9 +1,9 @@
-# Research Notes: htpx
+# Research Notes: procsi
 
 ## Final Architecture
 
 ### Project-scoped isolation
-Each project gets its own `.htpx/` directory containing:
+Each project gets its own `.procsi/` directory containing:
 - `proxy.port` - TCP port the proxy listens on
 - `control.sock` - Unix socket for TUI <-> daemon communication
 - `requests.db` - SQLite database of captured traffic
@@ -107,15 +107,15 @@ render(<App />);
 ## Environment Variables to Set
 
 ```bash
-# htpx intercept output (eval'd by user via shell function)
+# procsi intercept output (eval'd by user via shell function)
 export HTTP_PROXY="http://127.0.0.1:9847"
 export HTTPS_PROXY="http://127.0.0.1:9847"
-export SSL_CERT_FILE="/Users/x/project/.htpx/ca.pem"
-export NODE_EXTRA_CA_CERTS="/Users/x/project/.htpx/ca.pem"
-export REQUESTS_CA_BUNDLE="/Users/x/project/.htpx/ca.pem"
-export HTPX_SESSION_ID="abc123"
-export HTPX_LABEL="my-session"
-echo "htpx: intercepting traffic (label: my-session)"
+export SSL_CERT_FILE="/Users/x/project/.procsi/ca.pem"
+export NODE_EXTRA_CA_CERTS="/Users/x/project/.procsi/ca.pem"
+export REQUESTS_CA_BUNDLE="/Users/x/project/.procsi/ca.pem"
+export PROCSI_SESSION_ID="abc123"
+export PROCSI_LABEL="my-session"
+echo "procsi: intercepting traffic (label: my-session)"
 ```
 
 ## SQLite Schema
@@ -195,7 +195,7 @@ mockttp can export to HAR format directly.
 ## Project Structure (Draft)
 
 ```
-htpx/
+procsi/
 ├── src/
 │   ├── cli/
 │   │   ├── index.ts          # CLI entry point

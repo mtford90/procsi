@@ -2,18 +2,18 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { Command } from "commander";
 import { ControlClient } from "../../shared/control-client.js";
-import { getHtpxPaths } from "../../shared/project.js";
+import { getProcsiPaths } from "../../shared/project.js";
 import { isDaemonRunning } from "../../shared/daemon.js";
 import { requireProjectRoot, getErrorMessage, getGlobalOptions } from "./helpers.js";
 
 const EXAMPLE_INTERCEPTOR_FILENAME = "example.ts";
 
-const EXAMPLE_INTERCEPTOR_CONTENT = `// Example htpx interceptor
+const EXAMPLE_INTERCEPTOR_CONTENT = `// Example procsi interceptor
 // Uncomment and modify one of the patterns below to get started.
 //
-// Run \`htpx interceptors reload\` after editing, or run \`htpx daemon restart\`.
+// Run \`procsi interceptors reload\` after editing, or run \`procsi daemon restart\`.
 
-import type { Interceptor } from "htpx-cli/interceptors";
+import type { Interceptor } from "procsi/interceptors";
 
 // --- Mock pattern: return a canned response without hitting the real server ---
 //
@@ -34,7 +34,7 @@ import type { Interceptor } from "htpx-cli/interceptors";
 //   match: (req) => req.host.includes("example.com"),
 //   handler: async (ctx) => {
 //     const response = await ctx.forward();
-//     response.headers = { ...response.headers, "x-debug": "htpx" };
+//     response.headers = { ...response.headers, "x-debug": "procsi" };
 //     return response;
 //   },
 // } satisfies Interceptor;
@@ -75,7 +75,7 @@ function formatInterceptorRow(
 async function listAction(command: Command): Promise<void> {
   const globalOpts = getGlobalOptions(command);
   const projectRoot = requireProjectRoot(globalOpts.dir);
-  const paths = getHtpxPaths(projectRoot);
+  const paths = getProcsiPaths(projectRoot);
 
   const running = await isDaemonRunning(projectRoot);
   if (!running) {
@@ -118,7 +118,7 @@ const reloadSubcommand = new Command("reload")
   .action(async (_, command: Command) => {
     const globalOpts = getGlobalOptions(command);
     const projectRoot = requireProjectRoot(globalOpts.dir);
-    const paths = getHtpxPaths(projectRoot);
+    const paths = getProcsiPaths(projectRoot);
 
     const running = await isDaemonRunning(projectRoot);
     if (!running) {
@@ -148,7 +148,7 @@ const initSubcommand = new Command("init")
   .action(async (_, command: Command) => {
     const globalOpts = getGlobalOptions(command);
     const projectRoot = requireProjectRoot(globalOpts.dir);
-    const paths = getHtpxPaths(projectRoot);
+    const paths = getProcsiPaths(projectRoot);
 
     const interceptorsDir = paths.interceptorsDir;
 
@@ -167,8 +167,8 @@ const initSubcommand = new Command("init")
     console.log(`Created ${exampleFile}`);
     console.log("");
     console.log("Edit the file to define your interceptor, then either:");
-    console.log("  - Restart the daemon (htpx daemon restart)");
-    console.log("  - Run: htpx interceptors reload");
+    console.log("  - Restart the daemon (procsi daemon restart)");
+    console.log("  - Run: procsi interceptors reload");
   });
 
 export const interceptorsCommand = new Command("interceptors")

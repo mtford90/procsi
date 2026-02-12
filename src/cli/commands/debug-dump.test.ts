@@ -4,8 +4,8 @@ import * as path from "node:path";
 import * as os from "node:os";
 import { collectDebugInfo } from "./debug-dump.js";
 import {
-  ensureHtpxDir,
-  getHtpxPaths,
+  ensureProcsiDir,
+  getProcsiPaths,
   writeDaemonPid,
   writeProxyPort,
 } from "../../shared/project.js";
@@ -14,17 +14,17 @@ describe("collectDebugInfo", () => {
   let tempDir: string;
 
   beforeEach(() => {
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "htpx-debug-dump-test-"));
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "procsi-debug-dump-test-"));
   });
 
   afterEach(() => {
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
-  it("includes htpx version", () => {
+  it("includes procsi version", () => {
     const dump = collectDebugInfo(tempDir);
-    expect(dump.htpxVersion).toBeDefined();
-    expect(typeof dump.htpxVersion).toBe("string");
+    expect(dump.procsiVersion).toBeDefined();
+    expect(typeof dump.procsiVersion).toBe("string");
   });
 
   it("includes system platform and node version", () => {
@@ -41,8 +41,8 @@ describe("collectDebugInfo", () => {
   });
 
   it("includes daemon pid and port when running", () => {
-    // Set up .htpx directory with daemon files
-    ensureHtpxDir(tempDir);
+    // Set up .procsi directory with daemon files
+    ensureProcsiDir(tempDir);
     writeDaemonPid(tempDir, process.pid); // Use current process as fake daemon
     writeProxyPort(tempDir, 8080);
 
@@ -53,24 +53,24 @@ describe("collectDebugInfo", () => {
     expect(dump.daemon.proxyPort).toBe(8080);
   });
 
-  it("lists files in .htpx directory", () => {
-    ensureHtpxDir(tempDir);
-    const paths = getHtpxPaths(tempDir);
+  it("lists files in .procsi directory", () => {
+    ensureProcsiDir(tempDir);
+    const paths = getProcsiPaths(tempDir);
 
     // Create some test files
-    fs.writeFileSync(path.join(paths.htpxDir, "test1.txt"), "test");
-    fs.writeFileSync(path.join(paths.htpxDir, "test2.txt"), "test");
+    fs.writeFileSync(path.join(paths.procsiDir, "test1.txt"), "test");
+    fs.writeFileSync(path.join(paths.procsiDir, "test2.txt"), "test");
 
     const dump = collectDebugInfo(tempDir);
 
-    expect(dump.htpxDir.exists).toBe(true);
-    expect(dump.htpxDir.files).toContain("test1.txt");
-    expect(dump.htpxDir.files).toContain("test2.txt");
+    expect(dump.procsiDir.exists).toBe(true);
+    expect(dump.procsiDir.files).toContain("test1.txt");
+    expect(dump.procsiDir.files).toContain("test2.txt");
   });
 
   it("includes recent log lines", () => {
-    ensureHtpxDir(tempDir);
-    const paths = getHtpxPaths(tempDir);
+    ensureProcsiDir(tempDir);
+    const paths = getProcsiPaths(tempDir);
 
     // Create a log file with some entries
     const logEntries = [
@@ -88,7 +88,7 @@ describe("collectDebugInfo", () => {
   });
 
   it("handles missing log file gracefully", () => {
-    ensureHtpxDir(tempDir);
+    ensureProcsiDir(tempDir);
 
     // Don't create a log file
     const dump = collectDebugInfo(tempDir);
@@ -96,25 +96,25 @@ describe("collectDebugInfo", () => {
     expect(dump.recentLogs).toEqual([]);
   });
 
-  it("handles missing .htpx directory gracefully", () => {
-    // Don't create .htpx directory
+  it("handles missing .procsi directory gracefully", () => {
+    // Don't create .procsi directory
     const dump = collectDebugInfo(tempDir);
 
-    expect(dump.htpxDir.exists).toBe(false);
-    expect(dump.htpxDir.files).toEqual([]);
+    expect(dump.procsiDir.exists).toBe(false);
+    expect(dump.procsiDir.files).toEqual([]);
   });
 
   it("handles undefined project root gracefully", () => {
     const dump = collectDebugInfo(undefined);
 
-    expect(dump.htpxDir.exists).toBe(false);
+    expect(dump.procsiDir.exists).toBe(false);
     expect(dump.daemon.running).toBe(false);
     expect(dump.recentLogs).toEqual([]);
   });
 
   it("limits recent logs to 200 lines", () => {
-    ensureHtpxDir(tempDir);
-    const paths = getHtpxPaths(tempDir);
+    ensureProcsiDir(tempDir);
+    const paths = getProcsiPaths(tempDir);
 
     // Create a log file with more than 200 entries
     const logEntries: string[] = [];

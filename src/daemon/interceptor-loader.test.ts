@@ -11,7 +11,7 @@ describe("interceptor-loader", () => {
 
   beforeEach(() => {
     // Create a unique temp directory for each test
-    tempDir = path.join(os.tmpdir(), `htpx-test-${crypto.randomUUID()}`);
+    tempDir = path.join(os.tmpdir(), `procsi-test-${crypto.randomUUID()}`);
     interceptorsDir = tempDir;
     fs.mkdirSync(interceptorsDir, { recursive: true });
   });

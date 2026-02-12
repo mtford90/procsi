@@ -41,15 +41,15 @@ vi.mock("./hooks/useStdoutDimensions.js", () => ({
 vi.mock("../../shared/project.js", () => ({
   findProjectRoot: () => "/mock/project",
   readProxyPort: () => 54321,
-  getHtpxPaths: () => ({
-    htpxDir: "/mock/project/.htpx",
-    proxyPortFile: "/mock/project/.htpx/proxy.port",
-    controlSocketFile: "/mock/project/.htpx/control.sock",
-    databaseFile: "/mock/project/.htpx/requests.db",
-    caKeyFile: "/mock/project/.htpx/ca-key.pem",
-    caCertFile: "/mock/project/.htpx/ca.pem",
-    pidFile: "/mock/project/.htpx/daemon.pid",
-    logFile: "/mock/project/.htpx/htpx.log",
+  getProcsiPaths: () => ({
+    procsiDir: "/mock/project/.procsi",
+    proxyPortFile: "/mock/project/.procsi/proxy.port",
+    controlSocketFile: "/mock/project/.procsi/control.sock",
+    databaseFile: "/mock/project/.procsi/requests.db",
+    caKeyFile: "/mock/project/.procsi/ca-key.pem",
+    caCertFile: "/mock/project/.procsi/ca.pem",
+    pidFile: "/mock/project/.procsi/daemon.pid",
+    logFile: "/mock/project/.procsi/procsi.log",
   }),
 }));
 
@@ -856,7 +856,7 @@ describe("App keyboard interactions", () => {
       const { lastFrame } = render(<App __testEnableInput />);
       const frame = lastFrame();
 
-      expect(frame).toContain("eval $(htpx vars)");
+      expect(frame).toContain("eval $(procsi vars)");
     });
   });
 

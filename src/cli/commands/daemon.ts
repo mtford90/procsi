@@ -7,7 +7,7 @@ import {
   getDaemonVersion,
 } from "../../shared/daemon.js";
 import { parseVerbosity } from "../../shared/logger.js";
-import { getHtpxVersion } from "../../shared/version.js";
+import { getProcsiVersion } from "../../shared/version.js";
 import { requireProjectRoot, getErrorMessage, getGlobalOptions } from "./helpers.js";
 
 const stopSubCommand = new Command("stop")
@@ -42,7 +42,7 @@ const restartSubCommand = new Command("restart")
     const projectRoot = requireProjectRoot(globalOpts.dir);
 
     try {
-      const cliVersion = getHtpxVersion();
+      const cliVersion = getProcsiVersion();
 
       if (await isDaemonRunning(projectRoot)) {
         const daemonVersion = await getDaemonVersion(projectRoot);
@@ -66,6 +66,6 @@ const restartSubCommand = new Command("restart")
   });
 
 export const daemonCommand = new Command("daemon")
-  .description("Manage the htpx daemon")
+  .description("Manage the procsi daemon")
   .addCommand(stopSubCommand)
   .addCommand(restartSubCommand);

@@ -1,5 +1,5 @@
 /**
- * Core types for htpx
+ * Core types for procsi
  */
 
 export type InterceptionType = "modified" | "mocked";
@@ -105,7 +105,7 @@ export interface InterceptorResponse {
 export interface InterceptorContext {
   request: Readonly<InterceptorRequest>;
   forward: () => Promise<InterceptorResponse>;
-  htpx: HtpxClient;
+  procsi: ProcsiClient;
   log: (message: string) => void;
 }
 
@@ -116,7 +116,7 @@ export interface Interceptor {
   handler: (ctx: InterceptorContext) => Promise<InterceptorResponse | undefined | void>;
 }
 
-export interface HtpxClient {
+export interface ProcsiClient {
   countRequests(filter?: RequestFilter): Promise<number>;
   listRequests(options?: {
     filter?: RequestFilter;

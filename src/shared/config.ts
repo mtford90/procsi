@@ -7,7 +7,7 @@ const DEFAULT_MAX_BODY_SIZE = 10 * 1024 * 1024;
 const DEFAULT_MAX_LOG_SIZE = 10 * 1024 * 1024;
 const DEFAULT_POLL_INTERVAL = 2000;
 
-export interface HtpxConfig {
+export interface ProcsiConfig {
   /** Max requests to keep in the database before evicting oldest */
   maxStoredRequests: number;
   /** Max body size in bytes to capture per request/response */
@@ -18,7 +18,7 @@ export interface HtpxConfig {
   pollInterval: number;
 }
 
-export const DEFAULT_CONFIG: HtpxConfig = {
+export const DEFAULT_CONFIG: ProcsiConfig = {
   maxStoredRequests: DEFAULT_MAX_STORED_REQUESTS,
   maxBodySize: DEFAULT_MAX_BODY_SIZE,
   maxLogSize: DEFAULT_MAX_LOG_SIZE,
@@ -35,7 +35,7 @@ function isPositiveInteger(value: unknown): value is number {
 /**
  * Validate a parsed config object, returning only valid fields merged with defaults.
  */
-function validateConfig(raw: Record<string, unknown>): HtpxConfig {
+function validateConfig(raw: Record<string, unknown>): ProcsiConfig {
   const config = { ...DEFAULT_CONFIG };
 
   if ("maxStoredRequests" in raw) {
@@ -66,13 +66,13 @@ function validateConfig(raw: Record<string, unknown>): HtpxConfig {
 }
 
 /**
- * Load the project configuration from `.htpx/config.json`.
+ * Load the project configuration from `.procsi/config.json`.
  *
  * Returns defaults if the file is missing. Logs a warning and returns defaults
  * if the JSON is malformed or contains invalid values.
  */
-export function loadConfig(projectRoot: string, logLevel?: LogLevel): HtpxConfig {
-  const configPath = path.join(projectRoot, ".htpx", "config.json");
+export function loadConfig(projectRoot: string, logLevel?: LogLevel): ProcsiConfig {
+  const configPath = path.join(projectRoot, ".procsi", "config.json");
 
   if (!fs.existsSync(configPath)) {
     return { ...DEFAULT_CONFIG };

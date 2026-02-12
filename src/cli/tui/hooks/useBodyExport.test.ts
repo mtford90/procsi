@@ -12,7 +12,7 @@ vi.mock("../utils/clipboard.js", () => ({
 // Mock project root finding
 vi.mock("../../../shared/project.js", () => ({
   findOrCreateProjectRoot: vi.fn().mockReturnValue("/mock/project"),
-  ensureHtpxDir: vi.fn().mockReturnValue("/mock/project/.htpx"),
+  ensureProcsiDir: vi.fn().mockReturnValue("/mock/project/.procsi"),
 }));
 
 describe("generateFilename", () => {
@@ -79,7 +79,7 @@ describe("saveBodyContent", () => {
 
   beforeEach(() => {
     // Create a real temp directory for tests
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "htpx-test-"));
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "procsi-test-"));
   });
 
   afterEach(() => {
@@ -122,14 +122,14 @@ describe("saveBodyContent", () => {
     const filename = "test.bin";
 
     // This will fail to save but shouldn't throw
-    const result = await saveBodyContent(body, filename, "custom", "~/nonexistent-htpx-test-dir");
+    const result = await saveBodyContent(body, filename, "custom", "~/nonexistent-procsi-test-dir");
 
     // Should succeed (creates directory)
     expect(result.success).toBe(true);
 
     // Clean up the created directory
     const homeDir = os.homedir();
-    const createdDir = path.join(homeDir, "nonexistent-htpx-test-dir");
+    const createdDir = path.join(homeDir, "nonexistent-procsi-test-dir");
     if (fs.existsSync(createdDir)) {
       fs.rmSync(createdDir, { recursive: true });
     }

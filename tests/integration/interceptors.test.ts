@@ -8,24 +8,24 @@ import { RequestRepository } from "../../src/daemon/storage.js";
 import { createProxy } from "../../src/daemon/proxy.js";
 import { createControlServer } from "../../src/daemon/control.js";
 import { ControlClient } from "../../src/shared/control-client.js";
-import { ensureHtpxDir, getHtpxPaths } from "../../src/shared/project.js";
+import { ensureProcsiDir, getProcsiPaths } from "../../src/shared/project.js";
 import { createInterceptorLoader } from "../../src/daemon/interceptor-loader.js";
 import { createInterceptorRunner } from "../../src/daemon/interceptor-runner.js";
-import { createHtpxClient } from "../../src/daemon/htpx-client.js";
+import { createProcsiClient } from "../../src/daemon/procsi-client.js";
 
 describe("interceptor integration", { timeout: 30_000 }, () => {
   let tempDir: string;
-  let paths: ReturnType<typeof getHtpxPaths>;
+  let paths: ReturnType<typeof getProcsiPaths>;
   let storage: RequestRepository;
   let cleanup: (() => Promise<void>)[] = [];
 
   beforeEach(async () => {
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "htpx-interceptor-test-"));
-    ensureHtpxDir(tempDir);
-    paths = getHtpxPaths(tempDir);
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "procsi-interceptor-test-"));
+    ensureProcsiDir(tempDir);
+    paths = getProcsiPaths(tempDir);
 
     const ca = await generateCACertificate({
-      subject: { commonName: "htpx Test CA" },
+      subject: { commonName: "procsi Test CA" },
     });
     fs.writeFileSync(paths.caKeyFile, ca.key);
     fs.writeFileSync(paths.caCertFile, ca.cert);
@@ -65,7 +65,7 @@ describe("interceptor integration", { timeout: 30_000 }, () => {
     });
 
     // Load interceptors via jiti
-    const htpxClient = createHtpxClient(storage);
+    const procsiClient = createProcsiClient(storage);
     const loader = await createInterceptorLoader({
       interceptorsDir: paths.interceptorsDir,
       projectRoot: tempDir,
@@ -75,7 +75,7 @@ describe("interceptor integration", { timeout: 30_000 }, () => {
 
     const runner = createInterceptorRunner({
       loader,
-      htpxClient,
+      procsiClient,
       projectRoot: tempDir,
       logLevel: "silent",
     });

@@ -1,6 +1,6 @@
-# htpx Code Review -- 2026-02-09
+# procsi Code Review -- 2026-02-09
 
-Review of the Phase 2 "Config-as-code Interceptors" feature: jiti-based TypeScript loader, deferred forward() pattern, runner lifecycle, HtpxClient, CLI commands, MCP tools, TUI indicators, and storage extensions.
+Review of the Phase 2 "Config-as-code Interceptors" feature: jiti-based TypeScript loader, deferred forward() pattern, runner lifecycle, ProcsiClient, CLI commands, MCP tools, TUI indicators, and storage extensions.
 
 ## Summary
 
@@ -174,7 +174,7 @@ Review of the Phase 2 "Config-as-code Interceptors" feature: jiti-based TypeScri
   const mod: unknown = await jiti.import(filePath);
   ```
 
-  **Issue:** `jiti` caches modules internally. When `reload()` is called, `loadAll()` re-imports the same file paths, but jiti may return the cached version rather than re-reading the file from disk. This means hot-reload and manual `htpx interceptors reload` may silently return stale interceptor code. The file watcher will fire change events, but the actual module re-evaluation may not happen.
+  **Issue:** `jiti` caches modules internally. When `reload()` is called, `loadAll()` re-imports the same file paths, but jiti may return the cached version rather than re-reading the file from disk. This means hot-reload and manual `procsi interceptors reload` may silently return stale interceptor code. The file watcher will fire change events, but the actual module re-evaluation may not happen.
 
   **Fix:** Either create a fresh `jiti` instance on each `loadAll()` call, or use jiti's cache-busting mechanism (e.g. appending a query string `?t=${Date.now()}` to the file path, or calling `jiti.esmResolve` with cache invalidation). Investigate jiti's API for explicit cache clearing.
 
@@ -288,7 +288,7 @@ Review of the Phase 2 "Config-as-code Interceptors" feature: jiti-based TypeScri
 ## 4. Test Coverage
 
 **Positive Observations:**
-- The interceptor runner tests are thorough and well-structured: mock, modify, observe, pass-through, error handling, forward() idempotency, cleanup/abort, request immutability, context.log, and context.htpx are all covered.
+- The interceptor runner tests are thorough and well-structured: mock, modify, observe, pass-through, error handling, forward() idempotency, cleanup/abort, request immutability, context.log, and context.procsi are all covered.
 - The loader tests cover ESM default, CJS, arrays, alphabetical ordering, syntax errors, missing handlers, non-object exports, import throws, duplicate names, metadata, non-existent directories, unnamed interceptors, manual reload, and non-.ts file filtering.
 - The integration tests spin up a real proxy + upstream server + interceptor loader to validate end-to-end mock, modify, pass-through, error recovery, and `interceptedBy` filtering.
 - The MCP server tests cover the new `formatInterceptor`, `formatSummary` with interception fields, `serialiseRequest` with interception fields, and `buildFilter` with `intercepted_by`.
@@ -358,20 +358,20 @@ Review of the Phase 2 "Config-as-code Interceptors" feature: jiti-based TypeScri
 ## 5. Project Organisation
 
 **Positive Observations:**
-- The `src/interceptors.ts` barrel file cleanly re-exports only the consumer-facing types (`Interceptor`, `InterceptorRequest`, `InterceptorResponse`, `InterceptorContext`, `HtpxClient`), avoiding leaking internal types.
+- The `src/interceptors.ts` barrel file cleanly re-exports only the consumer-facing types (`Interceptor`, `InterceptorRequest`, `InterceptorResponse`, `InterceptorContext`, `ProcsiClient`), avoiding leaking internal types.
 - The `package.json` `exports` field correctly uses `"types"` condition for the `./interceptors` subpath, ensuring TypeScript consumers get type definitions.
 - `shared/types.ts` remains the single source of truth for all interceptor-related types -- loader, runner, and client all import from shared.
 - `shared/` does not import from `daemon/` or `cli/` -- the module boundary is respected throughout.
 
 ---
 
-- [ ] **INT.5.1: `htpx-client.ts` is in `daemon/` but implements a `shared/types.ts` interface**
+- [ ] **INT.5.1: `procsi-client.ts` is in `daemon/` but implements a `shared/types.ts` interface**
 
   **Severity:** Low
 
-  **File:** `src/daemon/htpx-client.ts`
+  **File:** `src/daemon/procsi-client.ts`
 
-  **Issue:** `createHtpxClient` lives in `daemon/` because it depends on `RequestRepository` (a daemon module). This is correct -- it cannot be in `shared/`. However, the `HtpxClient` interface is exported from `shared/types.ts` and re-exported via `src/interceptors.ts` for external consumers. If a future consumer wants to create an `HtpxClient` outside the daemon (e.g. in an MCP context or test harness), they have no factory function available from the public API. Currently this is fine because only the daemon creates `HtpxClient` instances, but it is worth noting as a potential friction point.
+  **Issue:** `createProcsiClient` lives in `daemon/` because it depends on `RequestRepository` (a daemon module). This is correct -- it cannot be in `shared/`. However, the `ProcsiClient` interface is exported from `shared/types.ts` and re-exported via `src/interceptors.ts` for external consumers. If a future consumer wants to create an `ProcsiClient` outside the daemon (e.g. in an MCP context or test harness), they have no factory function available from the public API. Currently this is fine because only the daemon creates `ProcsiClient` instances, but it is worth noting as a potential friction point.
 
   **Fix:** No action needed now. If the need arises, consider a factory function in `shared/` that accepts a generic storage interface rather than `RequestRepository` directly.
 
@@ -399,18 +399,18 @@ Review of the Phase 2 "Config-as-code Interceptors" feature: jiti-based TypeScri
   const mod: unknown = await jiti.import(filePath);
   ```
 
-  **Issue:** Interceptor files are loaded and executed via `jiti.import()` inside the daemon process. This is the intended design (config-as-code), but it means any TypeScript file placed in `.htpx/interceptors/` runs with full Node.js permissions in the daemon process. A malicious or buggy interceptor can read/write the filesystem, make network requests, access environment variables, or crash the daemon. The daemon runs under the user's UID, so the blast radius is limited to the user's permissions, but there is no sandboxing.
+  **Issue:** Interceptor files are loaded and executed via `jiti.import()` inside the daemon process. This is the intended design (config-as-code), but it means any TypeScript file placed in `.procsi/interceptors/` runs with full Node.js permissions in the daemon process. A malicious or buggy interceptor can read/write the filesystem, make network requests, access environment variables, or crash the daemon. The daemon runs under the user's UID, so the blast radius is limited to the user's permissions, but there is no sandboxing.
 
   **Fix:** This is a known trade-off of config-as-code. Consider:
   1. Documenting the security model clearly -- interceptors run with full privileges.
-  2. Adding `.htpx/interceptors/` to the default `.gitignore` template (if not already) to reduce the risk of committing untrusted interceptor code.
+  2. Adding `.procsi/interceptors/` to the default `.gitignore` template (if not already) to reduce the risk of committing untrusted interceptor code.
   3. Long-term: investigate running interceptors in a worker thread or VM2/isolated-vm for partial sandboxing.
 
   **Quick win:** Yes (for documentation) / No (for sandboxing)
 
 ---
 
-- [ ] **INT.6.2: MCP `htpx_reload_interceptors` tool allows remote code reload**
+- [ ] **INT.6.2: MCP `procsi_reload_interceptors` tool allows remote code reload**
 
   **Severity:** Medium
 
@@ -418,7 +418,7 @@ Review of the Phase 2 "Config-as-code Interceptors" feature: jiti-based TypeScri
 
   ```typescript
   server.tool(
-    "htpx_reload_interceptors",
+    "procsi_reload_interceptors",
     "Reload interceptors from disk. Use after editing interceptor files to apply changes without restarting the daemon.",
     { format: FORMAT_SCHEMA },
     async (params) => {
@@ -428,7 +428,7 @@ Review of the Phase 2 "Config-as-code Interceptors" feature: jiti-based TypeScri
   );
   ```
 
-  **Issue:** An MCP client (e.g. an AI agent) can trigger an interceptor reload via this tool. If the agent has also modified files in `.htpx/interceptors/` (either directly or via another tool), this effectively allows remote code injection into the daemon. The MCP tools were originally read-only, but `htpx_reload_interceptors` and `htpx_clear_requests` are mutating operations.
+  **Issue:** An MCP client (e.g. an AI agent) can trigger an interceptor reload via this tool. If the agent has also modified files in `.procsi/interceptors/` (either directly or via another tool), this effectively allows remote code injection into the daemon. The MCP tools were originally read-only, but `procsi_reload_interceptors` and `procsi_clear_requests` are mutating operations.
 
   **Fix:** Consider:
   1. Adding a "write operations" section to the MCP tool descriptions that clearly states the tool causes code execution.
@@ -439,13 +439,13 @@ Review of the Phase 2 "Config-as-code Interceptors" feature: jiti-based TypeScri
 
 ---
 
-- [ ] **INT.6.3: Interceptor handler has unrestricted access to `HtpxClient`**
+- [ ] **INT.6.3: Interceptor handler has unrestricted access to `ProcsiClient`**
 
   **Severity:** Medium
 
-  **File:** `src/daemon/htpx-client.ts:1-30`
+  **File:** `src/daemon/procsi-client.ts:1-30`
 
-  **Issue:** The `HtpxClient` passed to interceptor handlers provides read access to all captured traffic, including request/response bodies, headers (which may contain auth tokens), and metadata. A malicious interceptor could exfiltrate all captured traffic. This is inherent to the design (interceptors need to query traffic to make decisions), but there is no mechanism to scope access -- every interceptor sees everything.
+  **Issue:** The `ProcsiClient` passed to interceptor handlers provides read access to all captured traffic, including request/response bodies, headers (which may contain auth tokens), and metadata. A malicious interceptor could exfiltrate all captured traffic. This is inherent to the design (interceptors need to query traffic to make decisions), but there is no mechanism to scope access -- every interceptor sees everything.
 
   **Fix:** For v1, document this clearly. For the future, consider allowing interceptors to declare required permissions or scoping the client to the current request's session.
 
@@ -459,7 +459,7 @@ Review of the Phase 2 "Config-as-code Interceptors" feature: jiti-based TypeScri
 - The interception indicator ("M" for mocked, "I" for modified) in the request list is compact and colour-coded, providing at-a-glance visibility without cluttering the layout.
 - The `StatusBar` interceptor count badge uses clear singular/plural handling and only appears when interceptors are active (count > 0).
 - The `AccordionPanel` interception info is shown at the top of the Request section with clear labelling ("Intercepted by: X (type)"), making it immediately visible when viewing request details.
-- The `htpx interceptors init` command scaffolds a well-commented example file covering all three patterns (mock, modify, observe).
+- The `procsi interceptors init` command scaffolds a well-commented example file covering all three patterns (mock, modify, observe).
 
 ---
 
@@ -518,7 +518,7 @@ Review of the Phase 2 "Config-as-code Interceptors" feature: jiti-based TypeScri
 
   **Issue:** When the interceptor loader was never created (because the interceptors directory did not exist at daemon startup), `reloadInterceptors` returns `{ success: false, count: 0 }` and the CLI prints "Reload failed" with exit code 1. This is correct but unhelpful -- the user has no idea *why* it failed. A more informative message would explain that the interceptors directory was not found.
 
-  **Fix:** Return an error message in the response (e.g. `{ success: false, count: 0, error: "Interceptors directory not found. Create .htpx/interceptors/ and restart the daemon." }`), and display it in the CLI.
+  **Fix:** Return an error message in the response (e.g. `{ success: false, count: 0, error: "Interceptors directory not found. Create .procsi/interceptors/ and restart the daemon." }`), and display it in the CLI.
 
   **Quick win:** Yes
 
@@ -560,7 +560,7 @@ Review of the Phase 2 "Config-as-code Interceptors" feature: jiti-based TypeScri
   }
   ```
 
-  **Issue:** Match functions are evaluated sequentially with `await`. If a user has many interceptors with async match functions (e.g. querying the database via `ctx.htpx`), the total matching time is the sum of all match evaluations, not the max. With the 5-second `MATCH_TIMEOUT_MS`, 10 interceptors with slow match functions could add up to 50 seconds of latency per request. This is unlikely in practice (match functions should be fast predicates), but the design allows it.
+  **Issue:** Match functions are evaluated sequentially with `await`. If a user has many interceptors with async match functions (e.g. querying the database via `ctx.procsi`), the total matching time is the sum of all match evaluations, not the max. With the 5-second `MATCH_TIMEOUT_MS`, 10 interceptors with slow match functions could add up to 50 seconds of latency per request. This is unlikely in practice (match functions should be fast predicates), but the design allows it.
 
   **Fix:** This is inherent to first-match semantics -- you cannot evaluate in parallel because order matters. Document that match functions should be synchronous and fast. Consider logging a warning if total match evaluation time exceeds a threshold (e.g. 1 second).
 

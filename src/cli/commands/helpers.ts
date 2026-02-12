@@ -24,9 +24,9 @@ export function requireProjectRoot(override?: string): string {
   const projectRoot = findProjectRoot(undefined, override);
   if (!projectRoot) {
     if (override) {
-      console.error(`No .htpx or .git found at ${override} (specified via --dir)`);
+      console.error(`No .procsi or .git found at ${override} (specified via --dir)`);
     } else {
-      console.error("Not in a project directory (no .htpx or .git found)");
+      console.error("Not in a project directory (no .procsi or .git found)");
     }
     process.exit(1);
   }

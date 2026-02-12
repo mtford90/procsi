@@ -5,7 +5,7 @@ const require = createRequire(import.meta.url);
 
 /**
  * Resolve the absolute filesystem path to a dependency installed
- * within htpx's own node_modules. Uses `createRequire` so the
+ * within procsi's own node_modules. Uses `createRequire` so the
  * resolution is relative to *this* package, not the user's project.
  */
 export function resolveDependencyPath(dep: string): string {
@@ -17,7 +17,7 @@ export function resolveDependencyPath(dep: string): string {
  * Node.js `http`/`https` global agents and native `fetch()` to
  * route through the proxy specified by env vars.
  *
- * Absolute paths to htpx's own `global-agent` and `undici` are
+ * Absolute paths to procsi's own `global-agent` and `undici` are
  * baked in so the script works regardless of the user's project
  * dependencies.
  */
@@ -47,7 +47,7 @@ export function generateNodePreloadScript(): string {
 
 /**
  * Write the CJS preload script to the given path (typically
- * `.htpx/proxy-preload.cjs`). Creates parent directories if needed.
+ * `.procsi/proxy-preload.cjs`). Creates parent directories if needed.
  *
  * Returns the absolute path written to.
  */

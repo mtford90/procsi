@@ -1,15 +1,15 @@
 import { describe, it, expect } from "vitest";
-import { getHtpxVersion } from "./version.js";
+import { getProcsiVersion } from "./version.js";
 
 describe("version", () => {
-  describe("getHtpxVersion", () => {
+  describe("getProcsiVersion", () => {
     it("returns a string", () => {
-      const version = getHtpxVersion();
+      const version = getProcsiVersion();
       expect(typeof version).toBe("string");
     });
 
     it("returns semantic version format", () => {
-      const version = getHtpxVersion();
+      const version = getProcsiVersion();
       // Should match semver pattern like "0.1.0" or "1.2.3-beta.1"
       expect(version).toMatch(/^\d+\.\d+\.\d+/);
     });

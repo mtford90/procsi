@@ -1,1 +1,0 @@
-../../../../skills/htpx/SKILL.md

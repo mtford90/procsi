@@ -1,4 +1,4 @@
-# htpx Code Review - 2026-02-07
+# procsi Code Review - 2026-02-07
 
 Review of three features: Pretty Print + Syntax Highlighting (F1), Request Filtering (F2), and Directory Scope Override + Global Instance (F3).
 
@@ -239,11 +239,11 @@ Review of three features: Pretty Print + Syntax Highlighting (F1), Request Filte
   const projectRoot = globalOpts.dir ? path.resolve(globalOpts.dir) : process.cwd();
   ```
 
-  **Issue:** The `project init` command handles `--dir` with a simple `path.resolve()`, which does not expand `~` to the home directory. Every other command uses `findProjectRoot` or `findOrCreateProjectRoot`, which call `resolveOverridePath` internally. This means `htpx -d ~/my-project project init` will create `.htpx` in a literal `~/my-project` directory relative to cwd rather than in the user's home directory.
+  **Issue:** The `project init` command handles `--dir` with a simple `path.resolve()`, which does not expand `~` to the home directory. Every other command uses `findProjectRoot` or `findOrCreateProjectRoot`, which call `resolveOverridePath` internally. This means `procsi -d ~/my-project project init` will create `.procsi` in a literal `~/my-project` directory relative to cwd rather than in the user's home directory.
 
-  **Fix:** Use `resolveOverridePath` or create a `resolveDir` helper exported from project.ts. Alternatively, reuse `findOrCreateProjectRoot(undefined, globalOpts.dir)` and then call `ensureHtpxDir`.
+  **Fix:** Use `resolveOverridePath` or create a `resolveDir` helper exported from project.ts. Alternatively, reuse `findOrCreateProjectRoot(undefined, globalOpts.dir)` and then call `ensureProcsiDir`.
 
-  **Quick win:** Yes -- replace with `findOrCreateProjectRoot` + `ensureHtpxDir`.
+  **Quick win:** Yes -- replace with `findOrCreateProjectRoot` + `ensureProcsiDir`.
 
 ---
 
@@ -437,7 +437,7 @@ Review of three features: Pretty Print + Syntax Highlighting (F1), Request Filte
   }
   ```
 
-  **Issue:** The `--dir` option accepts any path, including symlinks or paths that resolve outside the user's control (e.g. `/etc`). Since htpx creates directories (`.htpx/`) and writes files (database, CA certificates) in the resolved path, an attacker with control over the CLI arguments could cause writes to unintended locations.
+  **Issue:** The `--dir` option accepts any path, including symlinks or paths that resolve outside the user's control (e.g. `/etc`). Since procsi creates directories (`.procsi/`) and writes files (database, CA certificates) in the resolved path, an attacker with control over the CLI arguments could cause writes to unintended locations.
 
   **Fix:** This is a very low risk since the user explicitly provides the `--dir` flag (it's not derived from untrusted input). Document that `--dir` should point to a project directory the user owns. No code change needed.
 
@@ -515,16 +515,16 @@ Review of three features: Pretty Print + Syntax Highlighting (F1), Request Filte
   export function requireProjectRoot(override?: string): string {
     const projectRoot = findProjectRoot(undefined, override);
     if (!projectRoot) {
-      console.error("Not in a project directory (no .htpx or .git found)");
+      console.error("Not in a project directory (no .procsi or .git found)");
       process.exit(1);
     }
     return projectRoot;
   }
   ```
 
-  **Issue:** When `--dir /nonexistent/path` is passed, `findProjectRoot` returns `undefined` because neither `.htpx` nor `.git` exists at that path. The error message says "Not in a project directory" which doesn't mention the `--dir` flag, leaving the user confused about why their override didn't work.
+  **Issue:** When `--dir /nonexistent/path` is passed, `findProjectRoot` returns `undefined` because neither `.procsi` nor `.git` exists at that path. The error message says "Not in a project directory" which doesn't mention the `--dir` flag, leaving the user confused about why their override didn't work.
 
-  **Fix:** Check whether the override path exists first and provide a specific error message: `"Directory not found: /nonexistent/path"` or `"No .htpx or .git found at /nonexistent/path (specified via --dir)"`.
+  **Fix:** Check whether the override path exists first and provide a specific error message: `"Directory not found: /nonexistent/path"` or `"No .procsi or .git found at /nonexistent/path (specified via --dir)"`.
 
   **Quick win:** Yes.
 

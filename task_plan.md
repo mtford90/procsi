@@ -1,4 +1,4 @@
-# Task Plan: htpx - Terminal HTTP Toolkit
+# Task Plan: procsi - Terminal HTTP Toolkit
 
 ## Goal
 Create a terminal-based HTTP interception/inspection tool with project-scoped isolation and a lazygit-style TUI
@@ -7,7 +7,7 @@ Create a terminal-based HTTP interception/inspection tool with project-scoped is
 
 ```
 ~/projects/client-a/
-├── .htpx/
+├── .procsi/
 │   ├── proxy.port        # TCP port for HTTP_PROXY
 │   ├── control.sock      # Unix socket for TUI <-> daemon
 │   ├── requests.db       # SQLite - captured traffic
@@ -15,7 +15,7 @@ Create a terminal-based HTTP interception/inspection tool with project-scoped is
 └── src/...
 
 ┌─────────────────────────────────────────────────────────┐
-│              htpx daemon (per-project)                  │
+│              procsi daemon (per-project)                  │
 │  ├── MITM proxy (mockttp) on TCP port                   │
 │  ├── SQLite storage for requests                        │
 │  └── Control API on Unix socket                         │
@@ -24,7 +24,7 @@ Create a terminal-based HTTP interception/inspection tool with project-scoped is
    HTTP_PROXY                          Unix socket
         ↑                                    ↑
 ┌────────────────┐  ┌────────────────┐  ┌────────────────┐
-│ Terminal 1     │  │ Terminal 2     │  │ htpx tui       │
+│ Terminal 1     │  │ Terminal 2     │  │ procsi tui       │
 │ $ curl ...     │  │ $ npm install  │  │ (view traffic) │
 │ --label=api    │  │ --label=deps   │  │                │
 └────────────────┘  └────────────────┘  └────────────────┘
@@ -34,20 +34,20 @@ Create a terminal-based HTTP interception/inspection tool with project-scoped is
 
 | Command | Description |
 |---------|-------------|
-| `htpx init` | Output shell function for .zshrc/.bashrc (one-time setup) |
-| `htpx intercept` | Intercept current shell (via shell function) |
-| `htpx intercept --label=X` | With custom label |
-| `htpx tui` | Browse captured traffic |
-| `htpx status` | Show daemon status |
-| `htpx stop` | Stop the daemon |
+| `procsi init` | Output shell function for .zshrc/.bashrc (one-time setup) |
+| `procsi intercept` | Intercept current shell (via shell function) |
+| `procsi intercept --label=X` | With custom label |
+| `procsi tui` | Browse captured traffic |
+| `procsi status` | Show daemon status |
+| `procsi stop` | Stop the daemon |
 
 ### Shell setup (one-time)
 ```bash
 # Add to .zshrc / .bashrc
-eval "$(htpx init)"
+eval "$(procsi init)"
 ```
 
-Then `htpx intercept` just works - no eval needed at call time.
+Then `procsi intercept` just works - no eval needed at call time.
 
 ## Technology Stack
 
@@ -74,7 +74,7 @@ Then `htpx intercept` just works - no eval needed at call time.
 |-------|-------|--------------|
 | Unit | vitest | Pure functions, SQLite repo, formatting |
 | Integration | vitest, temp ports | Daemon lifecycle, proxy interception, control API |
-| Shell | Bash scripts invoked by vitest | `htpx init`, `htpx intercept`, full flow |
+| Shell | Bash scripts invoked by vitest | `procsi init`, `procsi intercept`, full flow |
 | TUI | ink-testing-library | Component rendering, keyboard handling |
 
 **Test execution:**
@@ -96,9 +96,9 @@ pnpm test:shell     # shell script tests
 - [x] Set up ESLint + Prettier
 
 ### Phase 3b: Core daemon ✅
-- [x] Project root detection (find .htpx or git root)
+- [x] Project root detection (find .procsi or git root)
 - [x] Daemon lifecycle (start, stop, health check via child_process)
-- [x] Port allocation (find free port, write to .htpx/proxy.port)
+- [x] Port allocation (find free port, write to .procsi/proxy.port)
 - [x] Unix socket control server (net module)
 - [x] CA certificate generation (mockttp handles this)
 - [x] MITM proxy with mockttp
@@ -111,15 +111,15 @@ pnpm test:shell     # shell script tests
   - [x] Integration: control API via Unix socket
 
 ### Phase 3c: Shell integration ✅
-- [x] `htpx init` - output shell function for zsh/bash
-- [x] `htpx intercept` - output env var exports (HTTP_PROXY, HTTPS_PROXY, CA vars)
+- [x] `procsi init` - output shell function for zsh/bash
+- [x] `procsi intercept` - output env var exports (HTTP_PROXY, HTTPS_PROXY, CA vars)
 - [x] Auto-start daemon if needed
 - [x] Label support (--label flag)
 - [x] Register session with daemon
 - [x] **Tests:**
   - [x] Unit: env var output formatting
-  - [x] Shell script: source `htpx init`, verify function exists
-  - [x] Shell script: `htpx intercept` sets correct env vars
+  - [x] Shell script: source `procsi init`, verify function exists
+  - [x] Shell script: `procsi intercept` sets correct env vars
   - [x] Shell script: full flow - intercept → curl → verify captured
 
 ### Phase 3d: TUI ✅
@@ -140,11 +140,11 @@ pnpm test:shell     # shell script tests
   - [x] ink-testing-library: selecting request shows details
 
 ### Phase 3e: Quality of life ✅
-- [x] `htpx status` command
-- [x] `htpx stop` command
+- [x] `procsi status` command
+- [x] `procsi stop` command
 - [x] Graceful shutdown (SIGTERM/SIGINT handlers)
 - [x] Proper error messages (daemon startup errors now surface log output)
-- [x] `htpx clear` command
+- [x] `procsi clear` command
 - [x] **Tests:**
   - [x] Integration: status reports correct state
   - [x] Integration: stop cleanly shuts down daemon
@@ -157,7 +157,7 @@ pnpm test:shell     # shell script tests
 - [ ] Homebrew formula (future - would require standalone binary)
 
 ## Decisions Made
-- Project-scoped isolation via .htpx directory
+- Project-scoped isolation via .procsi directory
 - Unix socket for control API (no port conflicts)
 - TCP for proxy (HTTP_PROXY requirement)
 - SQLite for persistence

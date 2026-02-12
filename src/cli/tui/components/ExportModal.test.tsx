@@ -45,7 +45,7 @@ describe("ExportModal", () => {
       expect(frame).toContain("[4]");
       expect(frame).toContain("[5]");
       expect(frame).toContain("Copy to clipboard");
-      expect(frame).toContain(".htpx/exports/");
+      expect(frame).toContain(".procsi/exports/");
       expect(frame).toContain("~/Downloads/");
       expect(frame).toContain("Custom path");
       expect(frame).toContain("Open externally");

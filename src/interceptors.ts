@@ -3,5 +3,5 @@ export type {
   InterceptorRequest,
   InterceptorResponse,
   InterceptorContext,
-  HtpxClient,
+  ProcsiClient,
 } from "./shared/types.js";

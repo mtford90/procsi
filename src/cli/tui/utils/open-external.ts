@@ -9,7 +9,7 @@ import * as path from "node:path";
 import * as os from "node:os";
 import { spawn } from "node:child_process";
 
-const TEMP_DIR_NAME = "htpx-exports";
+const TEMP_DIR_NAME = "procsi-exports";
 
 interface OpenResult {
   success: boolean;
@@ -36,10 +36,7 @@ function getOpenCommand(): { command: string; args: string[] } {
  * Write body to a temp file and open it with the platform's default application.
  * The spawned process is detached so it doesn't block the TUI.
  */
-export async function openInExternalApp(
-  body: Buffer,
-  filename: string
-): Promise<OpenResult> {
+export async function openInExternalApp(body: Buffer, filename: string): Promise<OpenResult> {
   try {
     const tempDir = path.join(os.tmpdir(), TEMP_DIR_NAME);
 

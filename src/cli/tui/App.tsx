@@ -32,7 +32,7 @@ import { isFilterActive } from "./utils/filters.js";
 import { isJsonContent } from "./utils/content-type.js";
 import { JsonExplorerModal } from "./components/JsonExplorerModal.js";
 import { TextViewerModal } from "./components/TextViewerModal.js";
-import { findProjectRoot, getHtpxPaths, readProxyPort } from "../../shared/project.js";
+import { findProjectRoot, getProcsiPaths, readProxyPort } from "../../shared/project.js";
 import { loadConfig } from "../../shared/config.js";
 import type { CapturedRequest, RequestFilter } from "../../shared/types.js";
 
@@ -96,7 +96,7 @@ function AppContent({ __testEnableInput, projectRoot }: AppProps): React.ReactEl
 
   const caCertPath = useMemo(() => {
     const root = projectRoot ?? findProjectRoot();
-    return root ? getHtpxPaths(root).caCertFile : "";
+    return root ? getProcsiPaths(root).caCertFile : "";
   }, [projectRoot]);
 
   // Save modal state
