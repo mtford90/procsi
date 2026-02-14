@@ -11,6 +11,10 @@ import { createProxy } from "../../src/daemon/proxy.js";
 import { createControlServer } from "../../src/daemon/control.js";
 import { ensureProcsiDir, getProcsiPaths } from "../../src/shared/project.js";
 import { createProcsiMcpServer } from "../../src/mcp/server.js";
+import { createInterceptorLoader } from "../../src/daemon/interceptor-loader.js";
+import { createInterceptorRunner } from "../../src/daemon/interceptor-runner.js";
+import { createInterceptorEventLog } from "../../src/daemon/interceptor-event-log.js";
+import { createProcsiClient } from "../../src/daemon/procsi-client.js";
 
 /**
  * Helper to extract text content from an MCP tool call result.
@@ -30,7 +34,7 @@ describe("MCP integration", () => {
   let cleanup: (() => Promise<void>)[] = [];
 
   beforeEach(async () => {
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "procsi-mcp-test-"));
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "procsi-mcp-"));
     ensureProcsiDir(tempDir);
     paths = getProcsiPaths(tempDir);
 
@@ -46,9 +50,18 @@ describe("MCP integration", () => {
   });
 
   afterEach(async () => {
-    for (const fn of cleanup.reverse()) {
-      await fn();
-    }
+    // Run all cleanup functions in parallel with a short timeout
+    // to avoid exceeding vitest's hookTimeout (15s) when proxy.stop() hangs
+    await Promise.allSettled(
+      cleanup.reverse().map((fn) =>
+        Promise.race([
+          fn().catch(() => {
+            /* best-effort */
+          }),
+          new Promise<void>((resolve) => setTimeout(resolve, 3000)),
+        ])
+      )
+    );
     storage.close();
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
@@ -1289,5 +1302,248 @@ describe("MCP integration", () => {
     // Should contain body size indicators (POST with body)
     expect(text).toContain("[^");
     expect(text).toContain("v");
+  });
+});
+
+describe("MCP interceptor events", { timeout: 30_000 }, () => {
+  let tempDir: string;
+  let paths: ReturnType<typeof getProcsiPaths>;
+  let storage: RequestRepository;
+  let cleanup: (() => Promise<void>)[] = [];
+
+  beforeEach(async () => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "procsi-mcp-iev-"));
+    ensureProcsiDir(tempDir);
+    paths = getProcsiPaths(tempDir);
+
+    // Create interceptors directory
+    fs.mkdirSync(paths.interceptorsDir, { recursive: true });
+
+    // Generate CA certificate
+    const ca = await generateCACertificate({
+      subject: { commonName: "procsi Test CA" },
+    });
+    fs.writeFileSync(paths.caKeyFile, ca.key);
+    fs.writeFileSync(paths.caCertFile, ca.cert);
+
+    storage = new RequestRepository(paths.databaseFile);
+    cleanup = [];
+  });
+
+  afterEach(async () => {
+    // Run all cleanup functions in parallel with a short timeout
+    // to avoid exceeding vitest's hookTimeout (15s)
+    await Promise.allSettled(
+      cleanup.reverse().map((fn) =>
+        Promise.race([
+          fn().catch(() => {
+            /* best-effort */
+          }),
+          new Promise<void>((resolve) => setTimeout(resolve, 3000)),
+        ])
+      )
+    );
+    storage.close();
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  /**
+   * Set up the full stack with interceptors and connect an MCP client
+   * via in-memory transport. Interceptor files must be written to
+   * paths.interceptorsDir before calling this.
+   */
+  async function setupMcpInterceptorStack() {
+    const eventLog = createInterceptorEventLog();
+    const procsiClient = createProcsiClient(storage);
+
+    const loader = await createInterceptorLoader({
+      interceptorsDir: paths.interceptorsDir,
+      projectRoot: tempDir,
+      logLevel: "silent",
+      eventLog,
+    });
+    cleanup.push(async () => loader.close());
+
+    const runner = createInterceptorRunner({
+      loader,
+      procsiClient,
+      projectRoot: tempDir,
+      logLevel: "silent",
+      eventLog,
+    });
+
+    const session = storage.registerSession("test", process.pid);
+
+    // Upstream test server
+    const testServer = http.createServer((_req, res) => {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ upstream: true }));
+    });
+    await new Promise<void>((resolve) => testServer.listen(0, "127.0.0.1", resolve));
+    const testAddr = testServer.address() as { port: number };
+    cleanup.push(async () => {
+      testServer.closeAllConnections();
+      await new Promise<void>((res) => testServer.close(() => res()));
+    });
+
+    const proxy = await createProxy({
+      caKeyPath: paths.caKeyFile,
+      caCertPath: paths.caCertFile,
+      storage,
+      sessionId: session.id,
+      projectRoot: tempDir,
+      logLevel: "silent",
+      interceptorRunner: runner,
+    });
+    cleanup.push(proxy.stop);
+
+    const controlServer = createControlServer({
+      socketPath: paths.controlSocketFile,
+      storage,
+      proxyPort: proxy.port,
+      version: "1.0.0-test",
+      projectRoot: tempDir,
+      logLevel: "silent",
+      interceptorLoader: loader,
+      interceptorEventLog: eventLog,
+    });
+    cleanup.push(controlServer.close);
+
+    // MCP server connected via in-memory transport
+    const mcp = createProcsiMcpServer({ projectRoot: tempDir });
+    cleanup.push(async () => mcp.client.close());
+
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await mcp.server.connect(serverTransport);
+    cleanup.push(async () => mcp.server.close());
+
+    const mcpClient = new Client({ name: "test-client", version: "1.0.0" });
+    await mcpClient.connect(clientTransport);
+    cleanup.push(async () => mcpClient.close());
+
+    return { proxy, mcpClient, testServer: { port: testAddr.port } };
+  }
+
+  function mcpMakeProxiedRequest(
+    proxyPort: number,
+    url: string
+  ): Promise<{ statusCode: number; body: string }> {
+    return new Promise((resolve, reject) => {
+      const parsedUrl = new URL(url);
+      const req = http.request(
+        {
+          hostname: "127.0.0.1",
+          port: proxyPort,
+          path: url,
+          method: "GET",
+          headers: { Host: parsedUrl.host, Connection: "close" },
+        },
+        (res) => {
+          let body = "";
+          res.on("data", (chunk) => (body += chunk));
+          res.on("end", () => resolve({ statusCode: res.statusCode ?? 0, body }));
+        }
+      );
+      req.on("error", reject);
+      req.end();
+    });
+  }
+
+  it("procsi_get_interceptor_events returns events in text format", async () => {
+    fs.writeFileSync(
+      path.join(paths.interceptorsDir, "event-mcp.ts"),
+      `export default {
+        name: "event-mcp-test",
+        handler: async (ctx) => {
+          ctx.log("mcp event test");
+          return { status: 200, body: "mcp-ok" };
+        },
+      };`
+    );
+
+    const { proxy, mcpClient, testServer } = await setupMcpInterceptorStack();
+
+    await mcpMakeProxiedRequest(proxy.port, `http://127.0.0.1:${testServer.port}/api/mcp-event`);
+    await new Promise((resolve) => setTimeout(resolve, 250));
+
+    const result = await mcpClient.callTool({
+      name: "procsi_get_interceptor_events",
+      arguments: {},
+    });
+    const text = getTextContent(result);
+
+    // Should contain event count header
+    expect(text).toContain("event(s)");
+    // Should contain the interceptor name
+    expect(text).toContain("event-mcp-test");
+    // Should contain the user log message
+    expect(text).toContain("mcp event test");
+    // Should contain level labels
+    expect(text).toContain("[INFO]");
+  });
+
+  it("procsi_get_interceptor_events returns empty when no events", async () => {
+    // No interceptor file written -- the loader finds no files, so
+    // there are no load events beyond the empty directory scan.
+    // We also make no request, so no match/mock events.
+    // But the loader still runs (with zero files), so the event log
+    // should be empty since no load events fire for an empty directory.
+    const { mcpClient } = await setupMcpInterceptorStack();
+
+    const result = await mcpClient.callTool({
+      name: "procsi_get_interceptor_events",
+      arguments: {},
+    });
+    const text = getTextContent(result);
+
+    expect(text).toBe("No interceptor events.");
+  });
+
+  it("procsi_get_interceptor_events with format=json", async () => {
+    fs.writeFileSync(
+      path.join(paths.interceptorsDir, "json-mcp.ts"),
+      `export default {
+        name: "json-mcp-test",
+        handler: async (ctx) => {
+          ctx.log("json format test");
+          return { status: 200, body: "json-ok" };
+        },
+      };`
+    );
+
+    const { proxy, mcpClient, testServer } = await setupMcpInterceptorStack();
+
+    await mcpMakeProxiedRequest(proxy.port, `http://127.0.0.1:${testServer.port}/api/json-event`);
+    await new Promise((resolve) => setTimeout(resolve, 250));
+
+    const result = await mcpClient.callTool({
+      name: "procsi_get_interceptor_events",
+      arguments: { format: "json" },
+    });
+    const text = getTextContent(result);
+    const parsed = JSON.parse(text);
+
+    expect(parsed).toHaveProperty("total");
+    expect(parsed).toHaveProperty("counts");
+    expect(parsed).toHaveProperty("events");
+
+    expect(parsed.total).toBeGreaterThan(0);
+    expect(parsed.counts).toHaveProperty("info");
+    expect(parsed.counts).toHaveProperty("warn");
+    expect(parsed.counts).toHaveProperty("error");
+
+    // Events should have ISO timestamps
+    const firstEvent = parsed.events[0];
+    expect(firstEvent).toHaveProperty("timestamp");
+    expect(firstEvent.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    expect(firstEvent).toHaveProperty("type");
+    expect(firstEvent).toHaveProperty("level");
+    expect(firstEvent).toHaveProperty("interceptor");
+    expect(firstEvent).toHaveProperty("message");
+
+    // Should have the user_log event
+    const userLogEvent = parsed.events.find((e: { type: string }) => e.type === "user_log");
+    expect(userLogEvent).toBeDefined();
+    expect(userLogEvent.message).toBe("json format test");
   });
 });

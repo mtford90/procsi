@@ -13,6 +13,7 @@ interface StatusBarContext {
   hasRequests: boolean;
   onBodySection: boolean;
   onViewableBodySection: boolean;
+  hasEvents: boolean;
 }
 
 interface KeyHint extends HintItem {
@@ -31,6 +32,7 @@ const KEY_HINTS: KeyHint[] = [
   { key: "s", action: "export", visible: (ctx) => ctx.onBodySection },
   { key: "u", action: "URL" },
   { key: "/", action: "filter" },
+  { key: "L", action: "events", visible: (ctx) => ctx.hasEvents },
   { key: "i", action: "info" },
   { key: "?", action: "help" },
   { key: "q", action: "quit" },
@@ -48,6 +50,10 @@ export interface StatusBarProps {
   onViewableBodySection?: boolean;
   /** Number of active interceptors; shown as a badge when > 0. */
   interceptorCount?: number;
+  /** Number of interceptor error events; shown as a red badge when > 0. */
+  interceptorErrorCount?: number;
+  /** Whether any interceptor events exist (gates L hint visibility). */
+  hasEvents?: boolean;
   /** Terminal width in columns — used to constrain the hint bar. */
   width?: number;
 }
@@ -62,8 +68,9 @@ export function getVisibleHints({
   hasRequests = true,
   onBodySection = true,
   onViewableBodySection = false,
-}: Pick<StatusBarProps, "activePanel" | "hasSelection" | "hasRequests" | "onBodySection" | "onViewableBodySection">): KeyHint[] {
-  const ctx: StatusBarContext = { activePanel, hasSelection, hasRequests, onBodySection, onViewableBodySection };
+  hasEvents = false,
+}: Pick<StatusBarProps, "activePanel" | "hasSelection" | "hasRequests" | "onBodySection" | "onViewableBodySection" | "hasEvents">): KeyHint[] {
+  const ctx: StatusBarContext = { activePanel, hasSelection, hasRequests, onBodySection, onViewableBodySection, hasEvents };
   return KEY_HINTS.filter((hint) => !hint.visible || hint.visible(ctx));
 }
 
@@ -80,11 +87,13 @@ export function StatusBar({
   onBodySection,
   onViewableBodySection,
   interceptorCount,
+  interceptorErrorCount,
+  hasEvents,
   width,
 }: StatusBarProps): React.ReactElement {
   const visibleHints = useMemo(
-    () => getVisibleHints({ activePanel, hasSelection, hasRequests, onBodySection, onViewableBodySection }),
-    [activePanel, hasSelection, hasRequests, onBodySection, onViewableBodySection],
+    () => getVisibleHints({ activePanel, hasSelection, hasRequests, onBodySection, onViewableBodySection, hasEvents }),
+    [activePanel, hasSelection, hasRequests, onBodySection, onViewableBodySection, hasEvents],
   );
 
   // Calculate available width for hints, accounting for prefix badges
@@ -92,6 +101,10 @@ export function StatusBar({
     if (!width) return undefined;
 
     let prefixWidth = 0;
+    if (interceptorErrorCount !== undefined && interceptorErrorCount > 0) {
+      const errorBadge = `[${interceptorErrorCount} error${interceptorErrorCount === 1 ? "" : "s"}]`;
+      prefixWidth += errorBadge.length + SEPARATOR_WIDTH;
+    }
     if (interceptorCount !== undefined && interceptorCount > 0) {
       const badge = `[${interceptorCount} interceptor${interceptorCount === 1 ? "" : "s"}]`;
       prefixWidth += badge.length + SEPARATOR_WIDTH;
@@ -101,7 +114,7 @@ export function StatusBar({
     }
 
     return width - PADDING_WIDTH - prefixWidth;
-  }, [width, interceptorCount, filterActive]);
+  }, [width, interceptorCount, interceptorErrorCount, filterActive]);
 
   return (
     <Box
@@ -122,6 +135,12 @@ export function StatusBar({
         </>
       ) : (
         <Text>
+          {interceptorErrorCount !== undefined && interceptorErrorCount > 0 && (
+            <>
+              <Text color="red" bold>[{interceptorErrorCount} error{interceptorErrorCount === 1 ? "" : "s"}]</Text>
+              <Text dimColor> │ </Text>
+            </>
+          )}
           {interceptorCount !== undefined && interceptorCount > 0 && (
             <>
               <Text color="magenta" bold>[{interceptorCount} interceptor{interceptorCount === 1 ? "" : "s"}]</Text>

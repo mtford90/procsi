@@ -28,10 +28,13 @@ import { FilterBar } from "./components/FilterBar.js";
 import { ExportModal, type ExportAction } from "./components/ExportModal.js";
 import { HelpModal } from "./components/HelpModal.js";
 import { InfoModal } from "./components/InfoModal.js";
+import { InterceptorLogModal } from "./components/InterceptorLogModal.js";
+import { InfoBar } from "./components/InfoBar.js";
 import { isFilterActive } from "./utils/filters.js";
 import { isJsonContent } from "./utils/content-type.js";
 import { JsonExplorerModal } from "./components/JsonExplorerModal.js";
 import { TextViewerModal } from "./components/TextViewerModal.js";
+import { useInterceptorEvents } from "./hooks/useInterceptorEvents.js";
 import { findProjectRoot, getProcsiPaths, readProxyPort } from "../../shared/project.js";
 import { loadConfig } from "../../shared/config.js";
 import type { CapturedRequest, RequestFilter } from "../../shared/types.js";
@@ -68,6 +71,11 @@ function AppContent({ __testEnableInput, projectRoot }: AppProps): React.ReactEl
     projectRoot,
     pollInterval: config?.pollInterval,
   });
+  const interceptorEvents = useInterceptorEvents({
+    projectRoot,
+    pollInterval: config?.pollInterval,
+  });
+  const startTime = useMemo(() => Date.now(), []);
   const { exportCurl, exportHar } = useExport();
   const { saveBody } = useBodyExport();
   const spinnerFrame = useSpinner(isLoading && requests.length === 0);
@@ -87,6 +95,9 @@ function AppContent({ __testEnableInput, projectRoot }: AppProps): React.ReactEl
 
   // Info modal state
   const [showInfo, setShowInfo] = useState(false);
+
+  // Interceptor log modal state
+  const [showInterceptorLog, setShowInterceptorLog] = useState(false);
 
   // Proxy details for info modal (one-time sync read)
   const proxyPort = useMemo(() => {
@@ -495,6 +506,8 @@ function AppContent({ __testEnableInput, projectRoot }: AppProps): React.ReactEl
         setShowHelp(true);
       } else if (input === "i") {
         setShowInfo(true);
+      } else if (input === "L") {
+        setShowInterceptorLog(true);
       } else if (input === "/") {
         preOpenFilterRef.current = filter;
         setShowFilter(true);
@@ -526,15 +539,16 @@ function AppContent({ __testEnableInput, projectRoot }: AppProps): React.ReactEl
         }
       }
     },
-    { isActive: (__testEnableInput || isRawModeSupported === true) && !showSaveModal && !showHelp && !showInfo && !showFilter && !showJsonExplorer && !showTextViewer },
+    { isActive: (__testEnableInput || isRawModeSupported === true) && !showSaveModal && !showHelp && !showInfo && !showInterceptorLog && !showFilter && !showJsonExplorer && !showTextViewer },
   );
 
   // Calculate layout
   const listWidth = Math.floor(columns * 0.4);
   const accordionWidth = columns - listWidth;
-  // Status bar takes 2 rows (border line + content line), filter bar takes 2 rows when visible
+  // Status bar takes 2 rows (border line + content line), InfoBar takes 1 row, filter bar takes 2 rows when visible
   const filterBarHeight = showFilter ? 2 : 0;
-  const contentHeight = rows - 2 - filterBarHeight;
+  const infoBarHeight = 1;
+  const contentHeight = rows - 2 - infoBarHeight - filterBarHeight;
 
   // Keep selection in bounds when requests change
   React.useEffect(() => {
@@ -634,6 +648,19 @@ function AppContent({ __testEnableInput, projectRoot }: AppProps): React.ReactEl
     );
   }
 
+  // Interceptor log modal - full screen replacement
+  if (showInterceptorLog) {
+    return (
+      <InterceptorLogModal
+        events={interceptorEvents.events}
+        width={columns}
+        height={rows}
+        onClose={() => setShowInterceptorLog(false)}
+        isActive={__testEnableInput || isRawModeSupported === true}
+      />
+    );
+  }
+
   // Help modal - full screen replacement
   if (showHelp) {
     return (
@@ -720,6 +747,16 @@ function AppContent({ __testEnableInput, projectRoot }: AppProps): React.ReactEl
         />
       )}
 
+      {/* Info bar */}
+      <InfoBar
+        interceptorErrorCount={interceptorEvents.counts.error}
+        interceptorWarnCount={interceptorEvents.counts.warn}
+        requestCount={requests.length}
+        interceptorCount={interceptorEvents.interceptorCount}
+        startTime={startTime}
+        width={columns}
+      />
+
       {/* Status bar */}
       <StatusBar
         message={statusMessage}
@@ -730,6 +767,9 @@ function AppContent({ __testEnableInput, projectRoot }: AppProps): React.ReactEl
         hasRequests={requests.length > 0}
         onBodySection={currentBodyIsExportable}
         onViewableBodySection={currentBodyIsExportable && !currentBodyIsBinary}
+        interceptorCount={interceptorEvents.interceptorCount}
+        interceptorErrorCount={interceptorEvents.counts.error}
+        hasEvents={interceptorEvents.totalEventCount > 0}
         width={columns}
       />
     </Box>

@@ -61,7 +61,7 @@ TypeScript interceptor files in `.procsi/interceptors/` — mock, modify, or obs
 - [ ] **TUI body search** — search through request/response bodies from within the TUI (not just MCP)
 - [x] **Remove `procsi init`** — replaced `init`/`vars` with `procsi on`/`procsi off` as real CLI subcommands
 - [ ] **Simplify README** — current README is ~580 lines; trim it to a quick-start + feature highlights + architecture diagram and move detailed reference (MCP tools/filters, full keybindings, CLI reference, interceptor cookbook) to a GitHub wiki. Inspiration: [sql-tap](https://github.com/mickamy/sql-tap) keeps its README short and scannable
-- [ ] **CLI query interface** — expose the same search/filter/export capabilities available in the TUI and MCP as traditional CLI commands using verb-based subcommands. Requests get short identifiers in output so they can be piped into per-request commands. Rough shape (to be fleshed out):
+- [ ] **CLI query interface** — expose the same search/filter/export capabilities available in the TUI and MCP as traditional CLI commands. REST-API-inspired structure: resources as nouns (`requests`, `interceptors`), actions as subcommands, filters as flags. Requests get short identifiers in output so they can be piped into per-request commands. Rough shape (to be fleshed out):
   ```
   procsi requests                                  # list recent requests
   procsi requests --domain example.com --limit 50  # filter by domain
@@ -70,7 +70,11 @@ TypeScript interceptor files in `.procsi/interceptors/` — mock, modify, or obs
   procsi request <id> export --format har          # export a request
   procsi request <id> export --format curl         # export as curl
   procsi bodies --search "error_code"              # full-text body search
+  procsi interceptors logs                           # interceptor logs (tail-style)
+  procsi interceptors logs --name mock-users         # filter by interceptor name
+  procsi interceptors logs --follow                  # live tail
   ```
+- [ ] **Fake domains / virtual hosts** — interceptors should work with non-existent domains/paths so you can mock entirely fictional APIs (e.g. `curl http://my-fake-api.local/users`). Currently a request to a non-routable host would fail before the interceptor can respond. Needs some kind of pre-request hook so interceptors can catch and reply without ever hitting upstream — essentially turning procsi into a lightweight mock server for any domain you like
 
 ---
 

@@ -3,6 +3,9 @@ import type {
   CapturedRequest,
   CapturedRequestSummary,
   DaemonStatus,
+  InterceptorEvent,
+  InterceptorEventLevel,
+  InterceptorEventType,
   InterceptorInfo,
   JsonQueryResult,
   RequestFilter,
@@ -259,6 +262,29 @@ export class ControlClient {
    */
   async reloadInterceptors(): Promise<{ success: boolean; count: number; error?: string }> {
     return this.request<{ success: boolean; count: number; error?: string }>("reloadInterceptors");
+  }
+
+  /**
+   * Get interceptor runtime events (matches, errors, timeouts, ctx.log() messages).
+   */
+  async getInterceptorEvents(options?: {
+    afterSeq?: number;
+    limit?: number;
+    level?: InterceptorEventLevel;
+    interceptor?: string;
+    type?: InterceptorEventType;
+  }): Promise<{
+    events: InterceptorEvent[];
+    counts: { info: number; warn: number; error: number };
+  }> {
+    return this.request("getInterceptorEvents", options);
+  }
+
+  /**
+   * Clear all interceptor events from the ring buffer.
+   */
+  async clearInterceptorEvents(): Promise<void> {
+    await this.request<{ success: boolean }>("clearInterceptorEvents");
   }
 
   /**

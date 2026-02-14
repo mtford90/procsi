@@ -144,6 +144,23 @@ describe("getVisibleHints", () => {
     // ^f/^b should still be visible (list panel)
     expect(keys).toContain("^f/^b");
   });
+
+  describe("L (events) hint", () => {
+    it("visible when hasEvents is true", () => {
+      const actions = hintActions(getVisibleHints({ hasEvents: true }));
+      expect(actions).toContain("events");
+    });
+
+    it("hidden when hasEvents is false", () => {
+      const actions = hintActions(getVisibleHints({ hasEvents: false }));
+      expect(actions).not.toContain("events");
+    });
+
+    it("hidden when hasEvents is undefined (defaults to false)", () => {
+      const actions = hintActions(getVisibleHints({}));
+      expect(actions).not.toContain("events");
+    });
+  });
 });
 
 describe("StatusBar component", () => {
@@ -269,6 +286,75 @@ describe("StatusBar component", () => {
       const frame = lastFrame();
 
       expect(frame).not.toContain("interceptor");
+    });
+  });
+
+  describe("interceptorErrorCount", () => {
+    it("renders error badge when interceptorErrorCount > 0", () => {
+      const { lastFrame } = render(
+        <StatusBar interceptorErrorCount={3} activePanel="accordion" hasSelection={false} hasRequests={false} onBodySection={false} />,
+      );
+      const frame = lastFrame();
+      expect(frame).toContain("error");
+    });
+
+    it("shows correct count in error badge", () => {
+      const { lastFrame } = render(
+        <StatusBar interceptorErrorCount={5} activePanel="accordion" hasSelection={false} hasRequests={false} onBodySection={false} />,
+      );
+      const frame = lastFrame();
+      expect(frame).toContain("5");
+    });
+
+    it("uses singular form '1 error' when count is 1", () => {
+      const { lastFrame } = render(
+        <StatusBar interceptorErrorCount={1} activePanel="accordion" hasSelection={false} hasRequests={false} onBodySection={false} />,
+      );
+      const frame = lastFrame();
+      expect(frame).toContain("1 error");
+      expect(frame).not.toContain("1 errors");
+    });
+
+    it("hidden when interceptorErrorCount is 0", () => {
+      const { lastFrame } = render(
+        <StatusBar interceptorErrorCount={0} activePanel="accordion" hasSelection={false} hasRequests={false} onBodySection={false} />,
+      );
+      const frame = lastFrame();
+      // Should not contain the error badge text (but may contain "error" in hints — use the badge pattern)
+      expect(frame).not.toMatch(/\d+ error/);
+    });
+
+    it("hidden when interceptorErrorCount is undefined", () => {
+      const { lastFrame } = render(
+        <StatusBar activePanel="accordion" hasSelection={false} hasRequests={false} onBodySection={false} />,
+      );
+      const frame = lastFrame();
+      expect(frame).not.toMatch(/\d+ error/);
+    });
+
+    it("both error badge and interceptor count badge can appear simultaneously", () => {
+      const { lastFrame } = render(
+        <StatusBar interceptorErrorCount={2} interceptorCount={3} activePanel="accordion" hasSelection={false} hasRequests={false} onBodySection={false} />,
+      );
+      const frame = lastFrame();
+      expect(frame).toContain("2 errors");
+      expect(frame).toContain("3 interceptors");
+    });
+
+    it("L key hint appears when hasEvents is true", () => {
+      const { lastFrame } = render(
+        <StatusBar hasEvents interceptorCount={1} activePanel="accordion" hasSelection={false} hasRequests={false} onBodySection={false} />,
+      );
+      const frame = lastFrame();
+      expect(frame).toContain("events");
+    });
+
+    it("L key hint does not appear when hasEvents is false", () => {
+      const { lastFrame } = render(
+        <StatusBar hasEvents={false} interceptorCount={0} interceptorErrorCount={0} activePanel="accordion" hasSelection={false} hasRequests={false} onBodySection={false} />,
+      );
+      const frame = lastFrame();
+      expect(frame).not.toContain("events");
     });
   });
 

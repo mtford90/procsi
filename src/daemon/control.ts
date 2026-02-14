@@ -6,11 +6,15 @@ import type {
   CapturedRequest,
   CapturedRequestSummary,
   DaemonStatus,
+  InterceptorEvent,
+  InterceptorEventLevel,
+  InterceptorEventType,
   InterceptorInfo,
   JsonQueryResult,
   RequestFilter,
   Session,
 } from "../shared/types.js";
+import type { InterceptorEventLog, EventCounts } from "./interceptor-event-log.js";
 import {
   MAX_BUFFER_SIZE,
   type ControlMessage,
@@ -28,6 +32,7 @@ export interface ControlServerOptions {
   projectRoot?: string;
   logLevel?: LogLevel;
   interceptorLoader?: InterceptorLoader;
+  interceptorEventLog?: InterceptorEventLog;
 }
 
 export interface ControlServer {
@@ -52,6 +57,8 @@ interface ControlHandlers {
   clearRequests: ControlHandler;
   listInterceptors: ControlHandler;
   reloadInterceptors: ControlHandler;
+  getInterceptorEvents: ControlHandler;
+  clearInterceptorEvents: ControlHandler;
   ping: ControlHandler;
 }
 
@@ -156,8 +163,16 @@ function optionalFilter(params: Record<string, unknown>): RequestFilter | undefi
  * Create a Unix socket control server for daemon communication.
  */
 export function createControlServer(options: ControlServerOptions): ControlServer {
-  const { socketPath, storage, proxyPort, version, projectRoot, logLevel, interceptorLoader } =
-    options;
+  const {
+    socketPath,
+    storage,
+    proxyPort,
+    version,
+    projectRoot,
+    logLevel,
+    interceptorLoader,
+    interceptorEventLog,
+  } = options;
 
   // Create logger if projectRoot is provided
   const logger: Logger | undefined = projectRoot
@@ -292,6 +307,51 @@ export function createControlServer(options: ControlServerOptions): ControlServe
           error: err instanceof Error ? err.message : String(err),
         };
       }
+    },
+
+    getInterceptorEvents: (params): { events: InterceptorEvent[]; counts: EventCounts } => {
+      if (!interceptorEventLog) {
+        return { events: [], counts: { info: 0, warn: 0, error: 0 } };
+      }
+
+      const afterSeq = optionalNumber(params, "afterSeq") ?? 0;
+      const limit = optionalNumber(params, "limit");
+      const level = optionalString(params, "level") as InterceptorEventLevel | undefined;
+      const interceptor = optionalString(params, "interceptor");
+      const type = optionalString(params, "type") as InterceptorEventType | undefined;
+
+      const events =
+        afterSeq > 0
+          ? interceptorEventLog.since(afterSeq, { limit, level, interceptor, type })
+          : interceptorEventLog.latest(limit ?? 100);
+
+      // Apply filters for the latest() path (since() handles them internally)
+      const filtered =
+        afterSeq > 0
+          ? events
+          : events.filter((e) => {
+              if (level) {
+                const SEVERITY: Record<InterceptorEventLevel, number> = {
+                  info: 0,
+                  warn: 1,
+                  error: 2,
+                };
+                if (SEVERITY[e.level] < SEVERITY[level]) return false;
+              }
+              if (interceptor && e.interceptor !== interceptor) return false;
+              if (type && e.type !== type) return false;
+              return true;
+            });
+
+      return {
+        events: filtered,
+        counts: interceptorEventLog.counts(),
+      };
+    },
+
+    clearInterceptorEvents: (): { success: boolean } => {
+      interceptorEventLog?.clear();
+      return { success: true };
     },
 
     ping: (): { pong: boolean } => {

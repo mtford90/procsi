@@ -17,6 +17,7 @@ import type {
   CapturedRequestSummary,
   DaemonStatus,
   InterceptorInfo,
+  InterceptorEventType,
   JsonQueryResult,
   RequestFilter,
   Session,
@@ -1040,6 +1041,70 @@ export function createProcsiMcpServer(options: McpServerOptions) {
       } catch (err) {
         return textResult(
           `Failed to reload interceptors: ${err instanceof Error ? err.message : "Unknown error"}`,
+          true
+        );
+      }
+    }
+  );
+
+  // --- procsi_get_interceptor_events ---
+  server.tool(
+    "procsi_get_interceptor_events",
+    "Get interceptor runtime events — matches, errors, timeouts, and ctx.log() messages. Use this to debug interceptor behaviour. Typical workflow: list_interceptors → get_interceptor_events level=error → fix code → reload_interceptors → check events again.",
+    {
+      limit: z.number().optional().describe("Maximum number of events to return (default 100)."),
+      level: z
+        .enum(["info", "warn", "error"])
+        .optional()
+        .describe(
+          'Minimum severity level: "info" (all), "warn" (warnings + errors), "error" (errors only).'
+        ),
+      interceptor: z.string().optional().describe("Filter by interceptor name."),
+      type: z
+        .string()
+        .optional()
+        .describe('Filter by event type (e.g. "handler_error", "mocked", "user_log").'),
+      format: FORMAT_SCHEMA,
+    },
+    async (params) => {
+      try {
+        const result = await client.getInterceptorEvents({
+          limit: params.limit,
+          level: params.level,
+          interceptor: params.interceptor,
+          type: params.type as InterceptorEventType | undefined,
+        });
+
+        if (params.format === "json") {
+          return jsonResult({
+            total: result.events.length,
+            counts: result.counts,
+            events: result.events.map((e) => ({
+              ...e,
+              timestamp: new Date(e.timestamp).toISOString(),
+            })),
+          });
+        }
+
+        if (result.events.length === 0) {
+          return textResult("No interceptor events.");
+        }
+
+        const lines = result.events.map((e) => {
+          const ts = new Date(e.timestamp).toISOString();
+          const parts = [`[${ts}]`, `[${e.level.toUpperCase()}]`, `[${e.interceptor}]`, e.message];
+          if (e.error) {
+            parts.push(`\n  Error: ${e.error}`);
+          }
+          return parts.join(" ");
+        });
+
+        const { info, warn, error } = result.counts;
+        const header = `${result.events.length} event(s) (totals: ${info} info, ${warn} warn, ${error} error):`;
+        return textResult(`${header}\n\n${lines.join("\n")}`);
+      } catch (err) {
+        return textResult(
+          `Failed to get interceptor events: ${err instanceof Error ? err.message : "Unknown error"}`,
           true
         );
       }

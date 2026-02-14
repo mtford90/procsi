@@ -141,3 +141,36 @@ export interface InterceptorInfo {
   sourceFile: string;
   error?: string;
 }
+
+// --- Interceptor event log types ---
+
+export type InterceptorEventType =
+  | "matched"
+  | "mocked"
+  | "modified"
+  | "observed"
+  | "match_error"
+  | "match_timeout"
+  | "handler_error"
+  | "handler_timeout"
+  | "invalid_response"
+  | "forward_after_complete"
+  | "load_error"
+  | "loaded"
+  | "reload"
+  | "user_log";
+
+export type InterceptorEventLevel = "info" | "warn" | "error";
+
+export interface InterceptorEvent {
+  seq: number;
+  timestamp: number;
+  type: InterceptorEventType;
+  level: InterceptorEventLevel;
+  interceptor: string;
+  message: string;
+  requestId?: string;
+  requestUrl?: string;
+  requestMethod?: string;
+  error?: string;
+}

@@ -83,6 +83,7 @@ const HELP_SECTIONS: HelpSection[] = [
   {
     title: "General",
     entries: [
+      { key: "L", description: "Interceptor events" },
       { key: "i", description: "Proxy connection info" },
       { key: "?", description: "Toggle help" },
       { key: "q", description: "Quit" },

@@ -8,6 +8,7 @@ import { createProxy } from "./proxy.js";
 import { createControlServer } from "./control.js";
 import { createInterceptorLoader, type InterceptorLoader } from "./interceptor-loader.js";
 import { createInterceptorRunner } from "./interceptor-runner.js";
+import { createInterceptorEventLog } from "./interceptor-event-log.js";
 import { createProcsiClient } from "./procsi-client.js";
 import {
   getProcsiPaths,
@@ -65,6 +66,7 @@ async function main() {
   // Load interceptors if the directory exists (user opts in by creating it)
   let interceptorLoader: InterceptorLoader | undefined;
   let interceptorRunner: ReturnType<typeof createInterceptorRunner> | undefined;
+  const interceptorEventLog = createInterceptorEventLog();
 
   if (fs.existsSync(paths.interceptorsDir)) {
     const procsiClient = createProcsiClient(storage);
@@ -72,6 +74,7 @@ async function main() {
       interceptorsDir: paths.interceptorsDir,
       projectRoot,
       logLevel,
+      eventLog: interceptorEventLog,
       onReload: () => {
         logger.info("Interceptors reloaded", {
           count: interceptorLoader?.getInterceptors().length ?? 0,
@@ -91,6 +94,7 @@ async function main() {
       procsiClient,
       projectRoot,
       logLevel,
+      eventLog: interceptorEventLog,
     });
   }
 
@@ -132,6 +136,7 @@ async function main() {
     projectRoot,
     logLevel,
     interceptorLoader,
+    interceptorEventLog,
   });
 
   // Write PID file

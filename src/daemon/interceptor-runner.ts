@@ -7,6 +7,7 @@ import type {
   ProcsiClient,
 } from "../shared/types.js";
 import type { InterceptorLoader, LoadedInterceptor } from "./interceptor-loader.js";
+import type { InterceptorEventLog } from "./interceptor-event-log.js";
 
 // --- Constants (exported for testing) ---
 
@@ -80,6 +81,8 @@ interface InterceptorRunnerOptions {
   handlerTimeoutMs?: number;
   /** Override match timeout for testing */
   matchTimeoutMs?: number;
+  /** Event log for structured interceptor debugging events */
+  eventLog?: InterceptorEventLog;
 }
 
 // --- Response validation ---
@@ -148,7 +151,7 @@ function withTimeout<T>(
 // --- Factory ---
 
 export function createInterceptorRunner(options: InterceptorRunnerOptions): InterceptorRunner {
-  const { loader, procsiClient, projectRoot, logLevel } = options;
+  const { loader, procsiClient, projectRoot, logLevel, eventLog } = options;
   const handlerTimeoutMs = options.handlerTimeoutMs ?? HANDLER_TIMEOUT_MS;
   const matchTimeoutMs = options.matchTimeoutMs ?? MATCH_TIMEOUT_MS;
   const logger = createLogger("interceptor", projectRoot, logLevel);
@@ -197,8 +200,15 @@ export function createInterceptorRunner(options: InterceptorRunnerOptions): Inte
         );
 
         if (outcome.timedOut) {
-          logger.warn("Match function timed out", {
-            interceptor: interceptor.name ?? interceptor.sourceFile,
+          const name = interceptor.name ?? interceptor.sourceFile;
+          logger.warn("Match function timed out", { interceptor: name });
+          eventLog?.append({
+            type: "match_timeout",
+            interceptor: name,
+            message: "Match function timed out",
+            requestId: undefined,
+            requestUrl: request.url,
+            requestMethod: request.method,
           });
           continue;
         }
@@ -207,9 +217,16 @@ export function createInterceptorRunner(options: InterceptorRunnerOptions): Inte
           return interceptor;
         }
       } catch (err: unknown) {
-        logger.warn("Match function threw", {
-          interceptor: interceptor.name ?? interceptor.sourceFile,
-          error: err instanceof Error ? err.message : String(err),
+        const name = interceptor.name ?? interceptor.sourceFile;
+        const errorMsg = err instanceof Error ? (err.stack ?? err.message) : String(err);
+        logger.warn("Match function threw", { interceptor: name, error: errorMsg });
+        eventLog?.append({
+          type: "match_error",
+          interceptor: name,
+          message: "Match function threw",
+          error: errorMsg,
+          requestUrl: request.url,
+          requestMethod: request.method,
         });
         continue;
       }
@@ -247,6 +264,14 @@ export function createInterceptorRunner(options: InterceptorRunnerOptions): Inte
       method: request.method,
       url: request.url,
     });
+    eventLog?.append({
+      type: "matched",
+      interceptor: interceptorName,
+      message: `Matched ${request.method} ${request.url}`,
+      requestId,
+      requestUrl: request.url,
+      requestMethod: request.method,
+    });
 
     // Defensive copy of body buffer so handlers cannot mutate the original
     if (request.body) {
@@ -270,6 +295,14 @@ export function createInterceptorRunner(options: InterceptorRunnerOptions): Inte
       if (completed) {
         const msg = "forward() called after handler completed";
         logger.warn(msg, { requestId, interceptor: interceptorName });
+        eventLog?.append({
+          type: "forward_after_complete",
+          interceptor: interceptorName,
+          message: msg,
+          requestId,
+          requestUrl: request.url,
+          requestMethod: request.method,
+        });
         return Promise.reject(new Error(msg));
       }
 
@@ -288,6 +321,14 @@ export function createInterceptorRunner(options: InterceptorRunnerOptions): Inte
 
     const ctxLog = (message: string): void => {
       logger.info(`[${interceptorName}] ${message}`, { requestId });
+      eventLog?.append({
+        type: "user_log",
+        interceptor: interceptorName,
+        message,
+        requestId,
+        requestUrl: request.url,
+        requestMethod: request.method,
+      });
     };
 
     const ctx: InterceptorContext = {
@@ -318,6 +359,14 @@ export function createInterceptorRunner(options: InterceptorRunnerOptions): Inte
           requestId,
           interceptor: interceptorName,
         });
+        eventLog?.append({
+          type: "handler_timeout",
+          interceptor: interceptorName,
+          message: "Handler timed out during request phase",
+          requestId,
+          requestUrl: request.url,
+          requestMethod: request.method,
+        });
         completed = true;
         return undefined;
       }
@@ -338,6 +387,14 @@ export function createInterceptorRunner(options: InterceptorRunnerOptions): Inte
             requestId,
             interceptor: interceptorName,
           });
+          eventLog?.append({
+            type: "invalid_response",
+            interceptor: interceptorName,
+            message: "Handler returned invalid response",
+            requestId,
+            requestUrl: request.url,
+            requestMethod: request.method,
+          });
           return undefined;
         }
 
@@ -345,6 +402,14 @@ export function createInterceptorRunner(options: InterceptorRunnerOptions): Inte
           requestId,
           interceptor: interceptorName,
           status: raceResult.result.status,
+        });
+        eventLog?.append({
+          type: "mocked",
+          interceptor: interceptorName,
+          message: `Mock response ${raceResult.result.status} for ${request.method} ${request.url}`,
+          requestId,
+          requestUrl: request.url,
+          requestMethod: request.method,
         });
 
         return {
@@ -368,10 +433,20 @@ export function createInterceptorRunner(options: InterceptorRunnerOptions): Inte
 
       return { interception };
     } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
       logger.warn("Handler threw during request phase", {
         requestId,
         interceptor: interceptorName,
-        error: err instanceof Error ? err.message : String(err),
+        error: errorMsg,
+      });
+      eventLog?.append({
+        type: "handler_error",
+        interceptor: interceptorName,
+        message: "Handler threw during request phase",
+        error: errorMsg,
+        requestId,
+        requestUrl: request.url,
+        requestMethod: request.method,
       });
       completed = true;
       return undefined;
@@ -405,6 +480,12 @@ export function createInterceptorRunner(options: InterceptorRunnerOptions): Inte
           requestId,
           interceptor: entry.interceptorName,
         });
+        eventLog?.append({
+          type: "handler_timeout",
+          interceptor: entry.interceptorName,
+          message: "Handler timed out during response phase",
+          requestId,
+        });
         return undefined;
       }
 
@@ -412,6 +493,12 @@ export function createInterceptorRunner(options: InterceptorRunnerOptions): Inte
 
       if (result === undefined || result === null) {
         // Handler did not return a response override (observe mode)
+        eventLog?.append({
+          type: "observed",
+          interceptor: entry.interceptorName,
+          message: `Observed ${requestId} (no response override)`,
+          requestId,
+        });
         return { interception: entry.interception };
       }
 
@@ -419,6 +506,12 @@ export function createInterceptorRunner(options: InterceptorRunnerOptions): Inte
         logger.warn("Handler returned invalid response after forward()", {
           requestId,
           interceptor: entry.interceptorName,
+        });
+        eventLog?.append({
+          type: "invalid_response",
+          interceptor: entry.interceptorName,
+          message: "Handler returned invalid response after forward()",
+          requestId,
         });
         return { interception: entry.interception };
       }
@@ -428,6 +521,12 @@ export function createInterceptorRunner(options: InterceptorRunnerOptions): Inte
         interceptor: entry.interceptorName,
         status: result.status,
       });
+      eventLog?.append({
+        type: "modified",
+        interceptor: entry.interceptorName,
+        message: `Response modified to ${result.status}`,
+        requestId,
+      });
 
       return {
         responseOverride: result,
@@ -436,10 +535,18 @@ export function createInterceptorRunner(options: InterceptorRunnerOptions): Inte
     } catch (err: unknown) {
       entry.completed = true;
 
+      const errorMsg = err instanceof Error ? err.message : String(err);
       logger.warn("Handler threw during response phase", {
         requestId,
         interceptor: entry.interceptorName,
-        error: err instanceof Error ? err.message : String(err),
+        error: errorMsg,
+      });
+      eventLog?.append({
+        type: "handler_error",
+        interceptor: entry.interceptorName,
+        message: "Handler threw during response phase",
+        error: errorMsg,
+        requestId,
       });
 
       return undefined;

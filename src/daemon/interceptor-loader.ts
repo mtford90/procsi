@@ -4,6 +4,7 @@ import * as path from "node:path";
 import { createJiti } from "jiti";
 import { createLogger, type LogLevel, type Logger } from "../shared/logger.js";
 import type { Interceptor, InterceptorInfo } from "../shared/types.js";
+import type { InterceptorEventLog } from "./interceptor-event-log.js";
 
 /** Debounce delay for file-watcher reload triggers */
 const WATCH_DEBOUNCE_MS = 300;
@@ -24,6 +25,8 @@ export interface InterceptorLoaderOptions {
   projectRoot: string;
   logLevel?: LogLevel;
   onReload?: () => void;
+  /** Event log for structured interceptor debugging events */
+  eventLog?: InterceptorEventLog;
 }
 
 /**
@@ -136,7 +139,7 @@ function warnDuplicateNames(interceptors: LoadedInterceptor[], logger: Logger): 
 export async function createInterceptorLoader(
   options: InterceptorLoaderOptions
 ): Promise<InterceptorLoader> {
-  const { interceptorsDir, projectRoot, logLevel, onReload } = options;
+  const { interceptorsDir, projectRoot, logLevel, onReload, eventLog } = options;
   const logger = createLogger("interceptor", projectRoot, logLevel);
 
   let interceptors: LoadedInterceptor[] = [];
@@ -183,6 +186,12 @@ export async function createInterceptorLoader(
             sourceFile: filePath,
             error: errorMsg,
           });
+          eventLog?.append({
+            type: "load_error",
+            interceptor: fileName,
+            message: errorMsg,
+            error: errorMsg,
+          });
           continue;
         }
 
@@ -195,14 +204,25 @@ export async function createInterceptorLoader(
             sourceFile: filePath,
           });
           logger.info(`Loaded interceptor "${name}" from ${fileName}`);
+          eventLog?.append({
+            type: "loaded",
+            interceptor: name,
+            message: `Loaded from ${fileName}`,
+          });
         }
       } catch (err) {
-        const errorMsg = err instanceof Error ? err.message : String(err);
+        const errorMsg = err instanceof Error ? (err.stack ?? err.message) : String(err);
         logger.warn(`Failed to load interceptor file ${fileName}: ${errorMsg}`);
         nextInfo.push({
           name: fileName,
           hasMatch: false,
           sourceFile: filePath,
+          error: errorMsg,
+        });
+        eventLog?.append({
+          type: "load_error",
+          interceptor: fileName,
+          message: `Failed to load: ${errorMsg}`,
           error: errorMsg,
         });
       }
@@ -246,6 +266,11 @@ export async function createInterceptorLoader(
           loadAll()
             .then(() => {
               logger.info(`Hot-reload complete, ${interceptors.length} interceptor(s) active`);
+              eventLog?.append({
+                type: "reload",
+                interceptor: "*",
+                message: `Hot-reload complete, ${interceptors.length} interceptor(s) active`,
+              });
               onReload?.();
             })
             .catch((err: unknown) => {
@@ -303,6 +328,11 @@ export async function createInterceptorLoader(
       logger.info("Manual reload triggered");
       await loadAll();
       logger.info(`Reload complete, ${interceptors.length} interceptor(s) active`);
+      eventLog?.append({
+        type: "reload",
+        interceptor: "*",
+        message: `Reload complete, ${interceptors.length} interceptor(s) active`,
+      });
       onReload?.();
     },
 

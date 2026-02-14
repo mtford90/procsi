@@ -3,6 +3,7 @@ import * as os from "node:os";
 import { createInterceptorRunner, isValidInterceptorResponse } from "./interceptor-runner.js";
 import type { InterceptorLoader, LoadedInterceptor } from "./interceptor-loader.js";
 import type { ProcsiClient, InterceptorRequest, InterceptorResponse } from "../shared/types.js";
+import { createInterceptorEventLog, type InterceptorEventLog } from "./interceptor-event-log.js";
 
 function createMockLoader(interceptors: LoadedInterceptor[]): InterceptorLoader {
   return {
@@ -928,6 +929,404 @@ describe("interceptor-runner", () => {
 
         // Original buffer should be unaffected
         expect(originalBody.toString()).toBe("original content");
+      });
+    });
+
+    describe("event log emissions", () => {
+      let eventLog: InterceptorEventLog;
+
+      beforeEach(() => {
+        eventLog = createInterceptorEventLog();
+      });
+
+      it("should emit matched event when request matches an interceptor", async () => {
+        const interceptor: LoadedInterceptor = {
+          name: "match-event-test",
+          handler: async () => ({ status: 200, body: "ok" }),
+          sourceFile: "match-event.ts",
+        };
+
+        const loader = createMockLoader([interceptor]);
+        const runner = createInterceptorRunner({
+          loader,
+          procsiClient: mockProcsiClient,
+          projectRoot,
+          logLevel: "silent",
+          eventLog,
+        });
+
+        const request = createTestRequest();
+        await runner.handleRequest("req-ev-1", request);
+
+        const events = eventLog.since(0, { type: "matched" });
+        expect(events).toHaveLength(1);
+        expect(events[0].type).toBe("matched");
+        expect(events[0].requestId).toBe("req-ev-1");
+        expect(events[0].requestUrl).toBe("https://example.com/test");
+        expect(events[0].requestMethod).toBe("GET");
+        expect(events[0].interceptor).toBe("match-event-test");
+      });
+
+      it("should emit mocked event when handler returns a mock response", async () => {
+        const interceptor: LoadedInterceptor = {
+          name: "mock-event-test",
+          handler: async () => ({ status: 200, body: "mocked" }),
+          sourceFile: "mock-event.ts",
+        };
+
+        const loader = createMockLoader([interceptor]);
+        const runner = createInterceptorRunner({
+          loader,
+          procsiClient: mockProcsiClient,
+          projectRoot,
+          logLevel: "silent",
+          eventLog,
+        });
+
+        const request = createTestRequest();
+        await runner.handleRequest("req-ev-2", request);
+
+        const events = eventLog.since(0, { type: "mocked" });
+        expect(events).toHaveLength(1);
+        expect(events[0].type).toBe("mocked");
+        expect(events[0].requestId).toBe("req-ev-2");
+        expect(events[0].requestUrl).toBe("https://example.com/test");
+        expect(events[0].requestMethod).toBe("GET");
+      });
+
+      it("should emit match_timeout event when match function times out", async () => {
+        const interceptors: LoadedInterceptor[] = [
+          {
+            name: "slow-match-event",
+            match: async () => {
+              await new Promise((resolve) => setTimeout(resolve, 500));
+              return true;
+            },
+            handler: async () => ({ status: 200 }),
+            sourceFile: "slow-match-event.ts",
+          },
+          {
+            name: "fallback",
+            match: () => true,
+            handler: async () => ({ status: 200 }),
+            sourceFile: "fallback.ts",
+          },
+        ];
+
+        const loader = createMockLoader(interceptors);
+        const runner = createInterceptorRunner({
+          loader,
+          procsiClient: mockProcsiClient,
+          projectRoot,
+          logLevel: "silent",
+          eventLog,
+          matchTimeoutMs: 50,
+        });
+
+        const request = createTestRequest();
+        await runner.handleRequest("req-ev-3", request);
+
+        const events = eventLog.since(0, { type: "match_timeout" });
+        expect(events).toHaveLength(1);
+        expect(events[0].level).toBe("warn");
+        expect(events[0].requestUrl).toBe("https://example.com/test");
+        expect(events[0].requestMethod).toBe("GET");
+      });
+
+      it("should emit match_error event when match function throws", async () => {
+        const interceptors: LoadedInterceptor[] = [
+          {
+            name: "throwing-match-event",
+            match: () => {
+              throw new Error("Match explosion");
+            },
+            handler: async () => ({ status: 200 }),
+            sourceFile: "throwing-match-event.ts",
+          },
+          {
+            name: "fallback",
+            match: () => true,
+            handler: async () => ({ status: 200 }),
+            sourceFile: "fallback.ts",
+          },
+        ];
+
+        const loader = createMockLoader(interceptors);
+        const runner = createInterceptorRunner({
+          loader,
+          procsiClient: mockProcsiClient,
+          projectRoot,
+          logLevel: "silent",
+          eventLog,
+        });
+
+        const request = createTestRequest();
+        await runner.handleRequest("req-ev-4", request);
+
+        const events = eventLog.since(0, { type: "match_error" });
+        expect(events).toHaveLength(1);
+        expect(events[0].level).toBe("error");
+        expect(events[0].error).toContain("Match explosion");
+        expect(events[0].requestUrl).toBe("https://example.com/test");
+        expect(events[0].requestMethod).toBe("GET");
+      });
+
+      it("should emit handler_timeout event when handler times out in request phase", async () => {
+        const interceptor: LoadedInterceptor = {
+          name: "slow-handler-event",
+          handler: async () => {
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            return { status: 200, body: "too late" };
+          },
+          sourceFile: "slow-handler-event.ts",
+        };
+
+        const loader = createMockLoader([interceptor]);
+        const runner = createInterceptorRunner({
+          loader,
+          procsiClient: mockProcsiClient,
+          projectRoot,
+          logLevel: "silent",
+          eventLog,
+          handlerTimeoutMs: 50,
+        });
+
+        const request = createTestRequest();
+        await runner.handleRequest("req-ev-5", request);
+
+        const events = eventLog.since(0, { type: "handler_timeout" });
+        expect(events).toHaveLength(1);
+        expect(events[0].interceptor).toBe("slow-handler-event");
+        expect(events[0].requestId).toBe("req-ev-5");
+      });
+
+      it("should emit handler_error event when handler returns non-promise value", async () => {
+        // Returning a non-thenable value causes .then() to throw inside the
+        // try block, which triggers the handler_error catch path
+        const interceptor: LoadedInterceptor = {
+          name: "non-promise-handler",
+          handler: (() => 42) as unknown as LoadedInterceptor["handler"],
+          sourceFile: "non-promise.ts",
+        };
+
+        const loader = createMockLoader([interceptor]);
+        const runner = createInterceptorRunner({
+          loader,
+          procsiClient: mockProcsiClient,
+          projectRoot,
+          logLevel: "silent",
+          eventLog,
+        });
+
+        const request = createTestRequest();
+        const result = await runner.handleRequest("req-ev-6", request);
+
+        expect(result).toBeUndefined();
+
+        const events = eventLog.since(0, { type: "handler_error" });
+        expect(events).toHaveLength(1);
+        expect(events[0].level).toBe("error");
+        expect(events[0].requestId).toBe("req-ev-6");
+      });
+
+      it("should emit invalid_response event when handler returns invalid response", async () => {
+        const interceptor: LoadedInterceptor = {
+          name: "invalid-response-event",
+          handler: async () => ({ body: "no status" }) as InterceptorResponse,
+          sourceFile: "invalid-response-event.ts",
+        };
+
+        const loader = createMockLoader([interceptor]);
+        const runner = createInterceptorRunner({
+          loader,
+          procsiClient: mockProcsiClient,
+          projectRoot,
+          logLevel: "silent",
+          eventLog,
+        });
+
+        const request = createTestRequest();
+        await runner.handleRequest("req-ev-7", request);
+
+        const events = eventLog.since(0, { type: "invalid_response" });
+        expect(events).toHaveLength(1);
+        expect(events[0].interceptor).toBe("invalid-response-event");
+        expect(events[0].requestId).toBe("req-ev-7");
+      });
+
+      it("should emit user_log event when ctx.log() is called", async () => {
+        const interceptor: LoadedInterceptor = {
+          name: "log-event-test",
+          handler: (ctx) => {
+            ctx.log("hello from interceptor");
+            return { status: 200 };
+          },
+          sourceFile: "log-event.ts",
+        };
+
+        const loader = createMockLoader([interceptor]);
+        const runner = createInterceptorRunner({
+          loader,
+          procsiClient: mockProcsiClient,
+          projectRoot,
+          logLevel: "silent",
+          eventLog,
+        });
+
+        const request = createTestRequest();
+        await runner.handleRequest("req-ev-8", request);
+
+        const events = eventLog.since(0, { type: "user_log" });
+        expect(events).toHaveLength(1);
+        expect(events[0].message).toBe("hello from interceptor");
+        expect(events[0].interceptor).toBe("log-event-test");
+        expect(events[0].requestId).toBe("req-ev-8");
+      });
+
+      it("should emit modified event when handler modifies response after forward", async () => {
+        const interceptor: LoadedInterceptor = {
+          name: "modify-event-test",
+          handler: async (ctx) => {
+            const upstream = await ctx.forward();
+            return { ...upstream, status: 418, body: "modified" };
+          },
+          sourceFile: "modify-event.ts",
+        };
+
+        const loader = createMockLoader([interceptor]);
+        const runner = createInterceptorRunner({
+          loader,
+          procsiClient: mockProcsiClient,
+          projectRoot,
+          logLevel: "silent",
+          eventLog,
+        });
+
+        const request = createTestRequest();
+        await runner.handleRequest("req-ev-9", request);
+
+        const upstreamResponse: InterceptorResponse = {
+          status: 200,
+          body: "original",
+        };
+        await runner.handleResponse("req-ev-9", upstreamResponse);
+
+        const events = eventLog.since(0, { type: "modified" });
+        expect(events).toHaveLength(1);
+        expect(events[0].interceptor).toBe("modify-event-test");
+        expect(events[0].requestId).toBe("req-ev-9");
+      });
+
+      it("should emit observed event when handler calls forward but returns undefined", async () => {
+        const interceptor: LoadedInterceptor = {
+          name: "observe-event-test",
+          handler: async (ctx) => {
+            await ctx.forward();
+            // Return nothing - just observe
+          },
+          sourceFile: "observe-event.ts",
+        };
+
+        const loader = createMockLoader([interceptor]);
+        const runner = createInterceptorRunner({
+          loader,
+          procsiClient: mockProcsiClient,
+          projectRoot,
+          logLevel: "silent",
+          eventLog,
+        });
+
+        const request = createTestRequest();
+        await runner.handleRequest("req-ev-10", request);
+
+        const upstreamResponse: InterceptorResponse = {
+          status: 200,
+          body: "upstream",
+        };
+        await runner.handleResponse("req-ev-10", upstreamResponse);
+
+        const events = eventLog.since(0, { type: "observed" });
+        expect(events).toHaveLength(1);
+        expect(events[0].interceptor).toBe("observe-event-test");
+        expect(events[0].requestId).toBe("req-ev-10");
+      });
+
+      it("should emit handler_timeout event when handler throws in response phase", async () => {
+        // When an async handler rejects after forward(), withTimeout treats the
+        // rejection as a timeout-like bail-out, so handler_timeout is emitted
+        // rather than handler_error.
+        const interceptor: LoadedInterceptor = {
+          name: "throws-response-event",
+          handler: async (ctx) => {
+            await ctx.forward();
+            throw new Error("Response phase boom");
+          },
+          sourceFile: "throws-response-event.ts",
+        };
+
+        const loader = createMockLoader([interceptor]);
+        const runner = createInterceptorRunner({
+          loader,
+          procsiClient: mockProcsiClient,
+          projectRoot,
+          logLevel: "silent",
+          eventLog,
+        });
+
+        const request = createTestRequest();
+        await runner.handleRequest("req-ev-11", request);
+
+        const upstreamResponse: InterceptorResponse = {
+          status: 200,
+          body: "upstream",
+        };
+        await runner.handleResponse("req-ev-11", upstreamResponse);
+
+        const events = eventLog.since(0, { type: "handler_timeout" });
+        expect(events).toHaveLength(1);
+        expect(events[0].interceptor).toBe("throws-response-event");
+        expect(events[0].requestId).toBe("req-ev-11");
+      });
+
+      it("should not emit events when no interceptors are loaded", async () => {
+        const loader = createMockLoader([]);
+        const runner = createInterceptorRunner({
+          loader,
+          procsiClient: mockProcsiClient,
+          projectRoot,
+          logLevel: "silent",
+          eventLog,
+        });
+
+        const request = createTestRequest();
+        await runner.handleRequest("req-ev-12", request);
+
+        const events = eventLog.since(0);
+        expect(events).toHaveLength(0);
+      });
+
+      it("should not emit events when no interceptor matches", async () => {
+        const interceptor: LoadedInterceptor = {
+          name: "non-matching",
+          match: () => false,
+          handler: async () => ({ status: 200 }),
+          sourceFile: "non-matching.ts",
+        };
+
+        const loader = createMockLoader([interceptor]);
+        const runner = createInterceptorRunner({
+          loader,
+          procsiClient: mockProcsiClient,
+          projectRoot,
+          logLevel: "silent",
+          eventLog,
+        });
+
+        const request = createTestRequest();
+        await runner.handleRequest("req-ev-13", request);
+
+        const events = eventLog.since(0);
+        expect(events).toHaveLength(0);
       });
     });
   });

@@ -4,6 +4,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { createInterceptorLoader, isValidInterceptor } from "./interceptor-loader.js";
 import type { Interceptor } from "../shared/types.js";
+import { createInterceptorEventLog } from "./interceptor-event-log.js";
 
 describe("interceptor-loader", () => {
   let tempDir: string;
@@ -497,6 +498,109 @@ describe("interceptor-loader", () => {
         handler: () => undefined,
       };
       expect(isValidInterceptor(interceptor)).toBe(true);
+    });
+
+    describe("event log emissions", { timeout: 30_000 }, () => {
+      it("should emit loaded event for each successfully loaded interceptor", async () => {
+        const eventLog = createInterceptorEventLog();
+        const filePath = path.join(interceptorsDir, "loaded-event.ts");
+        fs.writeFileSync(
+          filePath,
+          `export default { name: "loaded-interceptor", handler: () => undefined };`
+        );
+
+        const loader = await createInterceptorLoader({
+          interceptorsDir,
+          projectRoot: tempDir,
+          logLevel: "silent",
+          eventLog,
+        });
+
+        try {
+          const events = eventLog.since(0, { type: "loaded" });
+          expect(events).toHaveLength(1);
+          expect(events[0].type).toBe("loaded");
+          expect(events[0].interceptor).toBe("loaded-interceptor");
+        } finally {
+          loader.close();
+        }
+      });
+
+      it("should emit load_error event for invalid export", async () => {
+        const eventLog = createInterceptorEventLog();
+        const filePath = path.join(interceptorsDir, "invalid-export.ts");
+        fs.writeFileSync(filePath, `export default { name: "no-handler" };`);
+
+        const loader = await createInterceptorLoader({
+          interceptorsDir,
+          projectRoot: tempDir,
+          logLevel: "silent",
+          eventLog,
+        });
+
+        try {
+          const events = eventLog.since(0, { type: "load_error" });
+          expect(events).toHaveLength(1);
+          expect(events[0].type).toBe("load_error");
+          expect(events[0].level).toBe("error");
+        } finally {
+          loader.close();
+        }
+      });
+
+      it("should emit load_error event for file that throws on import", async () => {
+        const eventLog = createInterceptorEventLog();
+        fs.writeFileSync(
+          path.join(interceptorsDir, "throws-on-import.ts"),
+          `throw new Error("Import explosion");`
+        );
+
+        const loader = await createInterceptorLoader({
+          interceptorsDir,
+          projectRoot: tempDir,
+          logLevel: "silent",
+          eventLog,
+        });
+
+        try {
+          const events = eventLog.since(0, { type: "load_error" });
+          expect(events).toHaveLength(1);
+          expect(events[0].type).toBe("load_error");
+          expect(events[0].level).toBe("error");
+          expect(events[0].error).toBeDefined();
+        } finally {
+          loader.close();
+        }
+      });
+
+      it("should emit reload event when reload() is called", async () => {
+        const eventLog = createInterceptorEventLog();
+        fs.writeFileSync(
+          path.join(interceptorsDir, "reload-event.ts"),
+          `export default { name: "before-reload", handler: () => undefined };`
+        );
+
+        const loader = await createInterceptorLoader({
+          interceptorsDir,
+          projectRoot: tempDir,
+          logLevel: "silent",
+          eventLog,
+        });
+
+        try {
+          // Clear events from initial load
+          eventLog.clear();
+
+          await loader.reload();
+
+          const events = eventLog.since(0, { type: "reload" });
+          expect(events).toHaveLength(1);
+          expect(events[0].type).toBe("reload");
+          expect(events[0].interceptor).toBe("*");
+        } finally {
+          loader.close();
+        }
+      });
     });
   });
 });
