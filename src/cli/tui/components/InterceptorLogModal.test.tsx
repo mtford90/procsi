@@ -254,4 +254,41 @@ describe("InterceptorLogModal", () => {
     // With all events visible, shouldn't show the "No matching events" message
     expect(lastFrame()).not.toContain("No matching events");
   });
+
+  it("restores unfiltered event list when filter is cancelled with Escape", async () => {
+    const events = [
+      makeTestEvent({ seq: 1, level: "info", message: "info event here" }),
+      makeTestEvent({ seq: 2, level: "error", message: "error event here" }),
+    ];
+    const { lastFrame, stdin } = render(
+      <InterceptorLogModal {...defaultProps} events={events} />,
+    );
+
+    // Verify all events visible initially
+    const frameBefore = lastFrame();
+    expect(frameBefore).toContain("info event here");
+    expect(frameBefore).toContain("error event here");
+
+    // Open filter bar with /
+    stdin.write("/");
+    await tick();
+
+    // Type a search term
+    stdin.write("error");
+    await tick();
+
+    // Verify filter bar is active
+    expect(lastFrame()).toContain("Tab=switch");
+
+    // Cancel with Escape
+    stdin.write("\x1b");
+    await tick();
+
+    // Verify all events are visible again (unfiltered)
+    const frameAfter = lastFrame();
+    expect(frameAfter).toContain("info event here");
+    expect(frameAfter).toContain("error event here");
+    // Filter bar should be closed
+    expect(frameAfter).not.toContain("Tab=switch");
+  });
 });

@@ -12,26 +12,10 @@ import {
   padRight,
   padLeft,
 } from "../tui/utils/formatters.js";
+import { GREEN, YELLOW, RED, CYAN, DIM, RESET, useColour } from "./colour.js";
 
 /** Length of abbreviated IDs shown in list views. */
 export const SHORT_ID_LENGTH = 7;
-
-// ANSI colour codes
-const GREEN = "\x1b[32m";
-const YELLOW = "\x1b[33m";
-const RED = "\x1b[31m";
-const CYAN = "\x1b[36m";
-const DIM = "\x1b[2m";
-const RESET = "\x1b[0m";
-
-/**
- * Whether colour output is enabled.
- */
-function useColour(): boolean {
-  if (process.env["NO_COLOR"] !== undefined) return false;
-  if (!process.stdout.isTTY) return false;
-  return true;
-}
 
 /**
  * Colour a status code: green for 2xx, yellow for 3xx, red for 4xx/5xx.

@@ -4,37 +4,18 @@
 
 import { Command } from "commander";
 import { ControlClient } from "../../shared/control-client.js";
-import { getProcsiPaths } from "../../shared/project.js";
-import { isDaemonRunning } from "../../shared/daemon.js";
 import type { CapturedRequest } from "../../shared/types.js";
-import { requireProjectRoot, getErrorMessage, getGlobalOptions } from "./helpers.js";
+import { getErrorMessage, connectToDaemon } from "./helpers.js";
 import { formatRequestDetail } from "../formatters/detail.js";
-import { formatHint, shouldShowHints } from "../formatters/hints.js";
+import { formatHint } from "../formatters/hints.js";
 import { generateCurl } from "../tui/utils/curl.js";
 import { generateHarString } from "../tui/utils/har.js";
 import { SHORT_ID_LENGTH } from "../formatters/table.js";
 
 const EXPORT_FORMATS = ["curl", "har"];
 
-/**
- * Connect to the daemon and return a client.
- */
-async function connectToDaemon(command: Command): Promise<{
-  client: ControlClient;
-  projectRoot: string;
-}> {
-  const globalOpts = getGlobalOptions(command);
-  const projectRoot = requireProjectRoot(globalOpts.dir);
-  const paths = getProcsiPaths(projectRoot);
-
-  const running = await isDaemonRunning(projectRoot);
-  if (!running) {
-    console.error("Daemon is not running. Start it with: procsi on");
-    process.exit(1);
-  }
-
-  return { client: new ControlClient(paths.controlSocketFile), projectRoot };
-}
+/** Max requests to fetch when searching by ID prefix. */
+const PREFIX_MATCH_SEARCH_LIMIT = 1000;
 
 /**
  * Resolve a potentially abbreviated ID to a full request.
@@ -49,7 +30,7 @@ async function resolveRequest(client: ControlClient, idPrefix: string): Promise<
   // (the control API doesn't have a prefix-search endpoint,
   //  so we use search with the ID as a substring match on url
   //  ... actually we need to list and filter by ID prefix)
-  const summaries = await client.listRequestsSummary({ limit: 1000 });
+  const summaries = await client.listRequestsSummary({ limit: PREFIX_MATCH_SEARCH_LIMIT });
   const matches = summaries.filter((s) => s.id.startsWith(idPrefix));
 
   if (matches.length === 0) {
@@ -101,6 +82,16 @@ const bodySubcommand = new Command("body")
       if (!body || body.length === 0) {
         // Write nothing — consistent with piping (empty output, not an error message)
         return;
+      }
+
+      // Warn when writing likely-binary data to a terminal
+      if (process.stdout.isTTY) {
+        const hasNullBytes = body.includes(0x00);
+        if (hasNullBytes) {
+          console.error("Binary body detected — pipe to a file instead:");
+          console.error(`  procsi request ${idPrefix} body > output.bin`);
+          return;
+        }
       }
 
       // Write raw bytes to stdout, bypassing any encoding
@@ -167,11 +158,14 @@ export const requestCommand = new Command("request")
 
       console.log(formatRequestDetail(request));
 
-      if (shouldShowHints()) {
+      const hint = formatHint([
+        "body for full body",
+        "export curl|har",
+        "body --request for request body",
+      ]);
+      if (hint) {
         console.log("");
-        console.log(
-          formatHint(["body for full body", "export curl|har", "body --request for request body"])
-        );
+        console.log(hint);
       }
     } catch (err) {
       console.error(`Error: ${getErrorMessage(err)}`);

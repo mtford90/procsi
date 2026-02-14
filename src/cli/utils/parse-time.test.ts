@@ -112,6 +112,18 @@ describe("parseTime", () => {
       const expected = new Date(2024, 0, 17, 10, 0, 0, 0).getTime();
       expect(parseTime("10AM", NOW)).toBe(expected);
     });
+
+    it("should throw on invalid 12-hour time (0am)", () => {
+      expect(() => parseTime("0am", NOW)).toThrow("Invalid 12-hour time");
+    });
+
+    it("should throw on invalid 12-hour time (13pm)", () => {
+      expect(() => parseTime("13pm", NOW)).toThrow("Invalid 12-hour time");
+    });
+
+    it("should throw on invalid 12-hour minutes (10:60am)", () => {
+      expect(() => parseTime("10:60am", NOW)).toThrow("Invalid 12-hour time");
+    });
   });
 
   describe("24-hour time", () => {
@@ -128,6 +140,14 @@ describe("parseTime", () => {
     it("should parse single-digit hours", () => {
       const expected = new Date(2024, 0, 17, 9, 0, 0, 0).getTime();
       expect(parseTime("9:00", NOW)).toBe(expected);
+    });
+
+    it("should throw on invalid 24-hour time (25:00)", () => {
+      expect(() => parseTime("25:00", NOW)).toThrow("Invalid 24-hour time");
+    });
+
+    it("should throw on invalid 24-hour minutes (14:99)", () => {
+      expect(() => parseTime("14:99", NOW)).toThrow("Invalid 24-hour time");
     });
   });
 

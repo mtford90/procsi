@@ -10,7 +10,7 @@ afterEach(() => {
 });
 
 function makeRequest(overrides: Partial<CapturedRequest> = {}): CapturedRequest {
-  return {
+  const base: CapturedRequest = {
     id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     sessionId: "session-1",
     timestamp: Date.now(),
@@ -29,10 +29,8 @@ function makeRequest(overrides: Partial<CapturedRequest> = {}): CapturedRequest 
     },
     responseBody: Buffer.from('{"users":[]}'),
     durationMs: 45,
-    requestBodySize: 0,
-    responseBodySize: 12,
-    ...overrides,
-  } as CapturedRequest;
+  };
+  return { ...base, ...overrides };
 }
 
 describe("formatRequestDetail", () => {

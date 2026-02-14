@@ -11,7 +11,6 @@ const UPTIME_TICK_MS = 1000;
 
 export interface InfoBarProps {
   interceptorErrorCount: number;
-  interceptorWarnCount: number;
   requestCount: number;
   interceptorCount: number;
   startTime: number; // Date.now() at mount, for uptime

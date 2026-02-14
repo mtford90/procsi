@@ -3,19 +3,28 @@
  */
 
 import { Command } from "commander";
-import { ControlClient } from "../../shared/control-client.js";
-import { getProcsiPaths } from "../../shared/project.js";
-import { isDaemonRunning } from "../../shared/daemon.js";
 import type { RequestFilter } from "../../shared/types.js";
-import { requireProjectRoot, getErrorMessage, getGlobalOptions } from "./helpers.js";
+import { getErrorMessage, connectToDaemon } from "./helpers.js";
 import { formatRequestTable } from "../formatters/table.js";
-import { formatHint, shouldShowHints } from "../formatters/hints.js";
+import { formatHint } from "../formatters/hints.js";
 import { parseTime } from "../utils/parse-time.js";
 
 const DEFAULT_LIMIT = 50;
 
 const HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"];
 const STATUS_RANGES = ["1xx", "2xx", "3xx", "4xx", "5xx"];
+
+/**
+ * Parse a numeric CLI flag, exiting with an error if the value is not a valid non-negative integer.
+ */
+function parseIntFlag(value: string, flagName: string): number {
+  const parsed = parseInt(value, 10);
+  if (isNaN(parsed) || parsed < 0) {
+    console.error(`Invalid ${flagName} value: "${value}"`);
+    process.exit(1);
+  }
+  return parsed;
+}
 
 interface RequestsFlags {
   method?: string;
@@ -78,8 +87,14 @@ function buildFilter(opts: RequestsFlags): RequestFilter {
   }
 
   if (opts.headerTarget) {
-    const target = opts.headerTarget as "request" | "response" | "both";
-    filter.headerTarget = target;
+    const validTargets = ["request", "response", "both"];
+    if (!validTargets.includes(opts.headerTarget)) {
+      console.error(
+        `Invalid --header-target: "${opts.headerTarget}". Use: ${validTargets.join(", ")}`
+      );
+      process.exit(1);
+    }
+    filter.headerTarget = opts.headerTarget as "request" | "response" | "both";
   }
 
   if (opts.interceptedBy) {
@@ -87,27 +102,6 @@ function buildFilter(opts: RequestsFlags): RequestFilter {
   }
 
   return filter;
-}
-
-/**
- * Shared logic to connect to the daemon and return a client.
- */
-async function connectToDaemon(command: Command): Promise<{
-  client: ControlClient;
-  projectRoot: string;
-}> {
-  const globalOpts = getGlobalOptions(command);
-  const projectRoot = requireProjectRoot(globalOpts.dir);
-  const paths = getProcsiPaths(projectRoot);
-
-  const running = await isDaemonRunning(projectRoot);
-  if (!running) {
-    console.error("Daemon is not running. Start it with: procsi on");
-    process.exit(1);
-  }
-
-  const client = new ControlClient(paths.controlSocketFile);
-  return { client, projectRoot };
 }
 
 /**
@@ -129,7 +123,7 @@ function addFilterFlags(cmd: Command): Command {
     .option("--since <time>", "filter from time (e.g. 5m, 2h, 10am, yesterday, 2024-01-01)")
     .option("--before <time>", "filter before time (same formats as --since)")
     .option("--header <spec>", "filter by header name or name:value")
-    .option("--header-target <target>", "which headers to search", "both")
+    .option("--header-target <target>", "which headers to search (request, response, both)", "both")
     .option("--intercepted-by <name>", "filter by interceptor name");
 }
 
@@ -153,8 +147,8 @@ searchSubcommand.action(
     const { client } = await connectToDaemon(command);
     try {
       const filter = buildFilter(opts);
-      const limit = parseInt(opts.limit ?? String(DEFAULT_LIMIT), 10);
-      const offset = parseInt(opts.offset ?? "0", 10);
+      const limit = parseIntFlag(opts.limit ?? String(DEFAULT_LIMIT), "--limit");
+      const offset = parseIntFlag(opts.offset ?? "0", "--offset");
 
       const results = await client.searchBodies({ query, limit, offset, filter });
 
@@ -170,9 +164,8 @@ searchSubcommand.action(
 
       console.log(formatRequestTable(results, results.length));
 
-      if (shouldShowHints()) {
-        console.log(formatHint(["procsi request <id> for detail", "--json for JSON output"]));
-      }
+      const hint = formatHint(["procsi request <id> for detail", "--json for JSON output"]);
+      if (hint) console.log(hint);
     } catch (err) {
       console.error(`Error searching requests: ${getErrorMessage(err)}`);
       process.exit(1);
@@ -202,14 +195,20 @@ querySubcommand.action(
     const { client } = await connectToDaemon(command);
     try {
       const filter = buildFilter(opts);
-      const limit = parseInt(opts.limit ?? String(DEFAULT_LIMIT), 10);
-      const offset = parseInt(opts.offset ?? "0", 10);
-      const target = (opts.target ?? "both") as "request" | "response" | "both";
+      const limit = parseIntFlag(opts.limit ?? String(DEFAULT_LIMIT), "--limit");
+      const offset = parseIntFlag(opts.offset ?? "0", "--offset");
+
+      const validTargets = ["request", "response", "both"];
+      const target = opts.target ?? "both";
+      if (!validTargets.includes(target)) {
+        console.error(`Invalid --target: "${target}". Use: ${validTargets.join(", ")}`);
+        process.exit(1);
+      }
 
       const results = await client.queryJsonBodies({
         jsonPath,
         value: opts.value,
-        target,
+        target: target as "request" | "response" | "both",
         limit,
         offset,
         filter,
@@ -318,8 +317,8 @@ requestsCommand.action(
     const { client } = await connectToDaemon(command);
     try {
       const filter = buildFilter(opts);
-      const limit = parseInt(opts.limit ?? String(DEFAULT_LIMIT), 10);
-      const offset = parseInt(opts.offset ?? "0", 10);
+      const limit = parseIntFlag(opts.limit ?? String(DEFAULT_LIMIT), "--limit");
+      const offset = parseIntFlag(opts.offset ?? "0", "--offset");
 
       // Fetch summaries and count in parallel
       const [summaries, total] = await Promise.all([
@@ -334,23 +333,19 @@ requestsCommand.action(
 
       if (summaries.length === 0) {
         console.log("  No requests captured");
-        if (shouldShowHints()) {
-          console.log(formatHint(["make HTTP requests while procsi is intercepting"]));
-        }
+        const hint = formatHint(["make HTTP requests while procsi is intercepting"]);
+        if (hint) console.log(hint);
         return;
       }
 
       console.log(formatRequestTable(summaries, total));
 
-      if (shouldShowHints()) {
-        console.log(
-          formatHint([
-            "procsi request <id>",
-            "--method, --status, --host to filter",
-            "--json for JSON",
-          ])
-        );
-      }
+      const hint = formatHint([
+        "procsi request <id>",
+        "--method, --status, --host, --since to filter",
+        "--json for JSON",
+      ]);
+      if (hint) console.log(hint);
     } catch (err) {
       console.error(`Error listing requests: ${getErrorMessage(err)}`);
       process.exit(1);

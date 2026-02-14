@@ -750,7 +750,6 @@ function AppContent({ __testEnableInput, projectRoot }: AppProps): React.ReactEl
       {/* Info bar */}
       <InfoBar
         interceptorErrorCount={interceptorEvents.counts.error}
-        interceptorWarnCount={interceptorEvents.counts.warn}
         requestCount={requests.length}
         interceptorCount={interceptorEvents.interceptorCount}
         startTime={startTime}

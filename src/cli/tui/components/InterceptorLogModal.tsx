@@ -136,6 +136,10 @@ export function InterceptorLogModal({
   // Stores the filter state when the filter bar opens, so Escape can revert
   const preOpenFilterRef = useRef<EventFilter>({});
 
+  // Refs to avoid stale closures in useInput callback
+  const maxScrollOffsetRef = useRef(0);
+  const availableHeightRef = useRef(0);
+
   // Unique interceptor names across all events (not just filtered ones)
   const interceptorNames = useMemo(() => {
     const names = new Set<string>();
@@ -154,12 +158,12 @@ export function InterceptorLogModal({
   // Build all display rows (each event may produce 1+ rows)
   const contentWidth = width - 4; // padding + borders
   const displayRows = useMemo(() => {
-    const rows: { event: InterceptorEvent; text: string; isDetail: boolean }[] = [];
+    const rows: { event: InterceptorEvent; text: string; isDetail: boolean; key: string }[] = [];
     for (const event of filteredEvents) {
       const { main, details } = eventLines(event, contentWidth);
-      rows.push({ event, text: main, isDetail: false });
-      for (const detail of details) {
-        rows.push({ event, text: detail, isDetail: true });
+      rows.push({ event, text: main, isDetail: false, key: `${event.seq}-m` });
+      for (let i = 0; i < details.length; i++) {
+        rows.push({ event, text: details[i] ?? "", isDetail: true, key: `${event.seq}-d${i}` });
       }
     }
     return rows;
@@ -168,6 +172,10 @@ export function InterceptorLogModal({
   const filterBarHeight = showFilter ? FILTER_BAR_ROWS : 0;
   const availableHeight = height - HEADER_ROWS - FOOTER_ROWS - filterBarHeight;
   const maxScrollOffset = Math.max(0, displayRows.length - availableHeight);
+
+  // Sync refs for useInput callback to avoid stale closures
+  maxScrollOffsetRef.current = maxScrollOffset;
+  availableHeightRef.current = availableHeight;
 
   const handleFilterChange = useCallback((newFilter: EventFilter) => {
     setFilter(newFilter);
@@ -194,19 +202,19 @@ export function InterceptorLogModal({
       }
 
       if (input === "j" || key.downArrow) {
-        setScrollOffset((prev) => Math.min(prev + 1, maxScrollOffset));
+        setScrollOffset((prev) => Math.min(prev + 1, maxScrollOffsetRef.current));
       } else if (input === "k" || key.upArrow) {
         setScrollOffset((prev) => Math.max(prev - 1, 0));
       } else if (input === "d" && key.ctrl) {
-        const halfPage = Math.floor(availableHeight / 2);
-        setScrollOffset((prev) => Math.min(prev + halfPage, maxScrollOffset));
+        const halfPage = Math.floor(availableHeightRef.current / 2);
+        setScrollOffset((prev) => Math.min(prev + halfPage, maxScrollOffsetRef.current));
       } else if (input === "u" && key.ctrl) {
-        const halfPage = Math.floor(availableHeight / 2);
+        const halfPage = Math.floor(availableHeightRef.current / 2);
         setScrollOffset((prev) => Math.max(prev - halfPage, 0));
       } else if (input === "g" && !key.shift) {
         setScrollOffset(0);
       } else if (input === "G") {
-        setScrollOffset(maxScrollOffset);
+        setScrollOffset(maxScrollOffsetRef.current);
       }
     },
     { isActive: isActive && !showFilter },
@@ -296,9 +304,9 @@ export function InterceptorLogModal({
 
       {/* Content area */}
       <Box flexDirection="column" flexGrow={1} paddingX={1}>
-        {visibleSlice.map((row, idx) => (
+        {visibleSlice.map((row) => (
           <EventRow
-            key={scrollOffset + idx}
+            key={row.key}
             text={row.text}
             level={row.event.level}
             isDetail={row.isDetail}

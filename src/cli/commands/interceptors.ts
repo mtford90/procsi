@@ -231,7 +231,19 @@ const logsSubcommand = new Command("logs")
       }
 
       const client = new ControlClient(paths.controlSocketFile);
-      const limit = parseInt(opts.limit ?? "50", 10);
+
+      const parsedLimit = parseInt(opts.limit ?? "50", 10);
+      if (isNaN(parsedLimit) || parsedLimit < 0) {
+        console.error(`Invalid --limit value: "${opts.limit}"`);
+        process.exit(1);
+      }
+      const limit = parsedLimit;
+
+      const validLevels = ["info", "warn", "error"];
+      if (opts.level && !validLevels.includes(opts.level)) {
+        console.error(`Invalid --level: "${opts.level}". Use: ${validLevels.join(", ")}`);
+        process.exit(1);
+      }
       const level = opts.level as InterceptorEventLevel | undefined;
 
       try {
@@ -264,6 +276,10 @@ const logsSubcommand = new Command("logs")
           } else {
             console.log(formatInterceptorEventTable(result.events));
           }
+        }
+
+        if (!opts.json) {
+          console.log("  --- following events (Ctrl+C to stop) ---");
         }
 
         const lastInitialEvent = result.events[result.events.length - 1];

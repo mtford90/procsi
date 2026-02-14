@@ -15,8 +15,7 @@ describe("InfoBar component", () => {
       const { lastFrame } = render(
         <InfoBar
           interceptorErrorCount={3}
-          interceptorWarnCount={0}
-          requestCount={0}
+                    requestCount={0}
           interceptorCount={0}
           startTime={Date.now()}
           width={100}
@@ -32,8 +31,7 @@ describe("InfoBar component", () => {
       const { lastFrame } = render(
         <InfoBar
           interceptorErrorCount={2}
-          interceptorWarnCount={0}
-          requestCount={0}
+                    requestCount={0}
           interceptorCount={0}
           startTime={Date.now()}
           width={100}
@@ -48,8 +46,7 @@ describe("InfoBar component", () => {
       const { lastFrame } = render(
         <InfoBar
           interceptorErrorCount={1}
-          interceptorWarnCount={0}
-          requestCount={0}
+                    requestCount={0}
           interceptorCount={0}
           startTime={Date.now()}
           width={100}
@@ -65,8 +62,7 @@ describe("InfoBar component", () => {
       const { lastFrame } = render(
         <InfoBar
           interceptorErrorCount={5}
-          interceptorWarnCount={0}
-          requestCount={0}
+                    requestCount={0}
           interceptorCount={0}
           startTime={Date.now()}
           width={100}
@@ -84,8 +80,7 @@ describe("InfoBar component", () => {
       const { lastFrame } = render(
         <InfoBar
           interceptorErrorCount={0}
-          interceptorWarnCount={0}
-          requestCount={3}
+                    requestCount={3}
           interceptorCount={2}
           startTime={Date.now()}
           width={100}
@@ -103,8 +98,7 @@ describe("InfoBar component", () => {
       const { lastFrame } = render(
         <InfoBar
           interceptorErrorCount={0}
-          interceptorWarnCount={0}
-          requestCount={1}
+                    requestCount={1}
           interceptorCount={0}
           startTime={Date.now()}
           width={100}
@@ -120,8 +114,7 @@ describe("InfoBar component", () => {
       const { lastFrame } = render(
         <InfoBar
           interceptorErrorCount={0}
-          interceptorWarnCount={0}
-          requestCount={0}
+                    requestCount={0}
           interceptorCount={1}
           startTime={Date.now()}
           width={100}
@@ -142,8 +135,7 @@ describe("InfoBar component", () => {
       const { lastFrame } = render(
         <InfoBar
           interceptorErrorCount={0}
-          interceptorWarnCount={0}
-          requestCount={1}
+                    requestCount={1}
           interceptorCount={0}
           startTime={startTime}
           width={100}
@@ -166,8 +158,7 @@ describe("InfoBar component", () => {
       const { lastFrame } = render(
         <InfoBar
           interceptorErrorCount={0}
-          interceptorWarnCount={0}
-          requestCount={1}
+                    requestCount={1}
           interceptorCount={0}
           startTime={startTime}
           width={100}
@@ -187,8 +178,7 @@ describe("InfoBar component", () => {
       const { lastFrame } = render(
         <InfoBar
           interceptorErrorCount={0}
-          interceptorWarnCount={0}
-          requestCount={1}
+                    requestCount={1}
           interceptorCount={0}
           startTime={Date.now()}
           width={100}
@@ -210,8 +200,7 @@ describe("InfoBar component", () => {
       const { lastFrame } = render(
         <InfoBar
           interceptorErrorCount={0}
-          interceptorWarnCount={0}
-          requestCount={0}
+                    requestCount={0}
           interceptorCount={0}
           startTime={Date.now()}
           width={100}

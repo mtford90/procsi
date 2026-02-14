@@ -6,8 +6,7 @@
  * Only shown when stdout is a TTY and --json is not active.
  */
 
-const DIM = "\x1b[2m";
-const RESET = "\x1b[0m";
+import { DIM, RESET } from "./colour.js";
 
 /**
  * Whether hints should be displayed.

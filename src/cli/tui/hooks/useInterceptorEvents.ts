@@ -74,9 +74,12 @@ export function useInterceptorEvents(
     }
 
     try {
-      const result = await client.getInterceptorEvents({
-        afterSeq: lastSeenSeqRef.current,
-      });
+      const [result, status] = await Promise.all([
+        client.getInterceptorEvents({
+          afterSeq: lastSeenSeqRef.current,
+        }),
+        client.status(),
+      ]);
 
       if (result.events.length > 0) {
         // Update lastSeenSeq to the highest seq we've seen
@@ -89,9 +92,6 @@ export function useInterceptorEvents(
       }
 
       setCounts(result.counts);
-
-      // Also fetch interceptor count from status
-      const status = await client.status();
       setInterceptorCount(status.interceptorCount ?? 0);
     } catch {
       // Daemon may not be running or may not support interceptor events yet

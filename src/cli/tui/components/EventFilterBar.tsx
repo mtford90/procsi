@@ -109,15 +109,6 @@ export function EventFilterBar({
     };
   }, [search, levelIndex, interceptorIndex, onFilterChange]);
 
-  // Cleanup debounce timer on unmount
-  useEffect(() => {
-    return () => {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
-      }
-    };
-  }, []);
-
   function cycleField(setter: React.Dispatch<React.SetStateAction<number>>, length: number, direction: 1 | -1): void {
     setter((prev) => {
       const total = length + 1; // +1 for the "ALL" option at index 0

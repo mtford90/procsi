@@ -39,4 +39,21 @@ describe("formatHint", () => {
     // When hints are suppressed, should return empty string
     expect(formatHint(["a", "b", "c"])).toBe("");
   });
+
+  it("should format hint with segments when TTY is true", () => {
+    vi.stubGlobal("process", {
+      ...process,
+      stdout: { ...process.stdout, isTTY: true },
+      env: { ...process.env },
+    });
+    // Ensure NO_COLOR is not set
+    delete process.env["NO_COLOR"];
+
+    const result = formatHint(["a", "b", "c"]);
+    expect(result).toContain("Hint:");
+    expect(result).toContain("a");
+    expect(result).toContain("b");
+    expect(result).toContain("c");
+    expect(result).toContain("│");
+  });
 });

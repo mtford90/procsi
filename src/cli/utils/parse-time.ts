@@ -87,7 +87,11 @@ export function parseTime(input: string, now?: number): number {
     if (multiplier === undefined) {
       throw new Error(`Unknown duration unit: ${unit}`);
     }
-    return currentMs - amount * multiplier;
+    const result = currentMs - amount * multiplier;
+    if (result < 0) {
+      throw new Error(`Duration "${input}" is too large (resolves to before Unix epoch)`);
+    }
+    return result;
   }
 
   // Day of week: monday, tue, fri etc

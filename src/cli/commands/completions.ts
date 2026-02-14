@@ -10,6 +10,14 @@ import { Command } from "commander";
 const SUPPORTED_SHELLS = ["zsh", "bash", "fish"];
 
 /**
+ * Escape a string for use inside a single-quoted shell string.
+ * Replaces ' with '\'' (end quote, escaped quote, start quote).
+ */
+function escapeForShell(str: string): string {
+  return str.replace(/'/g, "'\\''");
+}
+
+/**
  * Collect all commands recursively from a Commander program.
  */
 interface CommandInfo {
@@ -37,22 +45,28 @@ function collectCommands(cmd: Command): CommandInfo[] {
 function generateZshCompletions(program: Command): string {
   const commands = collectCommands(program);
   const globalOptions = program.options.map(
-    (opt) => `'${opt.long ?? opt.short ?? ""}[${opt.description}]'`
+    (opt) => `'${escapeForShell(opt.long ?? opt.short ?? "")}[${escapeForShell(opt.description)}]'`
   );
 
   const subcmdCases = commands
     .map((cmd) => {
-      const opts = cmd.options.map((o) => `'${o.flags}[${o.description}]'`).join(" \\\n          ");
-      const subs = cmd.subcommands.map((s) => `'${s.name}:${s.description}'`).join(" ");
+      const opts = cmd.options
+        .map((o) => `'${escapeForShell(o.flags)}[${escapeForShell(o.description)}]'`)
+        .join(" \\\n          ");
+      const subs = cmd.subcommands
+        .map((s) => `'${escapeForShell(s.name)}:${escapeForShell(s.description)}'`)
+        .join(" ");
       const subsSection = subs
-        ? `\n        local -a ${cmd.name}_subcommands\n        ${cmd.name}_subcommands=(${subs})\n        _describe -t commands '${cmd.name} subcommand' ${cmd.name}_subcommands`
+        ? `\n        local -a ${cmd.name}_subcommands\n        ${cmd.name}_subcommands=(${subs})\n        _describe -t commands '${escapeForShell(cmd.name)} subcommand' ${cmd.name}_subcommands`
         : "";
 
       return `      ${cmd.name})\n        _arguments ${opts}${subsSection}\n        ;;`;
     })
     .join("\n");
 
-  const cmdList = commands.map((c) => `'${c.name}:${c.description}'`).join(" \\\n    ");
+  const cmdList = commands
+    .map((c) => `'${escapeForShell(c.name)}:${escapeForShell(c.description)}'`)
+    .join(" \\\n    ");
 
   return `#compdef procsi
 
@@ -95,8 +109,8 @@ function generateBashCompletions(program: Command): string {
 
   const subcmdCases = commands
     .map((cmd) => {
-      const opts = cmd.options.map((o) => o.flags).join(" ");
-      const subs = cmd.subcommands.map((s) => s.name).join(" ");
+      const opts = cmd.options.map((o) => escapeForShell(o.flags)).join(" ");
+      const subs = cmd.subcommands.map((s) => escapeForShell(s.name)).join(" ");
       return `    ${cmd.name})\n      COMPREPLY=($(compgen -W "${opts} ${subs}" -- "$cur"))\n      ;;`;
     })
     .join("\n");
@@ -141,7 +155,7 @@ function generateFishCompletions(program: Command): string {
   // Top-level commands
   for (const cmd of commands) {
     lines.push(
-      `complete -c procsi -n '__fish_use_subcommand' -a '${cmd.name}' -d '${cmd.description}'`
+      `complete -c procsi -n '__fish_use_subcommand' -a '${escapeForShell(cmd.name)}' -d '${escapeForShell(cmd.description)}'`
     );
   }
 
@@ -152,12 +166,12 @@ function generateFishCompletions(program: Command): string {
     for (const opt of cmd.options) {
       const flag = opt.flags.replace(/^--/, "");
       lines.push(
-        `complete -c procsi -n '__fish_seen_subcommand_from ${cmd.name}' -l '${flag}' -d '${opt.description}'`
+        `complete -c procsi -n '__fish_seen_subcommand_from ${cmd.name}' -l '${escapeForShell(flag)}' -d '${escapeForShell(opt.description)}'`
       );
     }
     for (const sub of cmd.subcommands) {
       lines.push(
-        `complete -c procsi -n '__fish_seen_subcommand_from ${cmd.name}' -a '${sub.name}' -d '${sub.description}'`
+        `complete -c procsi -n '__fish_seen_subcommand_from ${cmd.name}' -a '${escapeForShell(sub.name)}' -d '${escapeForShell(sub.description)}'`
       );
     }
   }

@@ -1,5 +1,7 @@
 import { Command } from "commander";
-import { findProjectRoot } from "../../shared/project.js";
+import { findProjectRoot, getProcsiPaths } from "../../shared/project.js";
+import { isDaemonRunning } from "../../shared/daemon.js";
+import { ControlClient } from "../../shared/control-client.js";
 
 export interface GlobalOptions {
   verbose: number;
@@ -38,4 +40,26 @@ export function requireProjectRoot(override?: string): string {
  */
 export function getErrorMessage(err: unknown): string {
   return err instanceof Error ? err.message : "Unknown error";
+}
+
+/**
+ * Connect to the running daemon and return a ControlClient.
+ * Exits with error if the daemon is not running.
+ */
+export async function connectToDaemon(command: Command): Promise<{
+  client: ControlClient;
+  projectRoot: string;
+}> {
+  const globalOpts = getGlobalOptions(command);
+  const projectRoot = requireProjectRoot(globalOpts.dir);
+  const paths = getProcsiPaths(projectRoot);
+
+  const running = await isDaemonRunning(projectRoot);
+  if (!running) {
+    console.error("Daemon is not running. Start it with: procsi on");
+    process.exit(1);
+  }
+
+  const client = new ControlClient(paths.controlSocketFile);
+  return { client, projectRoot };
 }

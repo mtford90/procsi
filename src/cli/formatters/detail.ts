@@ -9,21 +9,7 @@ import {
   getStatusText,
   shortContentType,
 } from "../tui/utils/formatters.js";
-
-// ANSI colour codes
-const GREEN = "\x1b[32m";
-const YELLOW = "\x1b[33m";
-const RED = "\x1b[31m";
-const CYAN = "\x1b[36m";
-const BOLD = "\x1b[1m";
-const DIM = "\x1b[2m";
-const RESET = "\x1b[0m";
-
-function useColour(): boolean {
-  if (process.env["NO_COLOR"] !== undefined) return false;
-  if (!process.stdout.isTTY) return false;
-  return true;
-}
+import { GREEN, YELLOW, RED, CYAN, BOLD, DIM, RESET, useColour } from "./colour.js";
 
 function colourForStatus(status: number): string {
   if (status >= 200 && status < 300) return GREEN;
