@@ -10,7 +10,7 @@ importers:
     dependencies:
       '@ink-tools/ink-mouse':
         specifier: ^2.1.0
-        version: 2.1.0(ink@6.6.0(@types/react@19.2.10)(react@19.2.4))(react@19.2.4)
+        version: 2.1.0(ink@6.6.0(@types/react@19.2.14)(react@19.2.4))(react@19.2.4)
       '@modelcontextprotocol/sdk':
         specifier: ^1.26.0
         version: 1.26.0(zod@4.3.6)
@@ -28,10 +28,10 @@ importers:
         version: 3.0.0
       ink:
         specifier: ^6.6.0
-        version: 6.6.0(@types/react@19.2.10)(react@19.2.4)
+        version: 6.6.0(@types/react@19.2.14)(react@19.2.4)
       ink-use-stdout-dimensions:
         specifier: ^1.0.5
-        version: 1.0.5(ink@6.6.0(@types/react@19.2.10)(react@19.2.4))(react@19.2.4)
+        version: 1.0.5(ink@6.6.0(@types/react@19.2.14)(react@19.2.4))(react@19.2.4)
       jiti:
         specifier: ^2.6.1
         version: 2.6.1
@@ -62,7 +62,7 @@ importers:
         version: 25.2.2
       '@types/react':
         specifier: ^19.2.10
-        version: 19.2.10
+        version: 19.2.14
       '@types/uuid':
         specifier: ^11.0.0
         version: 11.0.0
@@ -80,7 +80,7 @@ importers:
         version: 9.1.7
       ink-testing-library:
         specifier: ^4.0.0
-        version: 4.0.0(@types/react@19.2.10)
+        version: 4.0.0(@types/react@19.2.14)
       lint-staged:
         specifier: ^16.2.7
         version: 16.2.7
@@ -572,8 +572,8 @@ packages:
   '@types/node@25.2.2':
     resolution: {integrity: sha512-BkmoP5/FhRYek5izySdkOneRyXYN35I860MFAGupTdebyE66uZaR+bXLHq8k4DirE5DwQi3NuhvRU1jqTVwUrQ==}
 
-  '@types/react@19.2.10':
-    resolution: {integrity: sha512-WPigyYuGhgZ/cTPRXB2EwUw+XvsRA3GqHlsP4qteqrnnjDrApbS7MxcGr/hke5iUoeB7E/gQtrs9I37zAJ0Vjw==}
+  '@types/react@19.2.14':
+    resolution: {integrity: sha512-ilcTH/UniCkMdtexkoCN0bI7pMcJDvmQFPvuPvmEaYA/NSfFTAgdUSLAoVjaRJm7+6PvcM+q1zYOwS4wTYMF9w==}
 
   '@types/uuid@11.0.0':
     resolution: {integrity: sha512-HVyk8nj2m+jcFRNazzqyVKiZezyhDKrGUA3jlEcg/nZ6Ms+qHwocba1Y/AaVaznJTAM9xpdFSh+ptbNrhOGvZA==}
@@ -2677,9 +2677,9 @@ snapshots:
 
   '@humanwhocodes/retry@0.4.3': {}
 
-  '@ink-tools/ink-mouse@2.1.0(ink@6.6.0(@types/react@19.2.10)(react@19.2.4))(react@19.2.4)':
+  '@ink-tools/ink-mouse@2.1.0(ink@6.6.0(@types/react@19.2.14)(react@19.2.4))(react@19.2.4)':
     dependencies:
-      ink: 6.6.0(@types/react@19.2.10)(react@19.2.4)
+      ink: 6.6.0(@types/react@19.2.14)(react@19.2.4)
       react: 19.2.4
       xterm-mouse: 1.0.0
 
@@ -2899,7 +2899,7 @@ snapshots:
     dependencies:
       undici-types: 7.16.0
 
-  '@types/react@19.2.10':
+  '@types/react@19.2.14':
     dependencies:
       csstype: 3.2.3
 
@@ -3880,16 +3880,16 @@ snapshots:
 
   ini@1.3.8: {}
 
-  ink-testing-library@4.0.0(@types/react@19.2.10):
+  ink-testing-library@4.0.0(@types/react@19.2.14):
     optionalDependencies:
-      '@types/react': 19.2.10
+      '@types/react': 19.2.14
 
-  ink-use-stdout-dimensions@1.0.5(ink@6.6.0(@types/react@19.2.10)(react@19.2.4))(react@19.2.4):
+  ink-use-stdout-dimensions@1.0.5(ink@6.6.0(@types/react@19.2.14)(react@19.2.4))(react@19.2.4):
     dependencies:
-      ink: 6.6.0(@types/react@19.2.10)(react@19.2.4)
+      ink: 6.6.0(@types/react@19.2.14)(react@19.2.4)
       react: 19.2.4
 
-  ink@6.6.0(@types/react@19.2.10)(react@19.2.4):
+  ink@6.6.0(@types/react@19.2.14)(react@19.2.4):
     dependencies:
       '@alcalzone/ansi-tokenize': 0.2.4
       ansi-escapes: 7.2.0
@@ -3916,7 +3916,7 @@ snapshots:
       ws: 8.19.0
       yoga-layout: 3.2.1
     optionalDependencies:
-      '@types/react': 19.2.10
+      '@types/react': 19.2.14
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
