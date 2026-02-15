@@ -77,6 +77,14 @@ describe("interceptor events integration", { timeout: 30_000 }, () => {
   });
 
   afterEach(async () => {
+    // Snapshot shared state so a subsequent beforeEach cannot mutate
+    // the values we need for cleanup (prevents cascading ENOENT when
+    // a previous afterEach times out and runs concurrently with the
+    // next test's beforeEach).
+    const dirToClean = tempDir;
+    const storageRef = storage;
+    const cleanupFns = [...cleanup].reverse();
+
     // Run all cleanup functions in parallel with a hard overall timeout.
     // proxy.stop() from mockttp can hang indefinitely when connections
     // linger, so we cap the total cleanup budget to stay well within
@@ -84,7 +92,7 @@ describe("interceptor events integration", { timeout: 30_000 }, () => {
     const CLEANUP_BUDGET_MS = 8000;
     await Promise.race([
       Promise.allSettled(
-        cleanup.reverse().map((fn) =>
+        cleanupFns.map((fn) =>
           fn().catch(() => {
             /* best-effort */
           })
@@ -93,12 +101,12 @@ describe("interceptor events integration", { timeout: 30_000 }, () => {
       new Promise<void>((resolve) => setTimeout(resolve, CLEANUP_BUDGET_MS)),
     ]);
     try {
-      storage.close();
+      storageRef.close();
     } catch {
       /* may already be closed */
     }
     try {
-      fs.rmSync(tempDir, { recursive: true, force: true });
+      fs.rmSync(dirToClean, { recursive: true, force: true });
     } catch {
       /* best-effort */
     }

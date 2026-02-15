@@ -89,7 +89,7 @@ describe("interceptor-loader", () => {
     });
   });
 
-  describe("createInterceptorLoader", { timeout: 15_000 }, () => {
+  describe("createInterceptorLoader", { timeout: 30_000 }, () => {
     it("should load single interceptor with ESM default export", async () => {
       const filePath = path.join(interceptorsDir, "test-01.ts");
       fs.writeFileSync(

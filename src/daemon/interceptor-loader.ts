@@ -325,6 +325,11 @@ export async function createInterceptorLoader(
     },
 
     async reload(): Promise<void> {
+      // Cancel any pending watcher-triggered reload to prevent concurrent loadAll() calls
+      if (debounceTimer !== null) {
+        clearTimeout(debounceTimer);
+        debounceTimer = null;
+      }
       logger.info("Manual reload triggered");
       await loadAll();
       logger.info(`Reload complete, ${interceptors.length} interceptor(s) active`);

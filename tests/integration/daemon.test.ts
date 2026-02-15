@@ -37,12 +37,18 @@ describe("daemon integration", () => {
   });
 
   afterEach(async () => {
+    // Snapshot shared state so a lingering afterEach cannot corrupt
+    // the next test's variables if vitest moves on after a timeout.
+    const dirToClean = tempDir;
+    const storageRef = storage;
+    const cleanupFns = [...cleanup].reverse();
+
     // Run cleanup in reverse order
-    for (const fn of cleanup.reverse()) {
+    for (const fn of cleanupFns) {
       await fn();
     }
-    storage.close();
-    fs.rmSync(tempDir, { recursive: true, force: true });
+    storageRef.close();
+    fs.rmSync(dirToClean, { recursive: true, force: true });
   });
 
   describe("proxy", () => {

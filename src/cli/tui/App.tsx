@@ -565,7 +565,8 @@ function AppContent({ __testEnableInput, projectRoot }: AppProps): React.ReactEl
     } else if (selectedIndex >= listScrollOffset + visibleHeight) {
       setListScrollOffset(selectedIndex - visibleHeight + 1);
     }
-  }, [selectedIndex, contentHeight, listScrollOffset]);
+    // Intentionally omit listScrollOffset to allow free mouse wheel scrolling
+  }, [selectedIndex, contentHeight]);
 
   // Terminal size check — re-evaluates on resize via useStdoutDimensions
   if (columns < MIN_TERMINAL_COLUMNS || rows < MIN_TERMINAL_ROWS) {
