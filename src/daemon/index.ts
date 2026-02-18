@@ -98,8 +98,11 @@ async function main() {
     });
   }
 
-  // Find a free port for the proxy
-  const proxyPort = await findFreePort();
+  // Find a port for the proxy, preferring the previously used one
+  const preferred = fs.existsSync(paths.preferredPortFile)
+    ? parseInt(fs.readFileSync(paths.preferredPortFile, "utf-8").trim(), 10) || undefined
+    : undefined;
+  const proxyPort = await findPreferredPort(preferred);
 
   // Ensure daemon session exists (handles restarts gracefully)
   const DAEMON_SESSION_ID = "daemon";
@@ -121,6 +124,9 @@ async function main() {
 
   // Write proxy port to file
   writeProxyPort(projectRoot, proxy.port);
+
+  // Write preferred port for next restart
+  fs.writeFileSync(paths.preferredPortFile, proxy.port.toString(), "utf-8");
 
   // Start control server
   const daemonVersion = getProcsiVersion();
@@ -187,6 +193,35 @@ async function main() {
 
   process.on("SIGTERM", () => void shutdown("SIGTERM"));
   process.on("SIGINT", () => void shutdown("SIGINT"));
+}
+
+/**
+ * Try to bind to a specific port.
+ * Returns true if successful, false otherwise.
+ */
+async function tryBindPort(port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const server = net.createServer();
+    server.listen(port, "127.0.0.1", () => {
+      server.close(() => resolve(true));
+    });
+    server.on("error", () => {
+      resolve(false);
+    });
+  });
+}
+
+/**
+ * Find a port for the proxy, preferring the given port if available.
+ * Falls back to finding a free port if the preferred port is not available.
+ */
+async function findPreferredPort(preferred?: number): Promise<number> {
+  if (preferred !== undefined) {
+    if (await tryBindPort(preferred)) {
+      return preferred;
+    }
+  }
+  return findFreePort();
 }
 
 /**

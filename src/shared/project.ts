@@ -137,6 +137,7 @@ export function getProcsiPaths(projectRoot: string) {
   return {
     procsiDir,
     proxyPortFile: path.join(procsiDir, "proxy.port"),
+    preferredPortFile: path.join(procsiDir, "preferred.port"),
     controlSocketFile: path.join(procsiDir, "control.sock"),
     databaseFile: path.join(procsiDir, "requests.db"),
     caKeyFile: path.join(procsiDir, "ca-key.pem"),

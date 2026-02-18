@@ -264,6 +264,7 @@ async function waitForDaemonStop(pid: number, timeoutMs: number): Promise<void> 
 
 /**
  * Clean up daemon files (socket, port file, pid file).
+ * Note: preferredPortFile is intentionally not deleted so it persists across restarts.
  */
 function cleanupDaemonFiles(paths: ReturnType<typeof getProcsiPaths>): void {
   const files = [paths.controlSocketFile, paths.proxyPortFile, paths.pidFile];

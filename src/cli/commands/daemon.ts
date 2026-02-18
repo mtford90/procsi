@@ -54,6 +54,7 @@ const restartSubCommand = new Command("restart")
         console.log(`Restarting daemon${versionInfo}...`);
         const port = await restartDaemon(projectRoot, logLevel);
         console.log(`Daemon restarted on port ${port}`);
+        console.log('If your shell env vars are stale, run: eval "$(procsi on)"');
       } else {
         console.log("Daemon not running, starting...");
         const port = await startDaemon(projectRoot, { logLevel });
