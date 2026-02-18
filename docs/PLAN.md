@@ -115,7 +115,7 @@ Each feature should be considered across all three surfaces where applicable:
 
 - [x] **Remove `procsi init`** — replaced `init`/`vars` with `procsi on`/`procsi off` as real CLI subcommands
 
-- [ ] **Simplify README** — current README is ~700 lines; trim to quick-start + feature highlights + architecture diagram and move detailed reference (MCP tools/filters, full keybindings, CLI reference, interceptor cookbook) to a GitHub wiki. Inspiration: [sql-tap](https://github.com/mickamy/sql-tap) keeps its README short and scannable
+- [x] **Simplify README** — current README is ~700 lines; trim to quick-start + feature highlights + architecture diagram and move detailed reference (MCP tools/filters, full keybindings, CLI reference, interceptor cookbook) to a GitHub wiki. Inspiration: [sql-tap](https://github.com/mickamy/sql-tap) keeps its README short and scannable
 
 - [x] **CLI query interface** — see Completed section above
 
