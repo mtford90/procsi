@@ -19,13 +19,18 @@ describe("buildProxyInfo", () => {
     expect(info.envBlock).toContain('export HTTPS_PROXY="http://127.0.0.1:8080"');
     expect(info.envBlock).toContain('export SSL_CERT_FILE="/home/user/.procsi/ca.pem"');
     expect(info.envBlock).toContain('export REQUESTS_CA_BUNDLE="/home/user/.procsi/ca.pem"');
+    expect(info.envBlock).toContain('export CURL_CA_BUNDLE="/home/user/.procsi/ca.pem"');
     expect(info.envBlock).toContain('export NODE_EXTRA_CA_CERTS="/home/user/.procsi/ca.pem"');
+    expect(info.envBlock).toContain('export DENO_CERT="/home/user/.procsi/ca.pem"');
+    expect(info.envBlock).toContain('export CARGO_HTTP_CAINFO="/home/user/.procsi/ca.pem"');
+    expect(info.envBlock).toContain('export GIT_SSL_CAINFO="/home/user/.procsi/ca.pem"');
+    expect(info.envBlock).toContain('export AWS_CA_BUNDLE="/home/user/.procsi/ca.pem"');
   });
 
-  it("produces exactly five lines in envBlock", () => {
+  it("produces exactly ten lines in envBlock", () => {
     const info = buildProxyInfo(3000, "/tmp/ca.pem");
     const lines = info.envBlock.split("\n");
-    expect(lines).toHaveLength(5);
+    expect(lines).toHaveLength(10);
   });
 
   it("handles different port numbers", () => {

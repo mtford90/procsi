@@ -15,7 +15,12 @@ export function buildProxyInfo(proxyPort: number, caCertPath: string): ProxyInfo
     `export HTTPS_PROXY="${proxyUrl}"`,
     `export SSL_CERT_FILE="${caCertPath}"`,
     `export REQUESTS_CA_BUNDLE="${caCertPath}"`,
+    `export CURL_CA_BUNDLE="${caCertPath}"`,
     `export NODE_EXTRA_CA_CERTS="${caCertPath}"`,
+    `export DENO_CERT="${caCertPath}"`,
+    `export CARGO_HTTP_CAINFO="${caCertPath}"`,
+    `export GIT_SSL_CAINFO="${caCertPath}"`,
+    `export AWS_CA_BUNDLE="${caCertPath}"`,
   ].join("\n");
 
   return { proxyUrl, caCertPath, envBlock };

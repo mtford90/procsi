@@ -1,3 +1,4 @@
+import * as path from "node:path";
 import { Command } from "commander";
 import { findOrCreateProjectRoot, ensureProcsiDir, getProcsiPaths } from "../../shared/project.js";
 import { startDaemon } from "../../shared/daemon.js";
@@ -5,6 +6,9 @@ import { ControlClient } from "../../shared/control-client.js";
 import { parseVerbosity } from "../../shared/logger.js";
 import { getErrorMessage, getGlobalOptions } from "./helpers.js";
 import { writeNodePreloadScript, getNodeEnvVars } from "../../overrides/node.js";
+import { writePythonOverride } from "../../overrides/python.js";
+import { writeRubyOverride } from "../../overrides/ruby.js";
+import { writePhpOverride } from "../../overrides/php.js";
 
 /**
  * Escape a string for safe use inside double-quoted shell context.
@@ -77,6 +81,79 @@ export function formatNodeOptionsRestore(): string {
   ].join("\n");
 }
 
+/**
+ * Generate shell statements that save the current PYTHONPATH and prepend
+ * the override directory so Python auto-imports our sitecustomize.py.
+ *
+ * Same idempotency pattern as formatNodeOptionsExport.
+ */
+export function formatPythonPathExport(overrideDir: string): string {
+  const escaped = escapeDoubleQuoted(overrideDir);
+  return [
+    `export PROCSI_ORIG_PYTHONPATH="\${PROCSI_ORIG_PYTHONPATH-\${PYTHONPATH:-}}"`,
+    `export PYTHONPATH="${escaped}\${PROCSI_ORIG_PYTHONPATH:+:\${PROCSI_ORIG_PYTHONPATH}}"`,
+  ].join("\n");
+}
+
+/**
+ * Generate shell statements that restore PYTHONPATH to its original value.
+ */
+export function formatPythonPathRestore(): string {
+  return [
+    `test -n "\${PROCSI_ORIG_PYTHONPATH:-}" && export PYTHONPATH="\${PROCSI_ORIG_PYTHONPATH}" || unset PYTHONPATH 2>/dev/null`,
+    "unset PROCSI_ORIG_PYTHONPATH 2>/dev/null",
+  ].join("\n");
+}
+
+/**
+ * Generate shell statements that save the current RUBYOPT and append
+ * a -r flag for the procsi intercept script.
+ *
+ * Same idempotency pattern as formatNodeOptionsExport.
+ */
+export function formatRubyOptExport(overridePath: string): string {
+  const escaped = escapeDoubleQuoted(overridePath);
+  return [
+    `export PROCSI_ORIG_RUBYOPT="\${PROCSI_ORIG_RUBYOPT-\${RUBYOPT:-}}"`,
+    `export RUBYOPT="\${PROCSI_ORIG_RUBYOPT:+\${PROCSI_ORIG_RUBYOPT} }-r ${escaped}"`,
+  ].join("\n");
+}
+
+/**
+ * Generate shell statements that restore RUBYOPT to its original value.
+ */
+export function formatRubyOptRestore(): string {
+  return [
+    `test -n "\${PROCSI_ORIG_RUBYOPT:-}" && export RUBYOPT="\${PROCSI_ORIG_RUBYOPT}" || unset RUBYOPT 2>/dev/null`,
+    "unset PROCSI_ORIG_RUBYOPT 2>/dev/null",
+  ].join("\n");
+}
+
+/**
+ * Generate shell statements that save the current PHP_INI_SCAN_DIR and
+ * set it with a `:` prefix so PHP scans both default dirs and our override.
+ *
+ * Same idempotency pattern as formatNodeOptionsExport.
+ */
+export function formatPhpIniScanDirExport(overrideDir: string): string {
+  const escaped = escapeDoubleQuoted(overrideDir);
+  return [
+    `export PROCSI_ORIG_PHP_INI_SCAN_DIR="\${PROCSI_ORIG_PHP_INI_SCAN_DIR-\${PHP_INI_SCAN_DIR:-}}"`,
+    // The `:` prefix tells PHP to scan default dirs plus our override dir
+    `export PHP_INI_SCAN_DIR=":\${PROCSI_ORIG_PHP_INI_SCAN_DIR:+\${PROCSI_ORIG_PHP_INI_SCAN_DIR}:}${escaped}"`,
+  ].join("\n");
+}
+
+/**
+ * Generate shell statements that restore PHP_INI_SCAN_DIR to its original value.
+ */
+export function formatPhpIniScanDirRestore(): string {
+  return [
+    `test -n "\${PROCSI_ORIG_PHP_INI_SCAN_DIR:-}" && export PHP_INI_SCAN_DIR="\${PROCSI_ORIG_PHP_INI_SCAN_DIR}" || unset PHP_INI_SCAN_DIR 2>/dev/null`,
+    "unset PROCSI_ORIG_PHP_INI_SCAN_DIR 2>/dev/null",
+  ].join("\n");
+}
+
 export const onCommand = new Command("on")
   .description("Output shell export statements to start intercepting HTTP traffic")
   .option("-l, --label <label>", "Label for this session")
@@ -124,8 +201,11 @@ export const onCommand = new Command("on")
         });
         const proxyUrl = `http://127.0.0.1:${proxyPort}`;
 
-        // Write the Node.js preload script to .procsi/
+        // Write runtime override scripts to .procsi/overrides/
         writeNodePreloadScript(paths.proxyPreloadFile);
+        writePythonOverride(paths.pythonOverrideDir, paths.caCertFile);
+        writeRubyOverride(path.dirname(paths.rubyOverrideFile), paths.caCertFile);
+        writePhpOverride(paths.phpOverrideDir, paths.caCertFile);
 
         // Register session with daemon
         const client = new ControlClient(paths.controlSocketFile);
@@ -139,11 +219,22 @@ export const onCommand = new Command("on")
             // Lowercase variants — many Unix tools check lowercase only
             http_proxy: proxyUrl,
             https_proxy: proxyUrl,
-            // Python requests library
+            // CA cert trust — covers Python requests, curl, OpenSSL-based clients
             SSL_CERT_FILE: paths.caCertFile,
             REQUESTS_CA_BUNDLE: paths.caCertFile,
+            CURL_CA_BUNDLE: paths.caCertFile,
             // Node.js
             NODE_EXTRA_CA_CERTS: paths.caCertFile,
+            // Deno
+            DENO_CERT: paths.caCertFile,
+            // Rust Cargo
+            CARGO_HTTP_CAINFO: paths.caCertFile,
+            // Git
+            GIT_SSL_CAINFO: paths.caCertFile,
+            // AWS CLI
+            AWS_CA_BUNDLE: paths.caCertFile,
+            // PHP HTTPoxy-safe proxy variable
+            CGI_HTTP_PROXY: proxyUrl,
             // Node.js runtime overrides (global-agent + undici)
             ...getNodeEnvVars(proxyUrl),
             // procsi session tracking
@@ -176,8 +267,11 @@ export const onCommand = new Command("on")
           // Output env vars for eval
           console.log(formatEnvVars(envVars));
 
-          // NODE_OPTIONS requires raw shell expansion, output separately
+          // Runtime overrides require raw shell expansion, output separately
           console.log(formatNodeOptionsExport(paths.proxyPreloadFile));
+          console.log(formatPythonPathExport(paths.pythonOverrideDir));
+          console.log(formatRubyOptExport(paths.rubyOverrideFile));
+          console.log(formatPhpIniScanDirExport(paths.phpOverrideDir));
 
           // Output confirmation as a comment (shown but not executed)
           const labelInfo = label ? ` (label: ${label})` : "";

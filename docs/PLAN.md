@@ -169,16 +169,20 @@ New formatter functions alongside existing `generateCurl()`. Submenu or modal fo
 
 Many runtimes don't respect `HTTP_PROXY`/`HTTPS_PROXY` out of the box. procsi injects preload scripts or agent configuration per-runtime to ensure traffic flows through the proxy.
 
-| Runtime     | Mechanism                                                       | Status   | Notes                                                                    |
-| ----------- | --------------------------------------------------------------- | -------- | ------------------------------------------------------------------------ |
-| **Node.js** | `NODE_OPTIONS --require` preload with `global-agent` + `undici` | **Done** | Covers `http`/`https` modules + native `fetch()`                         |
-| **Ruby**    | `RUBYLIB` override with gem that patches `Net::HTTP`            | Future   | Ruby's `Net::HTTP` doesn't respect `HTTP_PROXY` by default               |
-| **Python**  | `PYTHONPATH` override with package patches                      | Future   | `requests`/`urllib3` already respect env vars; stdlib `urllib` doesn't   |
-| **Java**    | `JAVA_TOOL_OPTIONS -javaagent:` with proxy agent JAR            | Future   | Java needs system properties (`http.proxyHost`) — env vars aren't enough |
-| **PHP**     | `PHP_INI_SCAN_DIR` with custom php.ini                          | Future   | PHP needs stream context config for proxy                                |
-| **Go**      | No action needed                                                | N/A      | Go's `net/http` respects `HTTP_PROXY`/`HTTPS_PROXY` natively             |
-| **Rust**    | No action needed                                                | N/A      | `reqwest` respects env vars natively                                     |
-| **Deno**    | Certificate trust only (`DENO_CERT`)                            | Future   | Deno respects proxy env vars natively                                    |
+| Runtime     | Mechanism                                                       | Status          | Notes                                                                    |
+| ----------- | --------------------------------------------------------------- | --------------- | ------------------------------------------------------------------------ |
+| **Node.js** | `NODE_OPTIONS --require` preload with `global-agent` + `undici` | **Done**        | Covers `http`/`https` modules + native `fetch()`                         |
+| **Python**  | `PYTHONPATH` sitecustomize.py that patches `httplib2`           | **Done**        | `requests`/`urllib3` respect env vars; override handles httplib2          |
+| **Ruby**    | `RUBYOPT -r` preload that patches `OpenSSL::X509::Store`       | **Done**        | Ensures gems with bundled CAs trust the proxy CA                         |
+| **PHP**     | `PHP_INI_SCAN_DIR` with `curl.cainfo`/`openssl.cafile`         | **Done**        | Covers `curl_*()` functions and stream wrappers                          |
+| **Go**      | Env vars only (`SSL_CERT_FILE`)                                 | **Done**        | Go's `net/http` respects `HTTP_PROXY`/`HTTPS_PROXY` natively             |
+| **Rust**    | Env vars only (`CARGO_HTTP_CAINFO`)                             | **Done**        | `reqwest` respects env vars natively                                     |
+| **Deno**    | Env vars only (`DENO_CERT`)                                     | **Done**        | Deno respects proxy env vars natively                                    |
+| **Bun**     | Env vars only (`SSL_CERT_FILE`)                                 | **Done**        | Bun respects proxy env vars natively                                     |
+| **Java**    | Not supported                                                   | Not planned     | Needs `-javaagent` or JVM trust store — can't solve via env vars alone   |
+| **Swift**   | Not supported                                                   | Not planned     | Uses macOS Keychain only                                                 |
+| **Dart**    | Not supported                                                   | Not planned     | Requires code changes for proxy                                          |
+| **Elixir**  | Not supported                                                   | Not planned     | Requires code changes for proxy                                          |
 
 ---
 

@@ -37,7 +37,12 @@ describe("InfoModal", () => {
     expect(frame).toContain("HTTPS_PROXY");
     expect(frame).toContain("SSL_CERT_FILE");
     expect(frame).toContain("REQUESTS_CA_BUNDLE");
+    expect(frame).toContain("CURL_CA_BUNDLE");
     expect(frame).toContain("NODE_EXTRA_CA_CERTS");
+    expect(frame).toContain("DENO_CERT");
+    expect(frame).toContain("CARGO_HTTP_CAINFO");
+    expect(frame).toContain("GIT_SSL_CAINFO");
+    expect(frame).toContain("AWS_CA_BUNDLE");
   });
 
   it("renders close instructions", () => {

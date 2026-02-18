@@ -157,11 +157,19 @@ See [full interceptors documentation](docs/interceptors.md) for modify, observe,
 | --------------------- | ------------------------------------ |
 | `HTTP_PROXY`          | Proxy URL for HTTP clients           |
 | `HTTPS_PROXY`         | Proxy URL for HTTPS clients          |
-| `SSL_CERT_FILE`       | CA cert path (curl, git, etc.)       |
+| `SSL_CERT_FILE`       | CA cert path (curl, OpenSSL)         |
 | `REQUESTS_CA_BUNDLE`  | CA cert path (Python requests)       |
+| `CURL_CA_BUNDLE`      | CA cert path (curl/Python fallback)  |
 | `NODE_EXTRA_CA_CERTS` | CA cert path (Node.js)               |
+| `DENO_CERT`           | CA cert path (Deno)                  |
+| `CARGO_HTTP_CAINFO`   | CA cert path (Rust Cargo)            |
+| `GIT_SSL_CAINFO`      | CA cert path (Git)                   |
+| `AWS_CA_BUNDLE`       | CA cert path (AWS CLI)               |
+| `CGI_HTTP_PROXY`      | Proxy URL (PHP CGI, HTTPoxy-safe)    |
 | `PROCSI_SESSION_ID`   | UUID identifying the current session |
 | `PROCSI_LABEL`        | Session label (when `-l` flag used)  |
+
+Additionally, `procsi on` sets `PYTHONPATH`, `RUBYOPT`, and `PHP_INI_SCAN_DIR` to load runtime-specific override scripts that ensure edge-case HTTP clients trust the proxy CA.
 
 ## Configuration
 
@@ -180,16 +188,40 @@ See [full configuration documentation](docs/configuration.md) for details on eac
 
 ## Supported HTTP Clients
 
-Anything that respects `HTTP_PROXY` works:
+Anything that respects `HTTP_PROXY` works. procsi sets the right CA cert env vars for each runtime automatically.
+
+**Works automatically (env vars only):**
 
 | Client                       | Support                    |
 | ---------------------------- | -------------------------- |
 | curl                         | Automatic                  |
 | wget                         | Automatic                  |
-| Node.js (fetch, axios, etc.) | With `NODE_EXTRA_CA_CERTS` |
-| Python (requests, httpx)     | With `REQUESTS_CA_BUNDLE`  |
-| Go                           | Automatic                  |
+| Go (`net/http`)              | Automatic                  |
 | Rust (reqwest)               | Automatic                  |
+| .NET (`HttpClient`)          | Automatic                  |
+| Deno                         | Automatic (`DENO_CERT`)    |
+| Bun                          | Automatic (`SSL_CERT_FILE`)|
+| Git                          | Automatic (`GIT_SSL_CAINFO`)|
+| AWS CLI                      | Automatic (`AWS_CA_BUNDLE`)|
+| Cargo                        | Automatic (`CARGO_HTTP_CAINFO`)|
+
+**Works with procsi overrides (injection scripts):**
+
+| Client                       | Mechanism                                  |
+| ---------------------------- | ------------------------------------------ |
+| Node.js (fetch, axios, etc.) | `NODE_OPTIONS --require` preload script    |
+| Python (requests, httplib2)  | `PYTHONPATH` sitecustomize.py              |
+| Ruby (Net::HTTP, gems)       | `RUBYOPT -r` OpenSSL CA patch              |
+| PHP (curl, streams)          | `PHP_INI_SCAN_DIR` custom INI              |
+
+**Not currently supported (needs system-level config):**
+
+| Runtime           | Reason                                           |
+| ----------------- | ------------------------------------------------ |
+| Java/JVM          | Needs `-javaagent` or JVM trust store config     |
+| Swift             | Uses macOS Keychain only                         |
+| Dart/Flutter      | Requires code changes for proxy                  |
+| Elixir/Erlang     | Requires code changes for proxy                  |
 
 ## TUI
 

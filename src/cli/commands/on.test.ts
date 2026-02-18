@@ -5,6 +5,12 @@ import {
   formatUnsetVars,
   formatNodeOptionsExport,
   formatNodeOptionsRestore,
+  formatPythonPathExport,
+  formatPythonPathRestore,
+  formatRubyOptExport,
+  formatRubyOptRestore,
+  formatPhpIniScanDirExport,
+  formatPhpIniScanDirRestore,
 } from "./on.js";
 
 describe("formatEnvVars", () => {
@@ -220,5 +226,172 @@ describe("formatNodeOptionsRestore", () => {
   it("cleans up PROCSI_ORIG_NODE_OPTIONS", () => {
     const result = formatNodeOptionsRestore();
     expect(result).toContain("unset PROCSI_ORIG_NODE_OPTIONS");
+  });
+});
+
+describe("formatPythonPathExport", () => {
+  const overrideDir = "/Users/test/.procsi/overrides/python";
+
+  it("saves original PYTHONPATH via ${param-word} guard", () => {
+    const result = formatPythonPathExport(overrideDir);
+    expect(result).toContain("PROCSI_ORIG_PYTHONPATH");
+    expect(result).toContain("${PROCSI_ORIG_PYTHONPATH-${PYTHONPATH:-}}");
+  });
+
+  it("prepends the override dir to PYTHONPATH", () => {
+    const result = formatPythonPathExport(overrideDir);
+    expect(result).toContain("export PYTHONPATH=");
+    expect(result).toContain(overrideDir);
+  });
+
+  it("does not use if/then/fi", () => {
+    const result = formatPythonPathExport(overrideDir);
+    expect(result).not.toContain("if ");
+    expect(result).not.toContain("then");
+    expect(result).not.toContain("fi");
+  });
+
+  it("produces PYTHONPATH with override dir after shell eval", () => {
+    const result = formatPythonPathExport(overrideDir);
+    const pythonPath = execSync(`bash -c '${result.replace(/'/g, "'\\''")}\necho "$PYTHONPATH"'`)
+      .toString()
+      .trim();
+    expect(pythonPath).toBe(overrideDir);
+  });
+
+  it("preserves existing PYTHONPATH when prepending", () => {
+    const result = formatPythonPathExport(overrideDir);
+    const pythonPath = execSync(
+      `bash -c 'export PYTHONPATH="/existing/path"\n${result.replace(/'/g, "'\\''")}\necho "$PYTHONPATH"'`
+    )
+      .toString()
+      .trim();
+    expect(pythonPath).toBe(`${overrideDir}:/existing/path`);
+  });
+});
+
+describe("formatPythonPathRestore", () => {
+  it("restores PYTHONPATH from saved value", () => {
+    const result = formatPythonPathRestore();
+    expect(result).toContain("PROCSI_ORIG_PYTHONPATH");
+  });
+
+  it("unsets PYTHONPATH when original was empty", () => {
+    const result = formatPythonPathRestore();
+    expect(result).toContain("unset PYTHONPATH");
+  });
+
+  it("cleans up PROCSI_ORIG_PYTHONPATH", () => {
+    const result = formatPythonPathRestore();
+    expect(result).toContain("unset PROCSI_ORIG_PYTHONPATH");
+  });
+});
+
+describe("formatRubyOptExport", () => {
+  const overridePath = "/Users/test/.procsi/overrides/ruby/procsi_intercept.rb";
+
+  it("saves original RUBYOPT via ${param-word} guard", () => {
+    const result = formatRubyOptExport(overridePath);
+    expect(result).toContain("PROCSI_ORIG_RUBYOPT");
+    expect(result).toContain("${PROCSI_ORIG_RUBYOPT-${RUBYOPT:-}}");
+  });
+
+  it("appends -r with the override path", () => {
+    const result = formatRubyOptExport(overridePath);
+    expect(result).toContain("-r ");
+    expect(result).toContain(overridePath);
+  });
+
+  it("exports RUBYOPT", () => {
+    const result = formatRubyOptExport(overridePath);
+    expect(result).toContain("export RUBYOPT=");
+  });
+
+  it("produces RUBYOPT with -r flag after shell eval", () => {
+    const result = formatRubyOptExport(overridePath);
+    const rubyOpt = execSync(`bash -c '${result.replace(/'/g, "'\\''")}\necho "$RUBYOPT"'`)
+      .toString()
+      .trim();
+    expect(rubyOpt).toBe(`-r ${overridePath}`);
+  });
+
+  it("preserves existing RUBYOPT when appending", () => {
+    const result = formatRubyOptExport(overridePath);
+    const rubyOpt = execSync(
+      `bash -c 'export RUBYOPT="-w"\n${result.replace(/'/g, "'\\''")}\necho "$RUBYOPT"'`
+    )
+      .toString()
+      .trim();
+    expect(rubyOpt).toBe(`-w -r ${overridePath}`);
+  });
+});
+
+describe("formatRubyOptRestore", () => {
+  it("restores RUBYOPT from saved value", () => {
+    const result = formatRubyOptRestore();
+    expect(result).toContain("PROCSI_ORIG_RUBYOPT");
+  });
+
+  it("unsets RUBYOPT when original was empty", () => {
+    const result = formatRubyOptRestore();
+    expect(result).toContain("unset RUBYOPT");
+  });
+
+  it("cleans up PROCSI_ORIG_RUBYOPT", () => {
+    const result = formatRubyOptRestore();
+    expect(result).toContain("unset PROCSI_ORIG_RUBYOPT");
+  });
+});
+
+describe("formatPhpIniScanDirExport", () => {
+  const overrideDir = "/Users/test/.procsi/overrides/php";
+
+  it("saves original PHP_INI_SCAN_DIR via ${param-word} guard", () => {
+    const result = formatPhpIniScanDirExport(overrideDir);
+    expect(result).toContain("PROCSI_ORIG_PHP_INI_SCAN_DIR");
+    expect(result).toContain("${PROCSI_ORIG_PHP_INI_SCAN_DIR-${PHP_INI_SCAN_DIR:-}}");
+  });
+
+  it("exports PHP_INI_SCAN_DIR with colon prefix", () => {
+    const result = formatPhpIniScanDirExport(overrideDir);
+    expect(result).toContain("export PHP_INI_SCAN_DIR=");
+  });
+
+  it("produces PHP_INI_SCAN_DIR with colon prefix after shell eval", () => {
+    const result = formatPhpIniScanDirExport(overrideDir);
+    const phpIniScanDir = execSync(
+      `bash -c '${result.replace(/'/g, "'\\''")}\necho "$PHP_INI_SCAN_DIR"'`
+    )
+      .toString()
+      .trim();
+    // Should start with `:` (tells PHP to scan default dirs too)
+    expect(phpIniScanDir).toBe(`:${overrideDir}`);
+  });
+
+  it("preserves existing PHP_INI_SCAN_DIR when appending", () => {
+    const result = formatPhpIniScanDirExport(overrideDir);
+    const phpIniScanDir = execSync(
+      `bash -c 'export PHP_INI_SCAN_DIR="/etc/php.d"\n${result.replace(/'/g, "'\\''")}\necho "$PHP_INI_SCAN_DIR"'`
+    )
+      .toString()
+      .trim();
+    expect(phpIniScanDir).toBe(`:${"/etc/php.d"}:${overrideDir}`);
+  });
+});
+
+describe("formatPhpIniScanDirRestore", () => {
+  it("restores PHP_INI_SCAN_DIR from saved value", () => {
+    const result = formatPhpIniScanDirRestore();
+    expect(result).toContain("PROCSI_ORIG_PHP_INI_SCAN_DIR");
+  });
+
+  it("unsets PHP_INI_SCAN_DIR when original was empty", () => {
+    const result = formatPhpIniScanDirRestore();
+    expect(result).toContain("unset PHP_INI_SCAN_DIR");
+  });
+
+  it("cleans up PROCSI_ORIG_PHP_INI_SCAN_DIR", () => {
+    const result = formatPhpIniScanDirRestore();
+    expect(result).toContain("unset PROCSI_ORIG_PHP_INI_SCAN_DIR");
   });
 });

@@ -146,6 +146,9 @@ export function getProcsiPaths(projectRoot: string) {
     configFile: path.join(procsiDir, "config.json"),
     interceptorsDir: path.join(procsiDir, "interceptors"),
     proxyPreloadFile: path.join(procsiDir, "proxy-preload.cjs"),
+    pythonOverrideDir: path.join(procsiDir, "overrides", "python"),
+    rubyOverrideFile: path.join(procsiDir, "overrides", "ruby", "procsi_intercept.rb"),
+    phpOverrideDir: path.join(procsiDir, "overrides", "php"),
   };
 }
 
