@@ -39,9 +39,9 @@ Always call `procsi_get_status` first to confirm the daemon is running. If it is
 | Tool | Purpose | Key Parameters |
 |------|---------|----------------|
 | `procsi_get_status` | Check daemon is running, get proxy port and request count | -- |
-| `procsi_list_requests` | Browse/filter captured traffic (returns summaries) | `method`, `status_range`, `search`, `host`, `path`, `source`, `header_name`, `header_value`, `header_target`, `intercepted_by`, `since`, `before`, `limit`, `offset`, `format` |
+| `procsi_list_requests` | Browse/filter captured traffic (returns summaries) | `method`, `status_range`, `search`, `regex`, `host`, `path`, `saved`, `source`, `header_name`, `header_value`, `header_target`, `intercepted_by`, `since`, `before`, `limit`, `offset`, `format` |
 | `procsi_get_request` | Full request details -- headers, bodies, timing | `id` (single or comma-separated IDs), `format` |
-| `procsi_search_bodies` | Full-text search in request/response bodies | `query`, `source`, plus all filter params |
+| `procsi_search_bodies` | Full-text search in request/response bodies | `query`, plus all request filter params (`regex`, `saved`, `source`, etc.) |
 | `procsi_query_json` | Extract JSON values with JSONPath (SQLite `json_extract`) | `json_path`, `value`, `target` (`request`/`response`/`both`), `source`, plus filters |
 | `procsi_count_requests` | Count matching requests | All filter params (incl. `source`), `format` |
 | `procsi_clear_requests` | Delete all captured traffic (irreversible) | -- |
@@ -69,6 +69,8 @@ host: ".api.example.com"       # Suffix match (note leading dot)
 host: "api.example.com"        # Exact match
 path: "/api/v2"                # Path prefix match
 search: "api/users"            # URL substring match
+regex: "users/\\d+$"          # URL regex match
+saved: true                     # Only saved/bookmarked requests
 header_name: "authorization"   # Requests with this header
 header_name: "content-type", header_value: "application/json"  # Exact header match
 header_target: "request"       # Only search request headers
@@ -220,7 +222,7 @@ This allows interceptors to make decisions based on previously captured traffic.
 ## Tips
 
 - After writing an interceptor, always `procsi_reload_interceptors` then `procsi_list_interceptors` to verify it loaded without errors
-- The `search` filter matches URL substrings -- useful for quick filtering when you do not know the exact host or path
+- Use `search` for URL substring matching, or `regex` for full JavaScript regex URL matching (e.g. `users/\\d+$`)
 - `procsi_query_json` uses SQLite `json_extract` syntax (e.g. `$.user.name`, `$.items[0].id`)
 - Use `limit` and `offset` for pagination when there are many results (default limit: 50, max: 500)
 - `procsi_get_request` accepts comma-separated IDs for batch fetching (e.g. `id: "id1,id2,id3"`)

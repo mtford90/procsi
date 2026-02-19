@@ -471,6 +471,43 @@ describe("RequestRepository", () => {
       expect(results[0]?.path).toBe("/health");
     });
 
+    it("filters by regex pattern on full URL", () => {
+      seedRequests();
+      const results = repo.listRequests({ filter: { regex: "users/\\d+$" } });
+      expect(results).toHaveLength(2);
+      expect(results.every((r) => /users\/\d+$/.test(r.url))).toBe(true);
+    });
+
+    it("filters by regex pattern with flags", () => {
+      seedRequests();
+      const results = repo.listRequests({ filter: { regex: "USERS", regexFlags: "i" } });
+      expect(results).toHaveLength(4);
+      expect(results.every((r) => r.url.toLowerCase().includes("users"))).toBe(true);
+    });
+
+    it("accepts slash literals in regex filters", () => {
+      seedRequests();
+      const results = repo.listRequests({ filter: { regex: "/users\\/\\d+$/" } });
+      expect(results).toHaveLength(2);
+    });
+
+    it("throws on invalid regex filters", () => {
+      seedRequests();
+      expect(() => repo.listRequests({ filter: { regex: "users([" } })).toThrow(
+        'Invalid regex pattern "users(["'
+      );
+    });
+
+    it("combines regex with other filters", () => {
+      seedRequests();
+      const results = repo.listRequests({
+        filter: { methods: ["PUT"], regex: "users/\\d+$" },
+      });
+      expect(results).toHaveLength(1);
+      expect(results[0]?.method).toBe("PUT");
+      expect(results[0]?.path).toBe("/users/1");
+    });
+
     it("filters by multi-term search (AND logic)", () => {
       seedRequests();
       // "users" AND "POST" would match URL containing "users" — but we're matching URL/path
@@ -1490,9 +1527,9 @@ describe("RequestRepository", () => {
         sessionId,
         timestamp: Date.now(),
         method: "POST",
-        url: "https://api.example.com/users",
+        url: "https://api.example.com/users/1",
         host: "api.example.com",
-        path: "/users",
+        path: "/users/1",
         requestHeaders: { "content-type": "application/json" },
         requestBody: Buffer.from('{"name":"shared-term"}'),
       });
@@ -1526,6 +1563,14 @@ describe("RequestRepository", () => {
       });
       expect(results).toHaveLength(1);
       expect(results[0]?.id).toBe(id1);
+
+      // Regex URL filter should also narrow correctly
+      const regexFiltered = repo.searchBodies({
+        query: "shared-term",
+        filter: { regex: "users/\\d+$" },
+      });
+      expect(regexFiltered).toHaveLength(1);
+      expect(regexFiltered[0]?.id).toBe(id1);
     });
 
     it("handles LIKE wildcards in query", () => {

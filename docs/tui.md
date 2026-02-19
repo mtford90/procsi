@@ -34,10 +34,12 @@ Mouse support: click to select, scroll to navigate, click panels to focus.
 
 | Key                 | Action                                                               |
 | ------------------- | -------------------------------------------------------------------- |
-| `Tab` / `Shift+Tab` | Cycle between search, method, status fields                          |
-| `←` / `→`           | Cycle method (ALL/GET/POST/PUT/PATCH/DELETE) or status (ALL/2xx-5xx) |
-| `Return`            | Apply filter                                                         |
-| `Esc`               | Cancel and revert                                                    |
+| `Tab` / `Shift+Tab` | Cycle between search, method, status, saved, source fields                |
+| `←` / `→`           | Cycle method/status/saved values when those fields are focused             |
+| `Return`            | Close filter bar (filters are already applied live while typing)           |
+| `Esc`               | Cancel and revert to the pre-open filter state                             |
+
+Search field supports both plain text and regex literals (`/pattern/flags`, e.g. `/users\\/\\d+/i`).
 
 ## JSON Explorer (Enter on a JSON body)
 

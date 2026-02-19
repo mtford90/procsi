@@ -26,6 +26,10 @@ describe("isFilterActive", () => {
     expect(isFilterActive({ search: "api" })).toBe(true);
   });
 
+  it("returns true when regex is set", () => {
+    expect(isFilterActive({ regex: "users/\\d+" })).toBe(true);
+  });
+
   it("returns true when all fields are set", () => {
     expect(isFilterActive({ methods: ["GET"], statusRange: "4xx", search: "error" })).toBe(true);
   });
@@ -36,5 +40,9 @@ describe("isFilterActive", () => {
 
   it("returns false when search is empty string and others are undefined", () => {
     expect(isFilterActive({ search: "" })).toBe(false);
+  });
+
+  it("returns false when regex is empty string and others are undefined", () => {
+    expect(isFilterActive({ regex: "" })).toBe(false);
   });
 });

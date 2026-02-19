@@ -317,6 +317,7 @@ describe("FilterBar", () => {
     const { lastFrame } = render(
       <FilterBar
         {...defaultProps}
+        width={140}
         filter={{ search: "test", methods: ["POST"], statusRange: "4xx" }}
       />,
     );
@@ -384,6 +385,38 @@ describe("FilterBar", () => {
     await tick(250);
 
     expect(onFilterChange).toHaveBeenCalledWith({ search: "foo bar" });
+  });
+
+  it("detects /pattern/ syntax and emits regex filter", async () => {
+    const onFilterChange = vi.fn();
+    const { stdin } = render(
+      <FilterBar {...defaultProps} onFilterChange={onFilterChange} />,
+    );
+
+    for (const ch of "/users\\/\\d+/i") {
+      stdin.write(ch);
+      await tick();
+    }
+
+    await tick(250);
+
+    expect(onFilterChange).toHaveBeenCalledWith({ regex: "users\\/\\d+", regexFlags: "i" });
+  });
+
+  it("falls back to plain text search for invalid regex literals", async () => {
+    const onFilterChange = vi.fn();
+    const { stdin } = render(
+      <FilterBar {...defaultProps} onFilterChange={onFilterChange} />,
+    );
+
+    for (const ch of "/users([/") {
+      stdin.write(ch);
+      await tick();
+    }
+
+    await tick(250);
+
+    expect(onFilterChange).toHaveBeenCalledWith({ search: "/users([/" });
   });
 
   it("typing in search does not affect method or status", async () => {

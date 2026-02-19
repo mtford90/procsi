@@ -72,12 +72,14 @@ Most tools accept these filters:
 | `method`           | HTTP method(s), comma-separated             | `"GET,POST"`                          |
 | `status_range`     | Status code, Nxx pattern, or range          | `"4xx"`, `"401"`, `"500-503"`         |
 | `search`           | Substring match on URL/path                 | `"api/users"`                         |
+| `regex`            | JavaScript regex match on full URL          | `"users/\\d+$"`, `"/users\\\\/\\\\d+/i"` |
 | `host`             | Exact or suffix match (prefix with `.`)     | `"api.example.com"`, `".example.com"` |
 | `path`             | Path prefix match                           | `"/api/v2"`                           |
 | `since` / `before` | Time window (ISO 8601)                      | `"2024-01-15T10:30:00Z"`              |
 | `header_name`      | Filter by header existence or value         | `"content-type"`                      |
 | `header_value`     | Exact header value (requires `header_name`) | `"application/json"`                  |
 | `header_target`    | Which headers to search                     | `"request"`, `"response"`, `"both"`   |
+| `saved`            | Filter by saved/bookmarked state            | `true`, `false`                         |
 | `source`           | Filter by request source                    | `"node"`, `"python"`                  |
 | `intercepted_by`   | Filter by interceptor name                  | `"mock-users"`                        |
 | `offset`           | Pagination offset (0-based)                 | `0`                                   |
@@ -104,6 +106,7 @@ All query tools accept a `format` parameter:
 ```
 procsi_list_requests({ status_range: "5xx", path: "/api" })
 procsi_search_bodies({ query: "error_code", method: "POST" })
+procsi_list_requests({ regex: "users/\\d+$" })
 procsi_query_json({ json_path: "$.user.id", target: "response" })
 procsi_list_requests({ header_name: "authorization", header_target: "request" })
 ```

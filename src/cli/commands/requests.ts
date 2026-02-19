@@ -8,6 +8,7 @@ import { getErrorMessage, connectToDaemon } from "./helpers.js";
 import { formatRequestTable } from "../formatters/table.js";
 import { formatHint } from "../formatters/hints.js";
 import { parseTime } from "../utils/parse-time.js";
+import { normaliseRegexFilterInput, parseUrlSearchInput } from "../../shared/regex-filter.js";
 
 const DEFAULT_LIMIT = 50;
 
@@ -26,12 +27,13 @@ function parseIntFlag(value: string, flagName: string): number {
   return parsed;
 }
 
-interface RequestsFlags {
+export interface RequestsFlags {
   method?: string;
   status?: string;
   host?: string;
   path?: string;
   search?: string;
+  regex?: string;
   since?: string;
   before?: string;
   header?: string;
@@ -47,8 +49,12 @@ interface RequestsFlags {
 /**
  * Build a RequestFilter from CLI flags.
  */
-function buildFilter(opts: RequestsFlags): RequestFilter {
+export function buildFilter(opts: RequestsFlags): RequestFilter {
   const filter: RequestFilter = {};
+
+  if (opts.search && opts.regex) {
+    throw new Error("Cannot combine --search and --regex. Use one or the other.");
+  }
 
   if (opts.method) {
     filter.methods = opts.method.split(",").map((m) => m.trim().toUpperCase());
@@ -67,7 +73,24 @@ function buildFilter(opts: RequestsFlags): RequestFilter {
   }
 
   if (opts.search) {
-    filter.search = opts.search;
+    const parsed = parseUrlSearchInput(opts.search);
+    if (parsed.search) {
+      filter.search = parsed.search;
+    }
+    if (parsed.regex) {
+      filter.regex = parsed.regex.pattern;
+      if (parsed.regex.flags) {
+        filter.regexFlags = parsed.regex.flags;
+      }
+    }
+  }
+
+  if (opts.regex) {
+    const regex = normaliseRegexFilterInput(opts.regex);
+    filter.regex = regex.pattern;
+    if (regex.flags) {
+      filter.regexFlags = regex.flags;
+    }
   }
 
   if (opts.since) {
@@ -129,7 +152,8 @@ function addFilterFlags(cmd: Command): Command {
     )
     .option("--host <host>", "filter by hostname")
     .option("--path <prefix>", "filter by path prefix")
-    .option("--search <text>", "substring match on URL")
+    .option("--search <text>", "substring match on URL (or /pattern/ for regex)")
+    .option("--regex <pattern>", "regex match on URL")
     .option("--since <time>", "filter from time (e.g. 5m, 2h, 10am, yesterday, 2024-01-01)")
     .option("--before <time>", "filter before time (same formats as --since)")
     .option("--header <spec>", "filter by header name or name:value")

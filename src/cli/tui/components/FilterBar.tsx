@@ -10,6 +10,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Box, Text, useInput } from "ink";
 import type { RequestFilter } from "../../../shared/types.js";
+import { parseUrlSearchInput } from "../../../shared/regex-filter.js";
 
 const METHOD_CYCLE = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
 const STATUS_CYCLE = ["2xx", "3xx", "4xx", "5xx"] as const;
@@ -66,8 +67,23 @@ export function FilterBar({
   function buildFilter(): RequestFilter {
     const result: RequestFilter = {};
 
-    if (search.trim()) {
-      result.search = search.trim();
+    const trimmedSearch = search.trim();
+    if (trimmedSearch) {
+      try {
+        const parsed = parseUrlSearchInput(trimmedSearch);
+        if (parsed.regex) {
+          result.regex = parsed.regex.pattern;
+          if (parsed.regex.flags) {
+            result.regexFlags = parsed.regex.flags;
+          }
+        } else if (parsed.search) {
+          result.search = parsed.search;
+        }
+      } catch {
+        // Keep TUI resilient while typing incomplete/invalid regex literals.
+        // Fallback to plain substring search instead of surfacing an error state.
+        result.search = trimmedSearch;
+      }
     }
 
     if (methodIndex > 0) {
@@ -277,7 +293,7 @@ export function FilterBar({
       </Text>
       {isActive && focusedField === "source" && <Text color="cyan">█</Text>}
       <Text color="gray">{"  "}</Text>
-      <Text dimColor>Tab=switch Enter=close Esc=cancel space=AND</Text>
+      <Text dimColor>Tab=switch Enter=close Esc=cancel space=AND /re/</Text>
     </Box>
   );
 }

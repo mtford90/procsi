@@ -77,6 +77,8 @@ export interface RequestFilter {
   methods?: string[]; // e.g. ["GET", "POST"]
   statusRange?: string; // e.g. "2xx", "4xx", "401", "500-503"
   search?: string; // substring match on url/path
+  regex?: string; // JavaScript regex pattern match on full URL
+  regexFlags?: string; // JavaScript regex flags (e.g. "i", "im")
   host?: string; // exact match, or suffix if starts with "."
   pathPrefix?: string; // prefix match on path column
   since?: number; // epoch ms, inclusive lower bound

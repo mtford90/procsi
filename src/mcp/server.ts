@@ -12,6 +12,7 @@ import { ControlClient } from "../shared/control-client.js";
 import { getProcsiPaths } from "../shared/project.js";
 import { getProcsiVersion } from "../shared/version.js";
 import { isTextContentType, isJsonContentType } from "../shared/content-type.js";
+import { normaliseRegexFilterInput } from "../shared/regex-filter.js";
 import type {
   CapturedRequest,
   CapturedRequestSummary,
@@ -344,6 +345,7 @@ export function buildFilter(params: {
   method?: string;
   status_range?: string;
   search?: string;
+  regex?: string;
   host?: string;
   path?: string;
   since?: string;
@@ -371,6 +373,13 @@ export function buildFilter(params: {
   }
   if (params.search) {
     filter.search = params.search;
+  }
+  if (params.regex) {
+    const regex = normaliseRegexFilterInput(params.regex);
+    filter.regex = regex.pattern;
+    if (regex.flags) {
+      filter.regexFlags = regex.flags;
+    }
   }
   if (params.host) {
     filter.host = params.host;
@@ -473,7 +482,7 @@ export function createProcsiMcpServer(options: McpServerOptions) {
   // --- procsi_list_requests ---
   server.tool(
     "procsi_list_requests",
-    "Search and filter captured HTTP requests. Returns summaries (method, URL, status, timing). Supports filtering by HTTP method(s), status code (range, exact, or Nxx pattern), host, path prefix, time window, URL substring, and headers. Use procsi_get_request with a request ID to fetch full headers and bodies.",
+    "Search and filter captured HTTP requests. Returns summaries (method, URL, status, timing). Supports filtering by HTTP method(s), status code (range, exact, or Nxx pattern), host, path prefix, time window, URL substring/regex, and headers. Use procsi_get_request with a request ID to fetch full headers and bodies.",
     {
       method: z
         .string()
@@ -491,6 +500,12 @@ export function createProcsiMcpServer(options: McpServerOptions) {
         .string()
         .optional()
         .describe("Case-insensitive substring match against the full URL and path."),
+      regex: z
+        .string()
+        .optional()
+        .describe(
+          "JavaScript regex pattern to match against the full URL (e.g. 'users/\\d+$' or '/users\\\\/\\\\d+/i')."
+        ),
       host: z
         .string()
         .optional()
@@ -652,7 +667,7 @@ export function createProcsiMcpServer(options: McpServerOptions) {
   // --- procsi_search_bodies ---
   server.tool(
     "procsi_search_bodies",
-    "Search through request and response body content for a text substring. Only searches text-based bodies (JSON, HTML, XML, etc.), skipping binary content. Supports filtering by method(s), status code, host, path prefix, time window, and headers. Returns summaries — use procsi_get_request for full details.",
+    "Search through request and response body content for a text substring. Only searches text-based bodies (JSON, HTML, XML, etc.), skipping binary content. Supports filtering by method(s), status code, host, path prefix, URL regex, time window, and headers. Returns summaries — use procsi_get_request for full details.",
     {
       query: z
         .string()
@@ -670,6 +685,12 @@ export function createProcsiMcpServer(options: McpServerOptions) {
         .optional()
         .describe(
           "Filter by status code. Accepts Nxx patterns (e.g. '2xx'), exact codes (e.g. '401'), or numeric ranges (e.g. '500-503')."
+        ),
+      regex: z
+        .string()
+        .optional()
+        .describe(
+          "JavaScript regex pattern to match against the full URL (e.g. 'users/\\d+$' or '/users\\\\/\\\\d+/i')."
         ),
       host: z
         .string()

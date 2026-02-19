@@ -17,10 +17,13 @@ import {
   buildJsonContentTypeSqlCondition,
 } from "../shared/content-type.js";
 import { DEFAULT_MAX_STORED_REQUESTS } from "../shared/config.js";
+import { normaliseRegexFilterInput } from "../shared/regex-filter.js";
 
 const DEFAULT_QUERY_LIMIT = 1000;
 const EVICTION_CHECK_INTERVAL = 100;
 const SESSION_TOKEN_BYTES = 16;
+const REGEXP_SQL_FUNCTION = "REGEXP";
+const REGEX_CACHE_MAX_ENTRIES = 100;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS sessions (
@@ -224,6 +227,12 @@ function applyFilterConditions(
     }
   }
 
+  if (filter.regex) {
+    const regex = normaliseRegexFilterInput(filter.regex, filter.regexFlags);
+    conditions.push(`${REGEXP_SQL_FUNCTION}(?, ?, url) = 1`);
+    params.push(regex.pattern, regex.flags);
+  }
+
   if (filter.host) {
     if (filter.host.startsWith(".")) {
       // Suffix match — e.g. ".example.com" matches "api.example.com"
@@ -325,6 +334,7 @@ export class RequestRepository {
     this.db = new Database(dbPath);
     this.db.pragma("journal_mode = WAL");
     this.db.exec(SCHEMA);
+    this.registerSqlFunctions();
 
     this.maxStoredRequests = options?.maxStoredRequests ?? DEFAULT_MAX_STORED_REQUESTS;
 
@@ -365,6 +375,42 @@ export class RequestRepository {
     });
 
     applyAll();
+  }
+
+  /**
+   * Register custom SQLite functions used by filters.
+   */
+  private registerSqlFunctions(): void {
+    const regexCache = new Map<string, RegExp>();
+
+    this.db.function(
+      REGEXP_SQL_FUNCTION,
+      (patternValue: unknown, flagsValue: unknown, value: unknown) => {
+        if (typeof patternValue !== "string") return 0;
+
+        const flags = typeof flagsValue === "string" ? flagsValue : "";
+        const target = typeof value === "string" ? value : value == null ? "" : String(value);
+
+        const cacheKey = `${flags}\u0000${patternValue}`;
+
+        let regex = regexCache.get(cacheKey);
+        if (!regex) {
+          const spec = normaliseRegexFilterInput(patternValue, flags);
+          regex = new RegExp(spec.pattern, spec.flags);
+          regexCache.set(cacheKey, regex);
+
+          if (regexCache.size > REGEX_CACHE_MAX_ENTRIES) {
+            const oldest = regexCache.keys().next().value;
+            if (typeof oldest === "string") {
+              regexCache.delete(oldest);
+            }
+          }
+        }
+
+        regex.lastIndex = 0;
+        return regex.test(target) ? 1 : 0;
+      }
+    );
   }
 
   /**

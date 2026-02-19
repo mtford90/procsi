@@ -196,6 +196,26 @@ describe("CLI query integration", () => {
       expect(products).toHaveLength(1);
     });
 
+    it("filters by regex URL pattern", async () => {
+      seedRequests();
+
+      const regexMatches = await client.listRequestsSummary({
+        filter: { regex: "products/\\d+$" },
+      });
+      expect(regexMatches).toHaveLength(1);
+      expect(regexMatches[0]?.path).toBe("/products/999");
+    });
+
+    it("filters by regex URL pattern with flags", async () => {
+      seedRequests();
+
+      const regexMatches = await client.listRequestsSummary({
+        filter: { regex: "USERS", regexFlags: "i" },
+      });
+      expect(regexMatches).toHaveLength(2);
+      expect(regexMatches.every((r) => r.path.toLowerCase().includes("users"))).toBe(true);
+    });
+
     it("filters by time window using parseTime", async () => {
       seedRequests();
 

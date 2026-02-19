@@ -110,10 +110,37 @@ Each feature should be considered across all three surfaces where applicable:
   - **CLI:** `--source` filter flag on `procsi requests` / `procsi sessions`; `procsi on --source "dev server"` to set manually
   - **MCP:** `source` filter param on `procsi_list_requests` / `procsi_list_sessions`
 
-- [ ] **Regexp filter** — support regex patterns in search/filter across all surfaces
+- [x] **Regexp filter** — support regex patterns in search/filter across all surfaces
   - **TUI:** detect `/pattern/` syntax in the filter bar search field, apply as regex match on URL
   - **CLI:** `--search` accepts `/pattern/` for regex, or a `--regex` flag
   - **MCP:** `regex` param on `procsi_list_requests` / `procsi_search_bodies`
+  - **Implementation checklist:**
+    - [x] **Shared filter contract + parser helpers**
+      - Extend `RequestFilter` with `regex?: string`
+      - Add shared helper(s) to parse `/pattern/` literals and validate regex safely (`try/catch`)
+    - [x] **Daemon/control/storage support**
+      - Accept `filter.regex` in `src/daemon/control.ts` (`optionalFilter`)
+      - Add regex condition support in `src/daemon/storage.ts` filter application
+      - Ensure invalid regex yields a clear error (no crash)
+    - [x] **CLI wiring (`procsi requests`)**
+      - Add `--regex <pattern>` flag in `src/cli/commands/requests.ts`
+      - Support `/pattern/` auto-detection in `--search`
+      - Keep non-regex search semantics unchanged (space-separated terms = AND)
+    - [x] **TUI wiring (filter bar + list highlighting)**
+      - Parse `/pattern/` in `src/cli/tui/components/FilterBar.tsx`
+      - Preserve existing debounce/live-apply behaviour
+      - Disable substring highlight in `RequestListItem` when search is in regex mode
+    - [x] **MCP schema + filter builder updates**
+      - Add `regex` param to `procsi_list_requests` + `procsi_search_bodies`
+      - Pass through in `buildFilter(...)` in `src/mcp/server.ts`
+    - [x] **Tests**
+      - Daemon storage: regex match/no-match/invalid/combined filters
+      - TUI FilterBar: `/pattern/` emits regex filter
+      - MCP: `buildFilter` + integration coverage for `regex` param
+      - CLI integration: `--search '/.../'` and `--regex` behaviour
+    - [x] **Docs follow-up**
+      - Update CLI/MCP filter docs + examples
+      - Mark this item complete in `docs/PLAN.md` once shipped
 
 - [ ] **Body search in TUI** — search through request/response bodies from within the TUI
   - **CLI:** already has `procsi requests search <query>` — done

@@ -124,6 +124,14 @@ function optionalFilter(params: Record<string, unknown>): RequestFilter | undefi
     result.search = f["search"];
   }
 
+  if (typeof f["regex"] === "string") {
+    result.regex = f["regex"];
+  }
+
+  if (typeof f["regexFlags"] === "string") {
+    result.regexFlags = f["regexFlags"];
+  }
+
   if (typeof f["host"] === "string") {
     result.host = f["host"];
   }

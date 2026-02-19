@@ -839,6 +839,22 @@ describe("buildFilter", () => {
     expect(filter).toEqual({ search: "api/users" });
   });
 
+  it("sets regex when provided", () => {
+    const filter = buildFilter({ regex: "users/\\d+" });
+
+    expect(filter).toEqual({ regex: "users/\\d+" });
+  });
+
+  it("parses regex literals in regex param", () => {
+    const filter = buildFilter({ regex: "/users/i" });
+
+    expect(filter).toEqual({ regex: "users", regexFlags: "i" });
+  });
+
+  it("throws on invalid regex", () => {
+    expect(() => buildFilter({ regex: "users([" })).toThrow('Invalid regex pattern "users(["');
+  });
+
   it("combines all parameters", () => {
     const filter = buildFilter({
       method: "post",

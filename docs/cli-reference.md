@@ -64,11 +64,14 @@ procsi requests --status 4xx                 # filter by status range
 procsi requests --host api.example.com       # filter by host
 procsi requests --path /api/v2               # filter by path prefix
 procsi requests --search "keyword"           # substring match on URL
+procsi requests --search "/users\\/\\d+/"    # regex literal match on URL
+procsi requests --regex "users/\\d+$"       # regex pattern match on URL
 procsi requests --since 5m                   # last 5 minutes
 procsi requests --since yesterday            # since midnight yesterday
 procsi requests --since 10am --before 11am   # time window
 procsi requests --header "content-type:application/json"  # header filter
 procsi requests --intercepted-by mock-users  # interceptor filter
+procsi requests --saved                       # only saved/bookmarked requests
 procsi requests --limit 100 --offset 50      # pagination
 procsi requests --json                       # JSON output
 ```
@@ -79,11 +82,13 @@ procsi requests --json                       # JSON output
 | `--status <range>`         | Status range: `2xx`, `4xx`, exact `401`, etc.            |
 | `--host <host>`            | Filter by hostname                                       |
 | `--path <prefix>`          | Filter by path prefix                                    |
-| `--search <text>`          | Substring match on URL                                   |
+| `--search <text>`          | Substring match on URL, or `/pattern/flags` regex literal |
+| `--regex <pattern>`        | JavaScript regex pattern match on URL                     |
 | `--since <time>`           | Since time (5m, 2h, 10am, yesterday, monday, 2024-01-01) |
 | `--before <time>`          | Before time (same formats as --since)                    |
 | `--header <spec>`          | Header name or name:value                                |
 | `--header-target <target>` | `request`, `response`, or `both` (default)               |
+| `--saved`                  | Filter to saved/bookmarked requests only                 |
 | `--source <name>`          | Filter by request source (e.g. node, python)             |
 | `--intercepted-by <name>`  | Filter by interceptor name                               |
 | `--limit <n>`              | Max results (default 50)                                 |
@@ -153,10 +158,6 @@ Collect diagnostics (system info, daemon status, recent logs) into `.procsi/debu
 ## `procsi mcp`
 
 Start the MCP server (stdio transport). See [MCP documentation](mcp.md).
-
-## `procsi project init`
-
-Manually initialise a `.procsi` directory in the current location.
 
 ## `procsi interceptors`
 

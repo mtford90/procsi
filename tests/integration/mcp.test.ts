@@ -342,6 +342,36 @@ describe("MCP integration", () => {
     expect(text).toContain("/api/secret");
   });
 
+  it("procsi_search_bodies supports regex URL filter", async () => {
+    const { proxy, mcpClient } = await setupMcpStack();
+
+    const testServer = http.createServer((req, res) => {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ secret: "needle" }));
+    });
+    await new Promise<void>((resolve) => testServer.listen(0, "127.0.0.1", resolve));
+    const testAddr = testServer.address() as { port: number };
+    cleanup.push(() => {
+      testServer.closeAllConnections();
+      return new Promise((resolve) => testServer.close(() => resolve()));
+    });
+
+    const baseUrl = `http://127.0.0.1:${testAddr.port}`;
+    await makeProxiedRequest(proxy.port, `${baseUrl}/api/users/1`);
+    await makeProxiedRequest(proxy.port, `${baseUrl}/api/products`);
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    const result = await mcpClient.callTool({
+      name: "procsi_search_bodies",
+      arguments: { query: "needle", regex: "users/\\d+$" },
+    });
+    const text = getTextContent(result);
+
+    expect(text).toContain("Found 1 request(s)");
+    expect(text).toContain("/api/users/1");
+    expect(text).not.toContain("/api/products");
+  });
+
   it("procsi_search_bodies returns empty for no match", async () => {
     const { proxy, mcpClient } = await setupMcpStack();
 
@@ -456,6 +486,36 @@ describe("MCP integration", () => {
     expect(text).toContain("Showing 1 of 1 request(s):");
     expect(text).toContain("/api/products");
     expect(text).not.toContain("/api/users");
+  });
+
+  it("procsi_list_requests filters by regex", async () => {
+    const { proxy, mcpClient } = await setupMcpStack();
+
+    const testServer = http.createServer((req, res) => {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ ok: true }));
+    });
+    await new Promise<void>((resolve) => testServer.listen(0, "127.0.0.1", resolve));
+    const testAddr = testServer.address() as { port: number };
+    cleanup.push(() => {
+      testServer.closeAllConnections();
+      return new Promise((resolve) => testServer.close(() => resolve()));
+    });
+
+    const baseUrl = `http://127.0.0.1:${testAddr.port}`;
+    await makeProxiedRequest(proxy.port, `${baseUrl}/api/users/1`);
+    await makeProxiedRequest(proxy.port, `${baseUrl}/api/products`);
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    const result = await mcpClient.callTool({
+      name: "procsi_list_requests",
+      arguments: { regex: "users/\\d+$" },
+    });
+    const text = getTextContent(result);
+
+    expect(text).toContain("Showing 1 of 1 request(s):");
+    expect(text).toContain("/api/users/1");
+    expect(text).not.toContain("/api/products");
   });
 
   it("procsi_list_requests filters by status_range", async () => {
