@@ -283,6 +283,22 @@ describe("CLI query integration", () => {
       expect(results.length).toBeGreaterThanOrEqual(1);
     });
 
+    it("supports target=request", async () => {
+      seedRequests();
+
+      const results = await client.searchBodies({ query: "Bob", target: "request" });
+      expect(results).toHaveLength(1);
+      expect(results[0]?.method).toBe("POST");
+    });
+
+    it("supports target=response", async () => {
+      seedRequests();
+
+      const results = await client.searchBodies({ query: "Alice", target: "response" });
+      expect(results).toHaveLength(1);
+      expect(results[0]?.method).toBe("GET");
+    });
+
     it("returns empty for no match", async () => {
       seedRequests();
 

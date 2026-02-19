@@ -667,13 +667,17 @@ export function createProcsiMcpServer(options: McpServerOptions) {
   // --- procsi_search_bodies ---
   server.tool(
     "procsi_search_bodies",
-    "Search through request and response body content for a text substring. Only searches text-based bodies (JSON, HTML, XML, etc.), skipping binary content. Supports filtering by method(s), status code, host, path prefix, URL regex, time window, and headers. Returns summaries — use procsi_get_request for full details.",
+    "Search through request and/or response body content for a text substring. Only searches text-based bodies (JSON, HTML, XML, etc.), skipping binary content. Supports body target selection (request/response/both), plus filtering by method(s), status code, host, path prefix, URL regex, time window, and headers. Returns summaries — use procsi_get_request for full details.",
     {
       query: z
         .string()
         .describe(
           "Text to search for in request/response bodies. Case-insensitive substring match."
         ),
+      target: z
+        .enum(["request", "response", "both"])
+        .optional()
+        .describe('Which body to search: "request", "response", or "both" (default "both").'),
       method: z
         .string()
         .optional()
@@ -754,6 +758,7 @@ export function createProcsiMcpServer(options: McpServerOptions) {
         const filter = buildFilter(params);
         const summaries: CapturedRequestSummary[] = await client.searchBodies({
           query: params.query,
+          target: params.target,
           limit: clampLimit(params.limit),
           offset: params.offset,
           filter,

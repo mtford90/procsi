@@ -3,12 +3,13 @@
  */
 
 import { Command } from "commander";
-import type { RequestFilter } from "../../shared/types.js";
+import type { BodySearchTarget, RequestFilter } from "../../shared/types.js";
 import { getErrorMessage, connectToDaemon } from "./helpers.js";
 import { formatRequestTable } from "../formatters/table.js";
 import { formatHint } from "../formatters/hints.js";
 import { parseTime } from "../utils/parse-time.js";
 import { normaliseRegexFilterInput, parseUrlSearchInput } from "../../shared/regex-filter.js";
+import { BODY_SEARCH_TARGETS, parseBodySearchTarget } from "../../shared/body-search.js";
 
 const DEFAULT_LIMIT = 50;
 
@@ -27,6 +28,14 @@ function parseIntFlag(value: string, flagName: string): number {
   return parsed;
 }
 
+export function parseSearchTarget(value: string): BodySearchTarget {
+  const parsed = parseBodySearchTarget(value);
+  if (!parsed) {
+    throw new Error(`Invalid --target: "${value}". Use one of: ${BODY_SEARCH_TARGETS.join(", ")}.`);
+  }
+  return parsed;
+}
+
 export interface RequestsFlags {
   method?: string;
   status?: string;
@@ -41,6 +50,7 @@ export interface RequestsFlags {
   interceptedBy?: string;
   saved?: boolean;
   source?: string;
+  target?: string;
   limit?: string;
   offset?: string;
   json?: boolean;
@@ -168,6 +178,7 @@ function addFilterFlags(cmd: Command): Command {
 const searchSubcommand = new Command("search")
   .description("Full-text search through request/response bodies")
   .argument("<query>", "search string")
+  .option("--target <target>", "body target (request, response, or both)", "both")
   .option("--limit <n>", "max results", String(DEFAULT_LIMIT))
   .option("--offset <n>", "skip results", "0")
   .option("--json", "JSON output");
@@ -183,10 +194,11 @@ searchSubcommand.action(
     const { client } = await connectToDaemon(command);
     try {
       const filter = buildFilter(opts);
+      const target = parseSearchTarget(opts.target ?? "both");
       const limit = parseIntFlag(opts.limit ?? String(DEFAULT_LIMIT), "--limit");
       const offset = parseIntFlag(opts.offset ?? "0", "--offset");
 
-      const results = await client.searchBodies({ query, limit, offset, filter });
+      const results = await client.searchBodies({ query, target, limit, offset, filter });
 
       if (opts.json) {
         console.log(JSON.stringify(results, null, 2));

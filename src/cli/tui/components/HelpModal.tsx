@@ -49,7 +49,7 @@ const HELP_SECTIONS: HelpSection[] = [
       { key: "b", description: "Toggle bookmark" },
       { key: "x/D", description: "Clear requests" },
       { key: "u", description: "Toggle full URL" },
-      { key: "/", description: "Filter requests" },
+      { key: "/", description: "Filter requests (URL, /regex/, body:(req|res):error)" },
       { key: "r", description: "Refresh" },
     ],
   },
@@ -107,7 +107,7 @@ export function HelpModal({
         onClose();
       }
     },
-    { isActive },
+    { isActive }
   );
 
   return (

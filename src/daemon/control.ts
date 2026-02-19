@@ -14,6 +14,7 @@ import type {
   RegisteredSession,
   RequestFilter,
   Session,
+  BodySearchTarget,
 } from "../shared/types.js";
 import type { InterceptorEventLog, EventCounts } from "./interceptor-event-log.js";
 import {
@@ -23,6 +24,7 @@ import {
 } from "../shared/control-client.js";
 import { createLogger, type LogLevel, type Logger } from "../shared/logger.js";
 import { resolveProcessName } from "../shared/process-name.js";
+import { parseBodySearchTarget } from "../shared/body-search.js";
 
 export { ControlClient } from "../shared/control-client.js";
 
@@ -97,6 +99,24 @@ function requireString(params: Record<string, unknown>, key: string): string {
     throw new Error(`Missing required string parameter: ${key}`);
   }
   return value;
+}
+
+function optionalBodySearchTarget(
+  params: Record<string, unknown>,
+  key: string
+): BodySearchTarget | undefined {
+  const value = params[key];
+  if (value === undefined) return undefined;
+  if (typeof value !== "string") {
+    throw new Error(`Invalid ${key} parameter: expected string`);
+  }
+
+  const target = parseBodySearchTarget(value);
+  if (!target) {
+    throw new Error(`Invalid ${key} parameter: "${value}". Use request, response, or both.`);
+  }
+
+  return target;
 }
 
 /**
@@ -277,8 +297,10 @@ export function createControlServer(options: ControlServerOptions): ControlServe
 
     searchBodies: (params): CapturedRequestSummary[] => {
       const query = requireString(params, "query");
+      const target = optionalBodySearchTarget(params, "target");
       return storage.searchBodies({
         query,
+        target,
         limit: optionalNumber(params, "limit"),
         offset: optionalNumber(params, "offset"),
         filter: optionalFilter(params),

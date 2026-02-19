@@ -9,13 +9,16 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { Box, Text, useInput } from "ink";
-import type { RequestFilter } from "../../../shared/types.js";
+import type { BodySearchOptions, RequestFilter } from "../../../shared/types.js";
 import { parseUrlSearchInput } from "../../../shared/regex-filter.js";
+import { parseBodyScopeInput, parseBodySearchTarget } from "../../../shared/body-search.js";
 
 const METHOD_CYCLE = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
 const STATUS_CYCLE = ["2xx", "3xx", "4xx", "5xx"] as const;
 const MAX_SEARCH_LENGTH = 200;
 const FILTER_DEBOUNCE_MS = 150;
+const BODY_SCOPE_PREFIX = "body:";
+const FILTER_HELP_TEXT = "Tab=switch Enter=close Esc=cancel body:(req|res):error /re/";
 
 type FilterField = "search" | "method" | "status" | "saved" | "source";
 const FIELD_ORDER: FilterField[] = ["search", "method", "status", "saved", "source"];
@@ -23,22 +26,90 @@ const FIELD_ORDER: FilterField[] = ["search", "method", "status", "saved", "sour
 export interface FilterBarProps {
   isActive: boolean;
   filter: RequestFilter;
+  bodySearch?: BodySearchOptions;
   onFilterChange: (filter: RequestFilter) => void;
+  onBodySearchChange?: (bodySearch: BodySearchOptions | undefined) => void;
   onClose: () => void;
   /** Called on Escape — reverts filter to pre-open state */
   onCancel?: () => void;
   width: number;
 }
 
+function getInitialSearchValue(filter: RequestFilter, bodySearch?: BodySearchOptions): string {
+  if (bodySearch) {
+    if (bodySearch.target === "request") {
+      return `body:req:${bodySearch.query}`;
+    }
+    if (bodySearch.target === "response") {
+      return `body:res:${bodySearch.query}`;
+    }
+    return `body:${bodySearch.query}`;
+  }
+
+  if (filter.regex) {
+    const flags = filter.regexFlags ?? "";
+    return `/${filter.regex}/${flags}`;
+  }
+
+  return filter.search ?? "";
+}
+
+export interface BodySearchDisplayParts {
+  bodyPrefix: string;
+  targetPrefix?: string;
+  query: string;
+}
+
+export function getBodySearchDisplayParts(input: string): BodySearchDisplayParts | undefined {
+  const lower = input.toLowerCase();
+  if (!lower.startsWith(BODY_SCOPE_PREFIX)) {
+    return undefined;
+  }
+
+  const bodyPrefix = input.slice(0, BODY_SCOPE_PREFIX.length);
+  const rest = input.slice(BODY_SCOPE_PREFIX.length);
+  if (!rest) {
+    return { bodyPrefix, query: "" };
+  }
+
+  const firstColon = rest.indexOf(":");
+  if (firstColon === -1) {
+    return { bodyPrefix, query: rest };
+  }
+
+  const maybeTarget = rest.slice(0, firstColon);
+  const parsedTarget = parseBodySearchTarget(maybeTarget);
+  if (!parsedTarget) {
+    return { bodyPrefix, query: rest };
+  }
+
+  const targetPrefix = rest.slice(0, firstColon + 1);
+  const query = rest.slice(firstColon + 1);
+  return { bodyPrefix, targetPrefix, query };
+}
+
+function getBodyTargetColour(targetPrefix: string): "yellow" | "magenta" | "blue" {
+  const target = parseBodySearchTarget(targetPrefix.slice(0, -1));
+  if (target === "request") {
+    return "yellow";
+  }
+  if (target === "response") {
+    return "magenta";
+  }
+  return "blue";
+}
+
 export function FilterBar({
   isActive,
   filter,
+  bodySearch,
   onFilterChange,
+  onBodySearchChange,
   onClose,
   onCancel,
   width,
 }: FilterBarProps): React.ReactElement {
-  const [search, setSearch] = useState(filter.search ?? "");
+  const [search, setSearch] = useState(() => getInitialSearchValue(filter, bodySearch));
   // Note: these initialisers only run on mount. This is safe because App.tsx
   // conditionally renders FilterBar ({showFilter && <FilterBar />}), so it
   // unmounts on close and remounts with fresh state on reopen.
@@ -64,25 +135,34 @@ export function FilterBar({
   const [source, setSource] = useState(filter.source ?? "");
   const [focusedField, setFocusedField] = useState<FilterField>("search");
 
-  function buildFilter(): RequestFilter {
+  function buildFilterState(): { filter: RequestFilter; bodySearch?: BodySearchOptions } {
     const result: RequestFilter = {};
+    let bodySearch: BodySearchOptions | undefined;
 
     const trimmedSearch = search.trim();
     if (trimmedSearch) {
-      try {
-        const parsed = parseUrlSearchInput(trimmedSearch);
-        if (parsed.regex) {
-          result.regex = parsed.regex.pattern;
-          if (parsed.regex.flags) {
-            result.regexFlags = parsed.regex.flags;
+      const parsedBodyScope = parseBodyScopeInput(trimmedSearch);
+      if (parsedBodyScope) {
+        bodySearch = {
+          query: parsedBodyScope.query,
+          target: parsedBodyScope.target,
+        };
+      } else {
+        try {
+          const parsed = parseUrlSearchInput(trimmedSearch);
+          if (parsed.regex) {
+            result.regex = parsed.regex.pattern;
+            if (parsed.regex.flags) {
+              result.regexFlags = parsed.regex.flags;
+            }
+          } else if (parsed.search) {
+            result.search = parsed.search;
           }
-        } else if (parsed.search) {
-          result.search = parsed.search;
+        } catch {
+          // Keep TUI resilient while typing incomplete/invalid regex literals.
+          // Fallback to plain substring search instead of surfacing an error state.
+          result.search = trimmedSearch;
         }
-      } catch {
-        // Keep TUI resilient while typing incomplete/invalid regex literals.
-        // Fallback to plain substring search instead of surfacing an error state.
-        result.search = trimmedSearch;
       }
     }
 
@@ -108,14 +188,20 @@ export function FilterBar({
       result.source = source.trim();
     }
 
-    return result;
+    return { filter: result, bodySearch };
   }
 
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Stable reference to buildFilter for use in the debounce effect
-  const buildFilterRef = useRef(buildFilter);
-  buildFilterRef.current = buildFilter;
+  // Stable reference to buildFilterState for use in the debounce effect
+  const buildFilterStateRef = useRef(buildFilterState);
+  buildFilterStateRef.current = buildFilterState;
+
+  // Stable callbacks for the debounce effect
+  const onFilterChangeRef = useRef(onFilterChange);
+  onFilterChangeRef.current = onFilterChange;
+  const onBodySearchChangeRef = useRef(onBodySearchChange);
+  onBodySearchChangeRef.current = onBodySearchChange;
 
   // Live debounced filter application
   useEffect(() => {
@@ -124,7 +210,9 @@ export function FilterBar({
     }
 
     debounceRef.current = setTimeout(() => {
-      onFilterChange(buildFilterRef.current());
+      const nextState = buildFilterStateRef.current();
+      onFilterChangeRef.current(nextState.filter);
+      onBodySearchChangeRef.current?.(nextState.bodySearch);
     }, FILTER_DEBOUNCE_MS);
 
     return () => {
@@ -132,7 +220,7 @@ export function FilterBar({
         clearTimeout(debounceRef.current);
       }
     };
-  }, [search, methodIndex, statusIndex, savedIndex, source, onFilterChange]);
+  }, [search, methodIndex, statusIndex, savedIndex, source]);
 
   // Cleanup debounce timer on unmount
   useEffect(() => {
@@ -143,7 +231,11 @@ export function FilterBar({
     };
   }, []);
 
-  function cycleField(setter: React.Dispatch<React.SetStateAction<number>>, length: number, direction: 1 | -1): void {
+  function cycleField(
+    setter: React.Dispatch<React.SetStateAction<number>>,
+    length: number,
+    direction: 1 | -1
+  ): void {
     setter((prev) => {
       const total = length + 1; // +1 for the "ALL" option at index 0
       return (prev + direction + total) % total;
@@ -236,12 +328,13 @@ export function FilterBar({
         return;
       }
     },
-    { isActive },
+    { isActive }
   );
 
   const currentMethod = methodIndex > 0 ? METHOD_CYCLE[methodIndex - 1] : "ALL";
   const currentStatus = statusIndex > 0 ? STATUS_CYCLE[statusIndex - 1] : "ALL";
   const currentSaved = savedIndex > 0 ? "YES" : "ALL";
+  const bodySearchDisplayParts = getBodySearchDisplayParts(search);
 
   return (
     <Box
@@ -257,7 +350,22 @@ export function FilterBar({
       <Text color="cyan" bold>
         /
       </Text>
-      <Text> {search}</Text>
+      <Text> </Text>
+      {bodySearchDisplayParts ? (
+        <Text>
+          <Text color="cyan" bold>
+            {bodySearchDisplayParts.bodyPrefix}
+          </Text>
+          {bodySearchDisplayParts.targetPrefix && (
+            <Text color={getBodyTargetColour(bodySearchDisplayParts.targetPrefix)} bold>
+              {bodySearchDisplayParts.targetPrefix}
+            </Text>
+          )}
+          <Text>{bodySearchDisplayParts.query}</Text>
+        </Text>
+      ) : (
+        <Text>{search}</Text>
+      )}
       {isActive && focusedField === "search" && <Text color="cyan">█</Text>}
       <Text color="gray">{"  "}</Text>
       <Text dimColor>method:</Text>
@@ -288,12 +396,16 @@ export function FilterBar({
       </Text>
       <Text color="gray">{"  "}</Text>
       <Text dimColor>source:</Text>
-      <Text color={source ? "yellow" : "white"} bold={focusedField === "source"} underline={focusedField === "source"}>
+      <Text
+        color={source ? "yellow" : "white"}
+        bold={focusedField === "source"}
+        underline={focusedField === "source"}
+      >
         {source || "ALL"}
       </Text>
       {isActive && focusedField === "source" && <Text color="cyan">█</Text>}
       <Text color="gray">{"  "}</Text>
-      <Text dimColor>Tab=switch Enter=close Esc=cancel space=AND /re/</Text>
+      <Text dimColor>{FILTER_HELP_TEXT}</Text>
     </Box>
   );
 }

@@ -41,7 +41,7 @@ Always call `procsi_get_status` first to confirm the daemon is running. If it is
 | `procsi_get_status` | Check daemon is running, get proxy port and request count | -- |
 | `procsi_list_requests` | Browse/filter captured traffic (returns summaries) | `method`, `status_range`, `search`, `regex`, `host`, `path`, `saved`, `source`, `header_name`, `header_value`, `header_target`, `intercepted_by`, `since`, `before`, `limit`, `offset`, `format` |
 | `procsi_get_request` | Full request details -- headers, bodies, timing | `id` (single or comma-separated IDs), `format` |
-| `procsi_search_bodies` | Full-text search in request/response bodies | `query`, plus all request filter params (`regex`, `saved`, `source`, etc.) |
+| `procsi_search_bodies` | Full-text search in request/response bodies | `query`, `target` (`request`/`response`/`both`), plus all request filter params (`regex`, `saved`, `source`, etc.) |
 | `procsi_query_json` | Extract JSON values with JSONPath (SQLite `json_extract`) | `json_path`, `value`, `target` (`request`/`response`/`both`), `source`, plus filters |
 | `procsi_count_requests` | Count matching requests | All filter params (incl. `source`), `format` |
 | `procsi_clear_requests` | Delete all captured traffic (irreversible) | -- |
@@ -77,6 +77,8 @@ header_target: "request"       # Only search request headers
 intercepted_by: "my-mock"      # Requests handled by a specific interceptor
 source: "node"                 # Filter by request source
 since: "2024-01-15T10:30:00Z"  # Time-bounded queries
+# procsi_search_bodies only:
+target: "request"              # Search request body only (or "response" / "both")
 ```
 
 Filters can be combined freely. All are optional.
@@ -201,7 +203,7 @@ Calls `ctx.forward()` and returns the response unchanged. Useful for debugging.
 ctx.procsi.countRequests(filter?)          // Promise<number>
 ctx.procsi.listRequests({ filter, limit, offset })  // Promise<CapturedRequestSummary[]>
 ctx.procsi.getRequest(id)                  // Promise<CapturedRequest | null>
-ctx.procsi.searchBodies({ query, filter, limit })    // Promise<CapturedRequestSummary[]>
+ctx.procsi.searchBodies({ query, target, filter, limit })    // Promise<CapturedRequestSummary[]>
 ctx.procsi.queryJsonBodies({ jsonPath, filter })      // Promise<JsonQueryResult[]>
 ```
 
@@ -223,6 +225,7 @@ This allows interceptors to make decisions based on previously captured traffic.
 
 - After writing an interceptor, always `procsi_reload_interceptors` then `procsi_list_interceptors` to verify it loaded without errors
 - Use `search` for URL substring matching, or `regex` for full JavaScript regex URL matching (e.g. `users/\\d+$`)
+- `procsi_search_bodies` supports `target: "request" | "response" | "both"` (default `both`)
 - `procsi_query_json` uses SQLite `json_extract` syntax (e.g. `$.user.name`, `$.items[0].id`)
 - Use `limit` and `offset` for pagination when there are many results (default limit: 50, max: 500)
 - `procsi_get_request` accepts comma-separated IDs for batch fetching (e.g. `id: "id1,id2,id3"`)

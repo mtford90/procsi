@@ -97,7 +97,22 @@ procsi requests --json                       # JSON output
 
 ### `procsi requests search <query>`
 
-Full-text search through request and response bodies.
+Full-text search through body content.
+
+```bash
+procsi requests search "timeout"                        # search request + response bodies
+procsi requests search "Bearer " --target request      # request body only
+procsi requests search "error_code" --target response  # response body only
+procsi requests search "Alice" --method POST --host api.example.com
+```
+
+| Flag              | Description                                           |
+| ----------------- | ----------------------------------------------------- |
+| `--target <kind>` | `request`, `response`, or `both` (default)            |
+| `--limit <n>`     | Max results (default 50)                              |
+| `--offset <n>`    | Skip results (default 0)                              |
+| `--json`          | JSON output                                           |
+| Common filters    | `--method`, `--status`, `--host`, `--path`, etc.      |
 
 ### `procsi requests query <jsonpath>`
 

@@ -342,6 +342,70 @@ describe("MCP integration", () => {
     expect(text).toContain("/api/secret");
   });
 
+  it("procsi_search_bodies supports target=request and target=response", async () => {
+    const { proxy, mcpClient } = await setupMcpStack();
+
+    const testServer = http.createServer((req, res) => {
+      let requestBody = "";
+      req.on("data", (chunk) => (requestBody += chunk));
+      req.on("end", () => {
+        if (req.url === "/req-only") {
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ result: "ok" }));
+          return;
+        }
+
+        if (req.url === "/res-only") {
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ message: "response-only-needle" }));
+          return;
+        }
+
+        res.writeHead(404, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "not-found", requestBody }));
+      });
+    });
+    await new Promise<void>((resolve) => testServer.listen(0, "127.0.0.1", resolve));
+    const testAddr = testServer.address() as { port: number };
+    cleanup.push(() => {
+      testServer.closeAllConnections();
+      return new Promise((resolve) => testServer.close(() => resolve()));
+    });
+
+    const baseUrl = `http://127.0.0.1:${testAddr.port}`;
+    await makeProxiedPostRequest(
+      proxy.port,
+      `${baseUrl}/req-only`,
+      JSON.stringify({ message: "request-only-needle" }),
+      { "content-type": "application/json" }
+    );
+    await makeProxiedPostRequest(
+      proxy.port,
+      `${baseUrl}/res-only`,
+      JSON.stringify({ message: "not-this-one" }),
+      { "content-type": "application/json" }
+    );
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    const requestOnly = await mcpClient.callTool({
+      name: "procsi_search_bodies",
+      arguments: { query: "request-only-needle", target: "request" },
+    });
+    const requestText = getTextContent(requestOnly);
+    expect(requestText).toContain("Found 1 request(s)");
+    expect(requestText).toContain("/req-only");
+    expect(requestText).not.toContain("/res-only");
+
+    const responseOnly = await mcpClient.callTool({
+      name: "procsi_search_bodies",
+      arguments: { query: "response-only-needle", target: "response" },
+    });
+    const responseText = getTextContent(responseOnly);
+    expect(responseText).toContain("Found 1 request(s)");
+    expect(responseText).toContain("/res-only");
+    expect(responseText).not.toContain("/req-only");
+  });
+
   it("procsi_search_bodies supports regex URL filter", async () => {
     const { proxy, mcpClient } = await setupMcpStack();
 

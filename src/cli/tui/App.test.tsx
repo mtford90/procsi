@@ -1314,4 +1314,38 @@ describe("App keyboard interactions", () => {
       expect(frame).toContain("No body to export");
     });
   });
+
+  describe("Body search filter integration", () => {
+    it("passes bodySearch target to useRequests when using body:req: syntax", async () => {
+      mockUseRequests.mockReturnValue({
+        requests: [createMockSummary()],
+        isLoading: false,
+        error: null,
+        refresh: mockRefresh,
+        getFullRequest: vi.fn().mockResolvedValue(createMockFullRequest()),
+        getAllFullRequests: mockGetAllFullRequests,
+      });
+
+      const { stdin } = render(<App __testEnableInput />);
+      await tick();
+
+      stdin.write("/");
+      await tick();
+
+      for (const ch of "body:req:error") {
+        stdin.write(ch);
+        await tick();
+      }
+
+      // Wait for FilterBar debounce
+      await tick(250);
+
+      const latestCall = mockUseRequests.mock.calls.at(-1)?.[0] as {
+        filter?: unknown;
+        bodySearch?: unknown;
+      };
+      expect(latestCall.bodySearch).toEqual({ query: "error", target: "request" });
+      expect(latestCall.filter).toEqual({});
+    });
+  });
 });

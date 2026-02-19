@@ -3,6 +3,12 @@
  */
 
 export type InterceptionType = "modified" | "mocked";
+export type BodySearchTarget = "request" | "response" | "both";
+
+export interface BodySearchOptions {
+  query: string;
+  target: BodySearchTarget;
+}
 
 export interface CapturedRequest {
   id: string;
@@ -139,6 +145,7 @@ export interface ProcsiClient {
   getRequest(id: string): Promise<CapturedRequest | null>;
   searchBodies(options: {
     query: string;
+    target?: BodySearchTarget;
     filter?: RequestFilter;
     limit?: number;
   }): Promise<CapturedRequestSummary[]>;

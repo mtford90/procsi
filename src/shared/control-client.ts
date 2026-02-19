@@ -11,6 +11,7 @@ import type {
   RegisteredSession,
   RequestFilter,
   Session,
+  BodySearchTarget,
 } from "./types.js";
 
 const CONTROL_TIMEOUT_MS = 5000;
@@ -223,6 +224,7 @@ export class ControlClient {
    */
   async searchBodies(options: {
     query: string;
+    target?: BodySearchTarget;
     limit?: number;
     offset?: number;
     filter?: RequestFilter;

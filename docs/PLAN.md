@@ -142,10 +142,39 @@ Each feature should be considered across all three surfaces where applicable:
       - Update CLI/MCP filter docs + examples
       - Mark this item complete in `docs/PLAN.md` once shipped
 
-- [ ] **Body search in TUI** — search through request/response bodies from within the TUI
-  - **CLI:** already has `procsi requests search <query>` — done
-  - **MCP:** already has `procsi_search_bodies` — done
-  - **TUI:** new keybinding (e.g. `s`) to open body search modal, results shown as filtered request list
+- [x] **Targeted body search across all surfaces (request vs response)** — body search supports selecting request body, response body, or both
+  - **Goal:** avoid wasteful dual-body scans when only one side is relevant, while preserving backwards compatibility
+  - **Behaviour contract:**
+    - `target=both` remains default (existing behaviour)
+    - Explicit `target=request` and `target=response`
+  - **CLI:** `procsi requests search <query> --target request|response|both`
+  - **MCP:** `procsi_search_bodies` supports optional `target` enum (`request` | `response` | `both`)
+  - **TUI:** no new keybinding; filter-bar scope syntax
+    - Default (unchanged): `foo` → URL/path search
+    - `body:foo` → body search (`both`)
+    - `body:req:foo` / `body:request:foo` → request-body only
+    - `body:res:foo` / `body:response:foo` → response-body only
+  - **Implementation checklist:**
+    - [x] Extend shared body-search contract to include `target?: "request" | "response" | "both"` (default `both`)
+    - [x] Update daemon control API validation + forwarding for body-search target
+    - [x] Update storage `searchBodies(...)` SQL builder to apply body-match conditions by target (request-only/response-only/both)
+    - [x] Keep text-content-type safety rules per-side (don’t search binary content-types)
+    - [x] CLI: add `--target` parsing/validation, wiring, and help text
+    - [x] MCP: add `target` schema/docs in `procsi_search_bodies`, pass through to client
+    - [x] TUI: add search-prefix parser for body scope + target, route to body-search path without adding a keybinding
+    - [x] Keep existing debounce/live filter UX and regex error resilience
+    - [x] Tests: storage target semantics, control-client/control-server wiring, CLI flag behaviour, MCP param behaviour, TUI scope parsing and rendering
+    - [x] Docs: update CLI reference, MCP docs, TUI help/README/wiki examples
+
+- [x] **TUI body-search discoverability polish (lightweight)** — make `body:` search obvious without adding keybindings or complex UI
+  - **Constraints:** no new keybindings; keep interaction model simple
+  - **Shipped:**
+    - Highlight `body:` prefix (and optional target token like `req:`/`res:`) while typing in `/` filter bar
+    - Improved filter-bar hint text with explicit body-search example (`body:req:error`)
+    - Improved help/discovery copy (`/` action now mentions URL, regex, and body filter syntax)
+    - Updated TUI docs with an explicit highlighting tip
+  - **Out of scope (for this pass):** mode badges, extra panels, or advanced filter UX rework
+  - **Validation:** TUI component tests for prefix parsing/rendering + help copy updates
 
 - [x] **Remove `procsi init`** — replaced `init`/`vars` with `procsi on`/`procsi off` as real CLI subcommands
 

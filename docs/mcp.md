@@ -87,6 +87,12 @@ Most tools accept these filters:
 
 `procsi_get_request` accepts comma-separated IDs for batch fetching (e.g. `"id1,id2,id3"`).
 
+`procsi_search_bodies` also takes:
+
+| Parameter | Description                                                              | Example       |
+| --------- | ------------------------------------------------------------------------ | ------------- |
+| `target`  | Which body to search: `"request"`, `"response"`, or `"both"` (default) | `"response"` |
+
 `procsi_query_json` also takes:
 
 | Parameter | Description                                                           | Example      |
@@ -105,7 +111,7 @@ All query tools accept a `format` parameter:
 
 ```
 procsi_list_requests({ status_range: "5xx", path: "/api" })
-procsi_search_bodies({ query: "error_code", method: "POST" })
+procsi_search_bodies({ query: "error_code", method: "POST", target: "response" })
 procsi_list_requests({ regex: "users/\\d+$" })
 procsi_query_json({ json_path: "$.user.id", target: "response" })
 procsi_list_requests({ header_name: "authorization", header_target: "request" })

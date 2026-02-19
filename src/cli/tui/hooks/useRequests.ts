@@ -4,6 +4,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import type {
+  BodySearchOptions,
   CapturedRequest,
   CapturedRequestSummary,
   RequestFilter,
@@ -17,6 +18,7 @@ const DEFAULT_POLL_INTERVAL_MS = 2000;
 interface UseRequestsOptions {
   pollInterval?: number;
   filter?: RequestFilter;
+  bodySearch?: BodySearchOptions;
   projectRoot?: string;
 }
 
@@ -40,7 +42,7 @@ interface UseRequestsResult {
  * Hook to fetch and poll for captured requests.
  */
 export function useRequests(options: UseRequestsOptions = {}): UseRequestsResult {
-  const { pollInterval = DEFAULT_POLL_INTERVAL_MS, filter, projectRoot } = options;
+  const { pollInterval = DEFAULT_POLL_INTERVAL_MS, filter, bodySearch, projectRoot } = options;
 
   const [requests, setRequests] = useState<CapturedRequestSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -50,6 +52,7 @@ export function useRequests(options: UseRequestsOptions = {}): UseRequestsResult
   const lastCountRef = useRef<number>(0);
   const requestsLengthRef = useRef<number>(0);
   const filterRef = useRef<RequestFilter | undefined>(filter);
+  const bodySearchRef = useRef<BodySearchOptions | undefined>(bodySearch);
 
   // Initialise control client
   useEffect(() => {
@@ -80,19 +83,31 @@ export function useRequests(options: UseRequestsOptions = {}): UseRequestsResult
     }
 
     const currentFilter = filterRef.current;
+    const currentBodySearch = bodySearchRef.current;
 
     try {
-      // First check the count to avoid unnecessary data transfer
-      const count = await client.countRequests({ filter: currentFilter });
-
-      // Only fetch list if count changed or we have no requests yet
-      if (count !== lastCountRef.current || requestsLengthRef.current === 0) {
-        const newRequests = await client.listRequestsSummary({
+      if (currentBodySearch) {
+        const newRequests = await client.searchBodies({
+          query: currentBodySearch.query,
+          target: currentBodySearch.target,
           limit: DEFAULT_QUERY_LIMIT,
           filter: currentFilter,
         });
         setRequests(newRequests);
-        lastCountRef.current = count;
+        lastCountRef.current = newRequests.length;
+      } else {
+        // First check the count to avoid unnecessary data transfer
+        const count = await client.countRequests({ filter: currentFilter });
+
+        // Only fetch list if count changed or we have no requests yet
+        if (count !== lastCountRef.current || requestsLengthRef.current === 0) {
+          const newRequests = await client.listRequestsSummary({
+            limit: DEFAULT_QUERY_LIMIT,
+            filter: currentFilter,
+          });
+          setRequests(newRequests);
+          lastCountRef.current = count;
+        }
       }
 
       setError(null);
@@ -108,12 +123,13 @@ export function useRequests(options: UseRequestsOptions = {}): UseRequestsResult
     }
   }, []);
 
-  // Keep filter ref in sync and fetch immediately when filter changes
+  // Keep refs in sync and fetch immediately when search/filter changes
   useEffect(() => {
     filterRef.current = filter;
+    bodySearchRef.current = bodySearch;
     lastCountRef.current = 0;
     void fetchRequests();
-  }, [filter, fetchRequests]);
+  }, [filter, bodySearch, fetchRequests]);
 
   // Manual refresh function
   const refresh = useCallback(async () => {

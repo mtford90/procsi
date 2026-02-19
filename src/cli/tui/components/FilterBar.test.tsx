@@ -5,7 +5,7 @@
 import { describe, it, expect, vi } from "vitest";
 import React from "react";
 import { render } from "ink-testing-library";
-import { FilterBar } from "./FilterBar.js";
+import { FilterBar, getBodySearchDisplayParts } from "./FilterBar.js";
 
 const tick = (ms = 50) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -15,8 +15,29 @@ describe("FilterBar", () => {
     filter: {},
     onFilterChange: vi.fn(),
     onClose: vi.fn(),
-    width: 100,
+    width: 160,
   };
+
+  describe("getBodySearchDisplayParts", () => {
+    it("parses body:req: query into prefix segments", () => {
+      expect(getBodySearchDisplayParts("body:req:error")).toEqual({
+        bodyPrefix: "body:",
+        targetPrefix: "req:",
+        query: "error",
+      });
+    });
+
+    it("parses body: query with implicit both target", () => {
+      expect(getBodySearchDisplayParts("body:timeout")).toEqual({
+        bodyPrefix: "body:",
+        query: "timeout",
+      });
+    });
+
+    it("returns undefined for non-body search input", () => {
+      expect(getBodySearchDisplayParts("/users")).toBeUndefined();
+    });
+  });
 
   it("renders the search prompt", () => {
     const { lastFrame } = render(<FilterBar {...defaultProps} />);
@@ -327,13 +348,26 @@ describe("FilterBar", () => {
     expect(frame).toContain("4xx");
   });
 
-  it("shows help text for key bindings", () => {
-    const { lastFrame } = render(<FilterBar {...defaultProps} />);
+  it("renders initial body search syntax when bodySearch is active", () => {
+    const { lastFrame } = render(
+      <FilterBar
+        {...defaultProps}
+        isActive={false}
+        width={180}
+        bodySearch={{ query: "timeout", target: "request" }}
+      />,
+    );
+
+    expect(lastFrame()).toContain("body:req:timeout");
+  });
+
+  it("shows help text for key bindings and body search example", () => {
+    const { lastFrame } = render(<FilterBar {...defaultProps} width={160} />);
     const frame = lastFrame();
     expect(frame).toContain("Enter=close");
     expect(frame).toContain("Esc=cancel");
     expect(frame).toContain("Tab=switch");
-    expect(frame).toContain("space=AND");
+    expect(frame).toContain("body:req:error");
   });
 
   it("renders source label", () => {
@@ -401,6 +435,96 @@ describe("FilterBar", () => {
     await tick(250);
 
     expect(onFilterChange).toHaveBeenCalledWith({ regex: "users\\/\\d+", regexFlags: "i" });
+  });
+
+  it("emits body search state for body:req: prefix", async () => {
+    const onFilterChange = vi.fn();
+    const onBodySearchChange = vi.fn();
+    const { stdin } = render(
+      <FilterBar
+        {...defaultProps}
+        onFilterChange={onFilterChange}
+        onBodySearchChange={onBodySearchChange}
+      />,
+    );
+
+    for (const ch of "body:req:error") {
+      stdin.write(ch);
+      await tick();
+    }
+
+    await tick(250);
+
+    expect(onFilterChange).toHaveBeenCalledWith({});
+    expect(onBodySearchChange).toHaveBeenCalledWith({ query: "error", target: "request" });
+  });
+
+  it("renders body: prefixes in the search field while typing", async () => {
+    const { lastFrame, stdin } = render(<FilterBar {...defaultProps} width={160} />);
+
+    for (const ch of "body:res:timeout") {
+      stdin.write(ch);
+      await tick();
+    }
+
+    expect(lastFrame()).toContain("body:res:timeout");
+  });
+
+  it("emits body search state for body:res: prefix", async () => {
+    const onBodySearchChange = vi.fn();
+    const { stdin } = render(
+      <FilterBar
+        {...defaultProps}
+        onBodySearchChange={onBodySearchChange}
+      />,
+    );
+
+    for (const ch of "body:res:timeout") {
+      stdin.write(ch);
+      await tick();
+    }
+
+    await tick(250);
+
+    expect(onBodySearchChange).toHaveBeenCalledWith({ query: "timeout", target: "response" });
+  });
+
+  it("emits body search state with target=both for body: prefix", async () => {
+    const onBodySearchChange = vi.fn();
+    const { stdin } = render(
+      <FilterBar
+        {...defaultProps}
+        onBodySearchChange={onBodySearchChange}
+      />,
+    );
+
+    for (const ch of "body:error") {
+      stdin.write(ch);
+      await tick();
+    }
+
+    await tick(250);
+
+    expect(onBodySearchChange).toHaveBeenCalledWith({ query: "error", target: "both" });
+  });
+
+  it("clears body search state for regular URL search", async () => {
+    const onBodySearchChange = vi.fn();
+    const { stdin } = render(
+      <FilterBar
+        {...defaultProps}
+        onBodySearchChange={onBodySearchChange}
+      />,
+    );
+
+    for (const ch of "users") {
+      stdin.write(ch);
+      await tick();
+    }
+
+    await tick(250);
+
+    expect(onBodySearchChange).toHaveBeenCalledWith(undefined);
   });
 
   it("falls back to plain text search for invalid regex literals", async () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildFilter } from "./requests.js";
+import { buildFilter, parseSearchTarget } from "./requests.js";
 
 describe("buildFilter", () => {
   it("builds plain text search filters", () => {
@@ -37,5 +37,22 @@ describe("buildFilter", () => {
 
   it("throws on invalid regex in --regex", () => {
     expect(() => buildFilter({ regex: "users([" })).toThrow('Invalid regex pattern "users(["');
+  });
+});
+
+describe("parseSearchTarget", () => {
+  it("accepts canonical targets", () => {
+    expect(parseSearchTarget("request")).toBe("request");
+    expect(parseSearchTarget("response")).toBe("response");
+    expect(parseSearchTarget("both")).toBe("both");
+  });
+
+  it("accepts shorthand aliases", () => {
+    expect(parseSearchTarget("req")).toBe("request");
+    expect(parseSearchTarget("res")).toBe("response");
+  });
+
+  it("throws on invalid targets", () => {
+    expect(() => parseSearchTarget("headers")).toThrow("Invalid --target");
   });
 });

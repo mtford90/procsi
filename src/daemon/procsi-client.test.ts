@@ -102,6 +102,11 @@ describe("createProcsiClient", () => {
     expect(results.length).toBeGreaterThanOrEqual(1);
   });
 
+  it("searchBodies supports body target", async () => {
+    const results = await client.searchBodies({ query: "name", target: "request" });
+    expect(results.length).toBeGreaterThanOrEqual(1);
+  });
+
   it("queryJsonBodies extracts JSON values", async () => {
     // Update request with JSON response
     const summaries = await client.listRequests();

@@ -1500,6 +1500,125 @@ describe("RequestRepository", () => {
       expect(results[0]?.id).toBe(id);
     });
 
+    it("supports request-only body search via target=request", () => {
+      const requestMatchId = repo.saveRequest({
+        sessionId,
+        timestamp: Date.now(),
+        method: "POST",
+        url: "https://api.example.com/request-match",
+        host: "api.example.com",
+        path: "/request-match",
+        requestHeaders: { "content-type": "application/json" },
+        requestBody: Buffer.from('{"message":"needle"}'),
+      });
+      repo.updateRequestResponse(requestMatchId, {
+        status: 200,
+        headers: { "content-type": "application/json" },
+        body: Buffer.from('{"message":"other"}'),
+        durationMs: 10,
+      });
+
+      const responseMatchId = repo.saveRequest({
+        sessionId,
+        timestamp: Date.now() + 1,
+        method: "GET",
+        url: "https://api.example.com/response-match",
+        host: "api.example.com",
+        path: "/response-match",
+        requestHeaders: {},
+      });
+      repo.updateRequestResponse(responseMatchId, {
+        status: 200,
+        headers: { "content-type": "application/json" },
+        body: Buffer.from('{"message":"needle"}'),
+        durationMs: 10,
+      });
+
+      const results = repo.searchBodies({ query: "needle", target: "request" });
+      expect(results).toHaveLength(1);
+      expect(results[0]?.id).toBe(requestMatchId);
+    });
+
+    it("supports response-only body search via target=response", () => {
+      const requestMatchId = repo.saveRequest({
+        sessionId,
+        timestamp: Date.now(),
+        method: "POST",
+        url: "https://api.example.com/request-match",
+        host: "api.example.com",
+        path: "/request-match",
+        requestHeaders: { "content-type": "application/json" },
+        requestBody: Buffer.from('{"message":"needle"}'),
+      });
+      repo.updateRequestResponse(requestMatchId, {
+        status: 200,
+        headers: { "content-type": "application/json" },
+        body: Buffer.from('{"message":"other"}'),
+        durationMs: 10,
+      });
+
+      const responseMatchId = repo.saveRequest({
+        sessionId,
+        timestamp: Date.now() + 1,
+        method: "GET",
+        url: "https://api.example.com/response-match",
+        host: "api.example.com",
+        path: "/response-match",
+        requestHeaders: {},
+      });
+      repo.updateRequestResponse(responseMatchId, {
+        status: 200,
+        headers: { "content-type": "application/json" },
+        body: Buffer.from('{"message":"needle"}'),
+        durationMs: 10,
+      });
+
+      const results = repo.searchBodies({ query: "needle", target: "response" });
+      expect(results).toHaveLength(1);
+      expect(results[0]?.id).toBe(responseMatchId);
+    });
+
+    it("defaults to target=both when omitted", () => {
+      const requestMatchId = repo.saveRequest({
+        sessionId,
+        timestamp: Date.now(),
+        method: "POST",
+        url: "https://api.example.com/request-match",
+        host: "api.example.com",
+        path: "/request-match",
+        requestHeaders: { "content-type": "application/json" },
+        requestBody: Buffer.from('{"message":"needle"}'),
+      });
+      repo.updateRequestResponse(requestMatchId, {
+        status: 200,
+        headers: { "content-type": "application/json" },
+        body: Buffer.from('{"message":"other"}'),
+        durationMs: 10,
+      });
+
+      const responseMatchId = repo.saveRequest({
+        sessionId,
+        timestamp: Date.now() + 1,
+        method: "GET",
+        url: "https://api.example.com/response-match",
+        host: "api.example.com",
+        path: "/response-match",
+        requestHeaders: {},
+      });
+      repo.updateRequestResponse(responseMatchId, {
+        status: 200,
+        headers: { "content-type": "application/json" },
+        body: Buffer.from('{"message":"needle"}'),
+        durationMs: 10,
+      });
+
+      const results = repo.searchBodies({ query: "needle" });
+      expect(results).toHaveLength(2);
+      const ids = new Set(results.map((result) => result.id));
+      expect(ids.has(requestMatchId)).toBe(true);
+      expect(ids.has(responseMatchId)).toBe(true);
+    });
+
     it("returns empty when no match", () => {
       const id = repo.saveRequest({
         sessionId,

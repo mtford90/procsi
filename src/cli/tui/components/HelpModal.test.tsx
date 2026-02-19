@@ -45,6 +45,7 @@ describe("HelpModal", () => {
     expect(frame).toContain("Copy body to clipboard");
     expect(frame).toContain("Export body content");
     expect(frame).toContain("Toggle full URL");
+    expect(frame).toContain("body:req:error");
     expect(frame).toContain("Refresh");
   });
 

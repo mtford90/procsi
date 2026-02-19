@@ -9,6 +9,7 @@ import type {
   RegisteredSession,
   RequestFilter,
   Session,
+  BodySearchTarget,
 } from "../shared/types.js";
 import { createLogger, type LogLevel, type Logger } from "../shared/logger.js";
 import {
@@ -786,10 +787,12 @@ export class RequestRepository {
 
   /**
    * Search through request/response body content for a text pattern.
+   * Target can be request, response, or both (default).
    * Only searches text-based bodies (not binary).
    */
   searchBodies(options: {
     query: string;
+    target?: BodySearchTarget;
     limit?: number;
     offset?: number;
     filter?: RequestFilter;
@@ -797,18 +800,25 @@ export class RequestRepository {
     const conditions: string[] = [];
     const params: (string | number)[] = [];
 
+    const target = options.target ?? "both";
     const escaped = escapeLikeWildcards(options.query);
     const pattern = `%${escaped}%`;
 
-    // Build content-type conditions — only search text-based bodies
-    const reqCt = buildTextContentTypeSqlCondition("request_content_type");
-    const resCt = buildTextContentTypeSqlCondition("response_content_type");
+    const bodyMatchClauses: string[] = [];
 
-    // Search in both request and response bodies, but only where the content type is text-based
-    conditions.push(
-      `((${reqCt.clause} AND CAST(request_body AS TEXT) LIKE ? ESCAPE '\\') OR (${resCt.clause} AND CAST(response_body AS TEXT) LIKE ? ESCAPE '\\'))`
-    );
-    params.push(...reqCt.params, pattern, ...resCt.params, pattern);
+    if (target === "request" || target === "both") {
+      const reqCt = buildTextContentTypeSqlCondition("request_content_type");
+      bodyMatchClauses.push(`(${reqCt.clause} AND CAST(request_body AS TEXT) LIKE ? ESCAPE '\\')`);
+      params.push(...reqCt.params, pattern);
+    }
+
+    if (target === "response" || target === "both") {
+      const resCt = buildTextContentTypeSqlCondition("response_content_type");
+      bodyMatchClauses.push(`(${resCt.clause} AND CAST(response_body AS TEXT) LIKE ? ESCAPE '\\')`);
+      params.push(...resCt.params, pattern);
+    }
+
+    conditions.push(`(${bodyMatchClauses.join(" OR ")})`);
 
     applyFilterConditions(conditions, params, options.filter);
 

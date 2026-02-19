@@ -18,6 +18,7 @@ export function createProcsiClient(storage: RequestRepository): ProcsiClient {
     searchBodies: async (options) =>
       storage.searchBodies({
         query: options.query,
+        target: options.target,
         filter: options.filter,
         limit: options.limit,
       }),

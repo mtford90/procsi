@@ -39,7 +39,14 @@ Mouse support: click to select, scroll to navigate, click panels to focus.
 | `Return`            | Close filter bar (filters are already applied live while typing)           |
 | `Esc`               | Cancel and revert to the pre-open filter state                             |
 
-Search field supports both plain text and regex literals (`/pattern/flags`, e.g. `/users\\/\\d+/i`).
+Search field supports:
+
+- URL search (default): `users api` or regex literal `/users\\/\\d+/i`
+- Body search (both): `body:error`
+- Request-body only: `body:req:error` (or `body:request:error`)
+- Response-body only: `body:res:error` (or `body:response:error`)
+
+Tip: when you type a `body:` filter, the `body:` prefix (and `req:`/`res:` target when present) is highlighted in the filter bar.
 
 ## JSON Explorer (Enter on a JSON body)
 

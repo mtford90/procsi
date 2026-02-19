@@ -37,7 +37,7 @@ import { TextViewerModal } from "./components/TextViewerModal.js";
 import { useInterceptorEvents } from "./hooks/useInterceptorEvents.js";
 import { findProjectRoot, getProcsiPaths, readProxyPort } from "../../shared/project.js";
 import { loadConfig } from "../../shared/config.js";
-import type { CapturedRequest, RequestFilter } from "../../shared/types.js";
+import type { BodySearchOptions, CapturedRequest, RequestFilter } from "../../shared/types.js";
 
 interface AppProps {
   /** Enable keyboard input in tests (bypasses TTY check) */
@@ -64,10 +64,12 @@ function AppContent({ __testEnableInput, projectRoot }: AppProps): React.ReactEl
 
   // Filter state
   const [filter, setFilter] = useState<RequestFilter>({});
+  const [bodySearch, setBodySearch] = useState<BodySearchOptions | undefined>(undefined);
   const [showFilter, setShowFilter] = useState(false);
 
   const { requests, isLoading, error, refresh, getFullRequest, getAllFullRequests, toggleSaved, clearRequests } = useRequests({
     filter,
+    bodySearch,
     projectRoot,
     pollInterval: config?.pollInterval,
   });
@@ -157,6 +159,7 @@ function AppContent({ __testEnableInput, projectRoot }: AppProps): React.ReactEl
 
   // Stores the filter state at the moment the filter bar opens, so Escape can revert
   const preOpenFilterRef = useRef<RequestFilter>({});
+  const preOpenBodySearchRef = useRef<BodySearchOptions | undefined>(undefined);
 
   // Handle filter change from the filter bar
   const handleFilterChange = useCallback((newFilter: RequestFilter) => {
@@ -164,9 +167,15 @@ function AppContent({ __testEnableInput, projectRoot }: AppProps): React.ReactEl
     setSelectedIndex(0);
   }, []);
 
+  const handleBodySearchChange = useCallback((nextBodySearch: BodySearchOptions | undefined) => {
+    setBodySearch(nextBodySearch);
+    setSelectedIndex(0);
+  }, []);
+
   // Handle filter cancel — revert to pre-open state
   const handleFilterCancel = useCallback(() => {
     setFilter(preOpenFilterRef.current);
+    setBodySearch(preOpenBodySearchRef.current);
     setSelectedIndex(0);
     setShowFilter(false);
   }, []);
@@ -526,6 +535,7 @@ function AppContent({ __testEnableInput, projectRoot }: AppProps): React.ReactEl
         setShowInterceptorLog(true);
       } else if (input === "/") {
         preOpenFilterRef.current = filter;
+        preOpenBodySearchRef.current = bodySearch;
         setShowFilter(true);
       } else if (input === "y") {
         // Copy body to clipboard
@@ -761,7 +771,7 @@ function AppContent({ __testEnableInput, projectRoot }: AppProps): React.ReactEl
           showFullUrl={showFullUrl}
           onItemClick={handleItemClick}
           scrollOffset={listScrollOffset}
-          searchTerm={filter.search}
+          searchTerm={bodySearch ? undefined : filter.search}
         />
         <AccordionPanel
           ref={accordionPanelRef}
@@ -779,7 +789,9 @@ function AppContent({ __testEnableInput, projectRoot }: AppProps): React.ReactEl
         <FilterBar
           isActive={(__testEnableInput || isRawModeSupported === true) && showFilter}
           filter={filter}
+          bodySearch={bodySearch}
           onFilterChange={handleFilterChange}
+          onBodySearchChange={handleBodySearchChange}
           onClose={() => setShowFilter(false)}
           onCancel={handleFilterCancel}
           width={columns}
@@ -798,7 +810,7 @@ function AppContent({ __testEnableInput, projectRoot }: AppProps): React.ReactEl
       {/* Status bar */}
       <StatusBar
         message={statusMessage}
-        filterActive={isFilterActive(filter)}
+        filterActive={isFilterActive(filter) || bodySearch !== undefined}
         filterOpen={showFilter}
         activePanel={activePanel}
         hasSelection={selectedFullRequest !== null}
