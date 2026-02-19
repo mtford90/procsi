@@ -50,6 +50,7 @@ type Panel = "list" | "accordion";
 
 export const MIN_TERMINAL_COLUMNS = 60;
 export const MIN_TERMINAL_ROWS = 10;
+const SHORT_REQUEST_ID_LENGTH = 7;
 
 function AppContent({ __testEnableInput, projectRoot }: AppProps): React.ReactElement {
   const { exit } = useApp();
@@ -67,7 +68,19 @@ function AppContent({ __testEnableInput, projectRoot }: AppProps): React.ReactEl
   const [bodySearch, setBodySearch] = useState<BodySearchOptions | undefined>(undefined);
   const [showFilter, setShowFilter] = useState(false);
 
-  const { requests, isLoading, error, refresh, getFullRequest, getAllFullRequests, toggleSaved, clearRequests } = useRequests({
+  const {
+    requests,
+    isLoading,
+    error,
+    refresh,
+    getFullRequest,
+    getAllFullRequests,
+    replayRequest = async () => {
+      throw new Error("Replay is not available");
+    },
+    toggleSaved,
+    clearRequests,
+  } = useRequests({
     filter,
     bodySearch,
     projectRoot,
@@ -103,6 +116,9 @@ function AppContent({ __testEnableInput, projectRoot }: AppProps): React.ReactEl
 
   // Clear confirmation state — when true, the next 'y' press confirms the clear
   const [pendingClear, setPendingClear] = useState(false);
+
+  // Replay confirmation state — stores the request ID awaiting confirmation
+  const [pendingReplayId, setPendingReplayId] = useState<string | null>(null);
 
   // Proxy details for info modal (one-time sync read)
   const proxyPort = useMemo(() => {
@@ -338,6 +354,30 @@ function AppContent({ __testEnableInput, projectRoot }: AppProps): React.ReactEl
   // Handle keyboard input (only when raw mode is supported, i.e. running in a TTY)
   useInput(
     (input, key) => {
+      // Handle replay confirmation — any key other than 'y' cancels
+      if (pendingReplayId) {
+        const replayId = pendingReplayId;
+        setPendingReplayId(null);
+        if (input === "y") {
+          showStatus("Replaying...");
+          void replayRequest(replayId)
+            .then((newRequestId) => {
+              showStatus(
+                newRequestId
+                  ? `Replayed as ${newRequestId.slice(0, SHORT_REQUEST_ID_LENGTH)}`
+                  : "Failed to replay"
+              );
+            })
+            .catch((err: unknown) => {
+              const message = err instanceof Error ? err.message : "Unknown error";
+              showStatus(`Failed to replay: ${message}`);
+            });
+        } else {
+          setStatusMessage(undefined);
+        }
+        return;
+      }
+
       // Handle clear confirmation — any key other than 'y' cancels
       if (pendingClear) {
         setPendingClear(false);
@@ -493,6 +533,13 @@ function AppContent({ __testEnableInput, projectRoot }: AppProps): React.ReactEl
       } else if (input === "r") {
         void refresh();
         showStatus("Refreshing...");
+      } else if (input === "R") {
+        if (selectedSummary) {
+          setPendingReplayId(selectedSummary.id);
+          showStatus("Replay selected request? (y to confirm, any key to cancel)");
+        } else {
+          showStatus("No request selected");
+        }
       } else if (input === "c") {
         if (selectedFullRequest) {
           void exportCurl(selectedFullRequest).then((result) => {

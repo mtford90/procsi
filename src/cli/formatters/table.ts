@@ -54,6 +54,15 @@ function savedIndicator(saved: boolean | undefined): string {
   return colour ? `${YELLOW}[S]${RESET}` : "[S]";
 }
 
+/**
+ * Render a replay indicator: [R] for replayed requests.
+ */
+function replayIndicator(replayedFromId: string | undefined): string {
+  if (!replayedFromId) return "   ";
+  const colour = useColour();
+  return colour ? `${CYAN}[R]${RESET}` : "[R]";
+}
+
 export interface TableOptions {
   /** Maximum URL column width. Defaults to 50. */
   urlWidth?: number;
@@ -89,9 +98,10 @@ export function formatRequestTable(
     const size = padLeft(formatSize(req.responseBodySize || undefined), 8);
     const indicator = interceptionIndicator(req.interceptionType);
     const saved = savedIndicator(req.saved);
+    const replay = replayIndicator(req.replayedFromId);
 
     lines.push(
-      `  ${shortId}  ${method}  ${status}  ${paddedUrl}  ${duration}  ${size} ${indicator}${saved}`
+      `  ${shortId}  ${method}  ${status}  ${paddedUrl}  ${duration}  ${size} ${indicator}${saved}${replay}`
     );
   }
 

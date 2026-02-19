@@ -24,6 +24,8 @@ const BOX = {
   horizontal: "─",
 } as const;
 
+const SHORT_REQUEST_ID_LENGTH = 7;
+
 /**
  * Section indices (used for keyboard shortcuts 2-5)
  */
@@ -167,9 +169,14 @@ export const AccordionPanel = forwardRef<DOMElement, AccordionPanelProps>(functi
             <Box marginBottom={1}>
               <Text color="magenta" bold>Intercepted by: </Text>
               <Text>{request.interceptedBy}</Text>
-              {request.interceptionType && (
-                <Text dimColor> ({request.interceptionType})</Text>
-              )}
+              {request.interceptionType && <Text dimColor> ({request.interceptionType})</Text>}
+            </Box>
+          )}
+          {request.replayedFromId && (
+            <Box marginBottom={1}>
+              <Text color="yellow" bold>Replayed from: </Text>
+              <Text>{request.replayedFromId.slice(0, SHORT_REQUEST_ID_LENGTH)}</Text>
+              {request.replayInitiator && <Text dimColor> ({request.replayInitiator})</Text>}
             </Box>
           )}
           {request.source && request.source !== "daemon" && (

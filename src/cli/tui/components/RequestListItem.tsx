@@ -23,6 +23,17 @@ export function getInterceptionIndicator(type?: InterceptionType): { text: strin
   }
 }
 
+/**
+ * Get the 2-character replay indicator and its colour.
+ * Returns "R " for replayed requests, or "  " otherwise.
+ */
+export function getReplayIndicator(replayedFromId?: string): { text: string; colour?: string } {
+  if (!replayedFromId) {
+    return { text: "  " };
+  }
+  return { text: "R ", colour: "yellow" };
+}
+
 interface RequestListItemProps {
   request: CapturedRequestSummary;
   isSelected: boolean;
@@ -132,13 +143,17 @@ export const RequestListItem = memo(function RequestListItem({
   });
 
   const interceptionWidth = 2; // "M " / "I " / "  "
+  const replayWidth = 2; // "R " / "  "
   const methodWidth = 7;
   const statusWidth = 6;
   const durationWidth = 8;
   const separatorsWidth = 3; // Spaces between columns
 
   // Calculate remaining width for path
-  const pathWidth = Math.max(10, width - interceptionWidth - methodWidth - statusWidth - durationWidth - separatorsWidth);
+  const pathWidth = Math.max(
+    10,
+    width - interceptionWidth - replayWidth - methodWidth - statusWidth - durationWidth - separatorsWidth
+  );
   const displayPath = truncate(showFullUrl ? request.url : request.path, pathWidth);
   const paddedPath = displayPath.padEnd(pathWidth);
 
@@ -150,12 +165,14 @@ export const RequestListItem = memo(function RequestListItem({
   const indicator = isSelected ? `❯${savedChar}` : ` ${savedChar}`;
   const indicatorColour = isSelected ? "cyan" : request.saved ? "yellow" : undefined;
   const interception = getInterceptionIndicator(request.interceptionType);
+  const replay = getReplayIndicator(request.replayedFromId);
 
   return (
     <Box ref={ref} width={width}>
       <Text wrap="truncate">
         <Text color={indicatorColour}>{indicator}</Text>
         <Text color={interception.colour}>{interception.text}</Text>
+        <Text color={replay.colour}>{replay.text}</Text>
         <Text color={getMethodColour(request.method)}>{formatMethod(request.method)}</Text>
         <Text> </Text>
         <Text color={getStatusColour(request.responseStatus)}>{statusIndicator}{statusText.padStart(3)}</Text>

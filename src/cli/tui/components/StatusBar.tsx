@@ -27,6 +27,7 @@ const KEY_HINTS: KeyHint[] = [
   { key: "1-5", action: "section" },
   { key: "Enter", action: "view", visible: (ctx) => ctx.onViewableBodySection },
   { key: "c", action: "curl", visible: (ctx) => ctx.hasSelection },
+  { key: "R", action: "replay", visible: (ctx) => ctx.hasSelection },
   { key: "H", action: "HAR", visible: (ctx) => ctx.hasRequests },
   { key: "y", action: "yank", visible: (ctx) => ctx.onBodySection },
   { key: "s", action: "export", visible: (ctx) => ctx.onBodySection },

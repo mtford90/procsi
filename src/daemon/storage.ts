@@ -10,6 +10,7 @@ import type {
   RequestFilter,
   Session,
   BodySearchTarget,
+  ReplayInitiator,
 } from "../shared/types.js";
 import { createLogger, type LogLevel, type Logger } from "../shared/logger.js";
 import {
@@ -57,6 +58,8 @@ CREATE TABLE IF NOT EXISTS requests (
     response_content_type TEXT,
     intercepted_by TEXT,
     interception_type TEXT CHECK(interception_type IN ('modified', 'mocked')),
+    replayed_from_id TEXT,
+    replay_initiator TEXT CHECK(replay_initiator IN ('mcp', 'tui')),
     source TEXT,
     saved INTEGER DEFAULT 0,
     created_at INTEGER DEFAULT (unixepoch()),
@@ -132,6 +135,14 @@ const MIGRATIONS: Migration[] = [
     version: 8,
     description: "Add internal session token for trusted runtime attribution headers",
     sql: `ALTER TABLE sessions ADD COLUMN internal_token TEXT;`,
+  },
+  {
+    version: 9,
+    description: "Add replay metadata columns",
+    sql: `
+      ALTER TABLE requests ADD COLUMN replayed_from_id TEXT;
+      ALTER TABLE requests ADD COLUMN replay_initiator TEXT;
+    `,
   },
 ];
 
@@ -633,6 +644,18 @@ export class RequestRepository {
   }
 
   /**
+   * Mark a request as replayed, including lineage metadata.
+   */
+  updateRequestReplay(id: string, replayedFromId: string, replayInitiator: ReplayInitiator): void {
+    const stmt = this.db.prepare(`
+      UPDATE requests
+      SET replayed_from_id = ?, replay_initiator = ?
+      WHERE id = ?
+    `);
+    stmt.run(replayedFromId, replayInitiator, id);
+  }
+
+  /**
    * Get a request by ID.
    */
   getRequest(id: string): CapturedRequest | undefined {
@@ -739,6 +762,8 @@ export class RequestRepository {
         COALESCE(LENGTH(response_body), 0) as response_body_size,
         intercepted_by,
         interception_type,
+        replayed_from_id,
+        replay_initiator,
         saved
       FROM requests
       ${whereClause}
@@ -843,6 +868,8 @@ export class RequestRepository {
         COALESCE(LENGTH(response_body), 0) as response_body_size,
         intercepted_by,
         interception_type,
+        replayed_from_id,
+        replay_initiator,
         saved
       FROM requests
       ${whereClause}
@@ -1103,6 +1130,11 @@ export class RequestRepository {
         row.interception_type === "modified" || row.interception_type === "mocked"
           ? row.interception_type
           : undefined,
+      replayedFromId: row.replayed_from_id ?? undefined,
+      replayInitiator:
+        row.replay_initiator === "mcp" || row.replay_initiator === "tui"
+          ? row.replay_initiator
+          : undefined,
       ...(row.saved === 1 ? { saved: true } : {}),
     };
   }
@@ -1141,6 +1173,11 @@ export class RequestRepository {
         row.interception_type === "modified" || row.interception_type === "mocked"
           ? row.interception_type
           : undefined,
+      replayedFromId: row.replayed_from_id ?? undefined,
+      replayInitiator:
+        row.replay_initiator === "mcp" || row.replay_initiator === "tui"
+          ? row.replay_initiator
+          : undefined,
       ...(row.saved === 1 ? { saved: true } : {}),
     };
   }
@@ -1166,6 +1203,8 @@ interface DbRequestRow {
   duration_ms: number | null;
   intercepted_by: string | null;
   interception_type: string | null;
+  replayed_from_id: string | null;
+  replay_initiator: string | null;
   saved: number;
   created_at: number;
 }
@@ -1186,6 +1225,8 @@ interface DbRequestSummaryRow {
   response_body_size: number;
   intercepted_by: string | null;
   interception_type: string | null;
+  replayed_from_id: string | null;
+  replay_initiator: string | null;
   saved: number;
 }
 

@@ -94,12 +94,14 @@ describe("App keyboard interactions", () => {
   const mockRefresh = vi.fn();
   const mockGetFullRequest = vi.fn();
   const mockGetAllFullRequests = vi.fn();
+  const mockReplayRequest = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
     mockRefresh.mockReset();
     mockGetFullRequest.mockReset();
     mockGetAllFullRequests.mockReset();
+    mockReplayRequest.mockReset().mockResolvedValue("replayed-1");
     mockExportCurl.mockReset().mockResolvedValue({ success: true, message: "Copied to clipboard" });
     mockExportHar.mockReset().mockReturnValue({ success: true, message: "HAR exported" });
     mockCopyToClipboard.mockReset().mockResolvedValue(undefined);
@@ -128,6 +130,7 @@ describe("App keyboard interactions", () => {
       refresh: mockRefresh,
       getFullRequest: mockGetFullRequest,
       getAllFullRequests: mockGetAllFullRequests,
+      replayRequest: mockReplayRequest,
     });
 
     return { summaries, fullRequests };
@@ -261,6 +264,8 @@ describe("App keyboard interactions", () => {
       const { stdin } = render(<App __testEnableInput />);
       await tick();
 
+      mockGetFullRequest.mockClear();
+
       // Press down arrow (escape sequence)
       stdin.write("\x1b[B");
       await tick();
@@ -316,6 +321,7 @@ describe("App keyboard interactions", () => {
       await tick();
       stdin.write("j");
       await tick();
+      await tick(); // allow selection side-effects to settle
 
       mockGetFullRequest.mockClear();
 
@@ -839,6 +845,54 @@ describe("App keyboard interactions", () => {
 
       const frame = lastFrame();
       expect(frame).toContain("No requests to export");
+    });
+  });
+
+  describe("Replay action (R key)", () => {
+    it("R prompts for confirmation and y replays selected request", async () => {
+      setupMocksWithRequests(1);
+
+      const { lastFrame, stdin } = render(<App __testEnableInput />);
+      await tick();
+
+      stdin.write("R");
+      await tick();
+      expect(lastFrame()).toContain("Replay selected request?");
+
+      stdin.write("y");
+      await tick(100);
+
+      expect(mockReplayRequest).toHaveBeenCalledWith("test-0");
+      expect(lastFrame()).toContain("Replayed as");
+    });
+
+    it("R shows replay error details when replay fails", async () => {
+      setupMocksWithRequests(1);
+      mockReplayRequest.mockRejectedValueOnce(new Error("Control request timed out"));
+
+      const { lastFrame, stdin } = render(<App __testEnableInput />);
+      await tick();
+
+      stdin.write("R");
+      await tick();
+      stdin.write("y");
+      await tick(100);
+
+      expect(lastFrame()).toContain("Failed to replay: Control request timed out");
+    });
+
+    it("R confirmation cancels on non-y key", async () => {
+      setupMocksWithRequests(1);
+
+      const { stdin } = render(<App __testEnableInput />);
+      await tick();
+
+      stdin.write("R");
+      await tick();
+      stdin.write("n");
+      await tick(100);
+
+      expect(mockReplayRequest).not.toHaveBeenCalled();
     });
   });
 

@@ -8,6 +8,7 @@ import {
   getStatusColour,
   getStatusIndicator,
   getInterceptionIndicator,
+  getReplayIndicator,
 } from "./RequestListItem.js";
 
 describe("getMethodColour", () => {
@@ -96,6 +97,20 @@ describe("getInterceptionIndicator", () => {
 
   it("returns empty indicator for normal requests (undefined)", () => {
     const result = getInterceptionIndicator(undefined);
+    expect(result.text).toBe("  ");
+    expect(result.colour).toBeUndefined();
+  });
+});
+
+describe("getReplayIndicator", () => {
+  it("returns R with yellow for replayed requests", () => {
+    const result = getReplayIndicator("abc123");
+    expect(result.text).toBe("R ");
+    expect(result.colour).toBe("yellow");
+  });
+
+  it("returns empty indicator for non-replayed requests", () => {
+    const result = getReplayIndicator(undefined);
     expect(result.text).toBe("  ");
     expect(result.colour).toBeUndefined();
   });

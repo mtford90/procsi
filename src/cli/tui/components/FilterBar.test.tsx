@@ -367,7 +367,7 @@ describe("FilterBar", () => {
     expect(frame).toContain("Enter=close");
     expect(frame).toContain("Esc=cancel");
     expect(frame).toContain("Tab=switch");
-    expect(frame).toContain("body:req:error");
+    expect(frame).toContain("body:(req|res):error");
   });
 
   it("renders source label", () => {

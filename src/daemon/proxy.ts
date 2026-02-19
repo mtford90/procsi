@@ -2,12 +2,14 @@ import * as mockttp from "mockttp";
 import type { CompletedRequest, CompletedBody, Headers } from "mockttp";
 import type { RequestRepository } from "./storage.js";
 import type { InterceptorRunner } from "./interceptor-runner.js";
+import type { ReplayTracker } from "./replay-tracker.js";
 import type { InterceptorRequest, InterceptorResponse } from "../shared/types.js";
 import { createLogger, type LogLevel } from "../shared/logger.js";
 import {
   PROCSI_RUNTIME_SOURCE_HEADER,
   PROCSI_SESSION_ID_HEADER,
   PROCSI_SESSION_TOKEN_HEADER,
+  PROCSI_REPLAY_TOKEN_HEADER,
 } from "../shared/constants.js";
 
 /**
@@ -42,6 +44,8 @@ export interface ProxyOptions {
   maxBodySize?: number;
   /** Interceptor runner for mock/modify/observe interceptors */
   interceptorRunner?: InterceptorRunner;
+  /** Tracks daemon-initiated replay requests via one-time replay tokens. */
+  replayTracker?: ReplayTracker;
 }
 
 export interface ProxyServer {
@@ -67,7 +71,8 @@ function normaliseRuntimeSource(value: unknown): string | undefined {
  * Create and start a MITM proxy server that captures all HTTP/HTTPS traffic.
  */
 export async function createProxy(options: ProxyOptions): Promise<ProxyServer> {
-  const { storage, sessionId, label, projectRoot, logLevel, interceptorRunner } = options;
+  const { storage, sessionId, label, projectRoot, logLevel, interceptorRunner, replayTracker } =
+    options;
 
   // Create logger if projectRoot is provided
   const logger = projectRoot ? createLogger("proxy", projectRoot, logLevel) : undefined;
@@ -164,6 +169,7 @@ export async function createProxy(options: ProxyOptions): Promise<ProxyServer> {
       const requestSessionId = storedHeaders[PROCSI_SESSION_ID_HEADER];
       const requestSessionToken = storedHeaders[PROCSI_SESSION_TOKEN_HEADER];
       const runtimeSourceHeader = storedHeaders[PROCSI_RUNTIME_SOURCE_HEADER];
+      const replayTokenHeader = storedHeaders[PROCSI_REPLAY_TOKEN_HEADER];
       const legacySessionId = storedHeaders[LEGACY_SESSION_HEADER];
       const headersCopy = { ...storedHeaders };
       // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
@@ -172,6 +178,8 @@ export async function createProxy(options: ProxyOptions): Promise<ProxyServer> {
       delete headersCopy[PROCSI_SESSION_TOKEN_HEADER];
       // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
       delete headersCopy[PROCSI_RUNTIME_SOURCE_HEADER];
+      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+      delete headersCopy[PROCSI_REPLAY_TOKEN_HEADER];
       // Legacy header used before token hardening. Strip it for compatibility.
       // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
       delete headersCopy[LEGACY_SESSION_HEADER];
@@ -224,6 +232,13 @@ export async function createProxy(options: ProxyOptions): Promise<ProxyServer> {
         requestBody: decodedBody,
         requestBodyTruncated,
       });
+
+      if (typeof replayTokenHeader === "string") {
+        const replay = replayTracker?.consume(replayTokenHeader);
+        if (replay) {
+          storage.updateRequestReplay(ourId, replay.replayedFromId, replay.replayInitiator);
+        }
+      }
 
       // Store mapping from mockttp ID to our ID and timestamp
       requestInfo.set(request.id, { ourId, timestamp, requestBodyTruncated });
@@ -282,6 +297,7 @@ export async function createProxy(options: ProxyOptions): Promise<ProxyServer> {
         requestSessionId !== undefined ||
         requestSessionToken !== undefined ||
         runtimeSourceHeader !== undefined ||
+        replayTokenHeader !== undefined ||
         legacySessionId !== undefined
       ) {
         const upstreamHeaders = flattenHeaders(request.headers);
@@ -292,6 +308,8 @@ export async function createProxy(options: ProxyOptions): Promise<ProxyServer> {
         delete cleanedHeaders[PROCSI_SESSION_TOKEN_HEADER];
         // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
         delete cleanedHeaders[PROCSI_RUNTIME_SOURCE_HEADER];
+        // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+        delete cleanedHeaders[PROCSI_REPLAY_TOKEN_HEADER];
         // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
         delete cleanedHeaders[LEGACY_SESSION_HEADER];
         return { headers: cleanedHeaders };

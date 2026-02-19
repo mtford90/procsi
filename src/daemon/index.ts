@@ -10,6 +10,7 @@ import { createInterceptorLoader, type InterceptorLoader } from "./interceptor-l
 import { createInterceptorRunner } from "./interceptor-runner.js";
 import { createInterceptorEventLog } from "./interceptor-event-log.js";
 import { createProcsiClient } from "./procsi-client.js";
+import { createReplayTracker } from "./replay-tracker.js";
 import {
   getProcsiPaths,
   ensureProcsiDir,
@@ -108,6 +109,8 @@ async function main() {
   const DAEMON_SESSION_ID = "daemon";
   storage.ensureSession(DAEMON_SESSION_ID, "daemon", process.pid, "daemon");
 
+  const replayTracker = createReplayTracker();
+
   // Start the proxy server
   logger.info("Starting proxy", { port: proxyPort });
   const proxy = await createProxy({
@@ -120,6 +123,7 @@ async function main() {
     logLevel,
     maxBodySize: config.maxBodySize,
     interceptorRunner,
+    replayTracker,
   });
 
   // Write proxy port to file
@@ -134,6 +138,8 @@ async function main() {
     socketPath: paths.controlSocketFile,
     version: daemonVersion,
   });
+  const caCertPem = fs.readFileSync(paths.caCertFile, "utf-8");
+
   const controlServer = createControlServer({
     socketPath: paths.controlSocketFile,
     storage,
@@ -143,6 +149,8 @@ async function main() {
     logLevel,
     interceptorLoader,
     interceptorEventLog,
+    replayTracker,
+    caCertPem,
   });
 
   // Write PID file
@@ -161,6 +169,7 @@ async function main() {
 
     try {
       interceptorLoader?.close();
+      replayTracker.close();
       await controlServer.close();
       await proxy.stop();
 

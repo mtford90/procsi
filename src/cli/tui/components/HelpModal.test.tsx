@@ -41,11 +41,12 @@ describe("HelpModal", () => {
     expect(frame).toContain("Actions");
     expect(frame).toContain("View body content");
     expect(frame).toContain("Copy as cURL");
+    expect(frame).toContain("Replay request");
     expect(frame).toContain("Export HAR");
     expect(frame).toContain("Copy body to clipboard");
     expect(frame).toContain("Export body content");
     expect(frame).toContain("Toggle full URL");
-    expect(frame).toContain("body:req:error");
+    expect(frame).toContain("body:(req|res):error");
     expect(frame).toContain("Refresh");
   });
 

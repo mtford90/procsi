@@ -12,9 +12,12 @@ import type {
   RequestFilter,
   Session,
   BodySearchTarget,
+  ReplayInitiator,
 } from "./types.js";
 
 const CONTROL_TIMEOUT_MS = 5000;
+const DEFAULT_REPLAY_TIMEOUT_MS = 10_000;
+const REPLAY_CONTROL_TIMEOUT_BUFFER_MS = 2000;
 
 /** Maximum buffer size per connection before disconnecting (1 MB). Shared by both client and server. */
 export const MAX_BUFFER_SIZE = 1024 * 1024;
@@ -89,6 +92,10 @@ interface PendingRequest {
   timer: ReturnType<typeof setTimeout>;
 }
 
+interface ControlRequestOptions {
+  timeoutMs?: number;
+}
+
 /**
  * Client for communicating with the control server via Unix socket.
  * Maintains a persistent connection and multiplexes requests by ID.
@@ -108,15 +115,20 @@ export class ControlClient {
   /**
    * Send a request to the control server and wait for response.
    */
-  async request<T>(method: string, params?: Record<string, unknown>): Promise<T> {
+  async request<T>(
+    method: string,
+    params?: Record<string, unknown>,
+    options: ControlRequestOptions = {}
+  ): Promise<T> {
     const socket = await this.getSocket();
     const id = String(++this.requestId);
+    const timeoutMs = options.timeoutMs ?? CONTROL_TIMEOUT_MS;
 
     return new Promise<T>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(id);
         reject(new Error("Control request timed out"));
-      }, CONTROL_TIMEOUT_MS);
+      }, timeoutMs);
 
       this.pending.set(id, {
         resolve: resolve as (value: unknown) => void,
@@ -251,6 +263,31 @@ export class ControlClient {
    */
   async clearRequests(): Promise<void> {
     await this.request<{ success: boolean }>("clearRequests");
+  }
+
+  /**
+   * Replay a captured request, optionally overriding method/url/headers/body.
+   */
+  async replayRequest(options: {
+    id: string;
+    method?: string;
+    url?: string;
+    setHeaders?: Record<string, string>;
+    removeHeaders?: string[];
+    body?: string;
+    bodyBase64?: string;
+    timeoutMs?: number;
+    initiator?: ReplayInitiator;
+  }): Promise<{ requestId: string }> {
+    const replayTimeoutMs = options.timeoutMs ?? DEFAULT_REPLAY_TIMEOUT_MS;
+    const controlTimeoutMs = Math.max(
+      CONTROL_TIMEOUT_MS,
+      replayTimeoutMs + REPLAY_CONTROL_TIMEOUT_BUFFER_MS
+    );
+
+    return this.request<{ requestId: string }>("replayRequest", options, {
+      timeoutMs: controlTimeoutMs,
+    });
   }
 
   /**

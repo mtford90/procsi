@@ -43,6 +43,7 @@ const HELP_SECTIONS: HelpSection[] = [
     entries: [
       { key: "Enter", description: "View body content" },
       { key: "c", description: "Copy as cURL" },
+      { key: "R", description: "Replay request (with confirmation)" },
       { key: "H", description: "Export HAR" },
       { key: "y", description: "Copy body to clipboard" },
       { key: "s", description: "Export body content" },

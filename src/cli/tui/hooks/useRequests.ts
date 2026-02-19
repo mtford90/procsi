@@ -32,6 +32,8 @@ interface UseRequestsResult {
   getFullRequest: (id: string) => Promise<CapturedRequest | null>;
   /** Fetch all requests with full data (for exports) */
   getAllFullRequests: () => Promise<CapturedRequest[]>;
+  /** Replay a captured request by ID. Returns the new replayed request ID on success. */
+  replayRequest?: (id: string) => Promise<string | null>;
   /** Toggle the saved/bookmark state of a request */
   toggleSaved: (id: string, currentlySaved: boolean) => Promise<boolean>;
   /** Clear all unsaved requests */
@@ -164,6 +166,22 @@ export function useRequests(options: UseRequestsOptions = {}): UseRequestsResult
     }
   }, []);
 
+  // Replay request and force refresh
+  const replayRequest = useCallback(
+    async (id: string): Promise<string | null> => {
+      const client = clientRef.current;
+      if (!client) {
+        throw new Error("Not connected to daemon");
+      }
+
+      const replayed = await client.replayRequest({ id, initiator: "tui" });
+      lastCountRef.current = 0;
+      await fetchRequests();
+      return replayed.requestId;
+    },
+    [fetchRequests]
+  );
+
   // Toggle saved/bookmark state and force refresh
   const toggleSaved = useCallback(
     async (id: string, currentlySaved: boolean): Promise<boolean> => {
@@ -220,6 +238,7 @@ export function useRequests(options: UseRequestsOptions = {}): UseRequestsResult
     refresh,
     getFullRequest,
     getAllFullRequests,
+    replayRequest,
     toggleSaved,
     clearRequests,
   };

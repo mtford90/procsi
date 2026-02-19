@@ -5,6 +5,8 @@
  * Connects to the daemon's existing control socket to query captured traffic.
  */
 
+import * as fsp from "node:fs/promises";
+import * as path from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
@@ -101,6 +103,8 @@ export interface SerialisableRequest {
   durationMs?: number;
   interceptedBy?: string;
   interceptionType?: string;
+  replayedFromId?: string;
+  replayInitiator?: string;
   source?: string;
 }
 
@@ -138,6 +142,8 @@ export function serialiseRequest(req: CapturedRequest): SerialisableRequest {
     ...(req.durationMs !== undefined ? { durationMs: req.durationMs } : {}),
     ...(req.interceptedBy !== undefined ? { interceptedBy: req.interceptedBy } : {}),
     ...(req.interceptionType !== undefined ? { interceptionType: req.interceptionType } : {}),
+    ...(req.replayedFromId !== undefined ? { replayedFromId: req.replayedFromId } : {}),
+    ...(req.replayInitiator !== undefined ? { replayInitiator: req.replayInitiator } : {}),
     ...(req.source !== undefined ? { source: req.source } : {}),
   };
 }
@@ -177,6 +183,12 @@ export function formatRequest(req: CapturedRequest): string {
   if (req.interceptedBy) {
     const type = req.interceptionType ?? "modified";
     lines.push(`**Intercepted by:** ${req.interceptedBy} (${type})`);
+  }
+  if (req.replayedFromId) {
+    lines.push(`**Replayed from:** ${req.replayedFromId}`);
+  }
+  if (req.replayInitiator) {
+    lines.push(`**Replay initiator:** ${req.replayInitiator}`);
   }
 
   // Request headers
@@ -282,8 +294,9 @@ export function formatSummary(req: CapturedRequestSummary): string {
   const interceptionTag =
     req.interceptionType === "mocked" ? " [M]" : req.interceptionType === "modified" ? " [I]" : "";
   const savedTag = req.saved ? " [S]" : "";
+  const replayTag = req.replayedFromId ? " [R]" : "";
   const sourceTag = req.source ? ` [${req.source}]` : "";
-  return `[${req.id}] ${ts} ${req.method} ${req.url}${status}${duration}${bodySizes}${interceptionTag}${savedTag}${sourceTag}`;
+  return `[${req.id}] ${ts} ${req.method} ${req.url}${status}${duration}${bodySizes}${interceptionTag}${savedTag}${replayTag}${sourceTag}`;
 }
 
 const MIN_HTTP_STATUS = 100;
@@ -429,6 +442,27 @@ export function buildFilter(params: {
 export function clampLimit(limit: number | undefined): number {
   if (limit === undefined) return DEFAULT_LIST_LIMIT;
   return Math.floor(Math.max(1, Math.min(limit, MAX_LIST_LIMIT)));
+}
+
+function resolveInterceptorPath(interceptorsDir: string, requestedPath: string): string {
+  const trimmed = requestedPath.trim();
+  if (!trimmed) {
+    throw new Error("Path is required.");
+  }
+
+  const absoluteInterceptorsDir = path.resolve(interceptorsDir);
+  const absoluteTarget = path.resolve(absoluteInterceptorsDir, trimmed);
+  const relative = path.relative(absoluteInterceptorsDir, absoluteTarget);
+
+  if (relative.startsWith("..") || path.isAbsolute(relative)) {
+    throw new Error("Interceptor path must stay inside .procsi/interceptors/.");
+  }
+
+  if (!absoluteTarget.endsWith(".ts")) {
+    throw new Error("Interceptor path must end with .ts");
+  }
+
+  return absoluteTarget;
 }
 
 export interface McpServerOptions {
@@ -1022,6 +1056,65 @@ export function createProcsiMcpServer(options: McpServerOptions) {
     }
   );
 
+  // --- procsi_replay_request ---
+  server.tool(
+    "procsi_replay_request",
+    "Replay a previously captured HTTP request, optionally overriding method, URL, headers, or body. The replay is captured like normal traffic and can be inspected via procsi_list_requests/procsi_get_request.",
+    {
+      id: z.string().describe("The captured request ID to replay."),
+      method: z.string().optional().describe("Override HTTP method (e.g. GET, POST, PUT)."),
+      url: z.string().optional().describe("Override full URL for the replayed request."),
+      set_headers: z
+        .record(z.string(), z.string())
+        .optional()
+        .describe("Headers to set/override on replay (key-value map)."),
+      remove_headers: z
+        .array(z.string())
+        .optional()
+        .describe("Header names to remove before replay."),
+      body: z.string().optional().describe("Override request body as UTF-8 text."),
+      body_base64: z
+        .string()
+        .optional()
+        .describe("Override request body as base64-encoded bytes (for binary payloads)."),
+      timeout_ms: z
+        .number()
+        .optional()
+        .describe("Replay timeout in milliseconds (clamped to a safe range)."),
+      format: FORMAT_SCHEMA,
+    },
+    async (params) => {
+      try {
+        const replayed = await client.replayRequest({
+          id: params.id,
+          method: params.method,
+          url: params.url,
+          setHeaders: params.set_headers,
+          removeHeaders: params.remove_headers,
+          body: params.body,
+          bodyBase64: params.body_base64,
+          timeoutMs: params.timeout_ms,
+          initiator: "mcp",
+        });
+
+        if (params.format === "json") {
+          return jsonResult({
+            requestId: replayed.requestId,
+          });
+        }
+
+        return textResult(
+          `Replayed request ${params.id} as ${replayed.requestId}. Use procsi_get_request with the new ID to inspect details.`
+        );
+      } catch (err) {
+        return textResult(
+          `Failed to replay request: ${err instanceof Error ? err.message : "Unknown error"}`,
+          true
+        );
+      }
+    }
+  );
+
   // --- procsi_save_request ---
   server.tool(
     "procsi_save_request",
@@ -1087,6 +1180,116 @@ export function createProcsiMcpServer(options: McpServerOptions) {
       } catch (err) {
         return textResult(
           `Failed to list sessions: ${err instanceof Error ? err.message : "Unknown error"}`,
+          true
+        );
+      }
+    }
+  );
+
+  // --- procsi_write_interceptor ---
+  server.tool(
+    "procsi_write_interceptor",
+    "Write or update a TypeScript interceptor file under .procsi/interceptors/, then reload interceptors.",
+    {
+      path: z
+        .string()
+        .describe(
+          "Relative interceptor path under .procsi/interceptors/ (e.g. 'mock-users.ts' or 'api/mock-auth.ts')."
+        ),
+      content: z.string().describe("Full TypeScript file content to write."),
+      overwrite: z
+        .boolean()
+        .optional()
+        .default(false)
+        .describe("When false (default), fails if the file already exists."),
+      format: FORMAT_SCHEMA,
+    },
+    async (params) => {
+      try {
+        const absolutePath = resolveInterceptorPath(paths.interceptorsDir, params.path);
+        await fsp.mkdir(path.dirname(absolutePath), { recursive: true });
+
+        if (!params.overwrite) {
+          try {
+            await fsp.access(absolutePath);
+            return textResult(
+              `Interceptor file already exists: ${params.path}. Set overwrite=true to replace it.`,
+              true
+            );
+          } catch {
+            // File does not exist, safe to proceed.
+          }
+        }
+
+        await fsp.writeFile(absolutePath, params.content, "utf-8");
+        const reload = await client.reloadInterceptors();
+
+        if (params.format === "json") {
+          return jsonResult({
+            path: path.relative(projectRoot, absolutePath),
+            reloaded: reload,
+          });
+        }
+
+        if (!reload.success) {
+          return textResult(
+            `Wrote ${path.relative(projectRoot, absolutePath)} but reload failed: ${reload.error ?? "Unknown reload error"}`,
+            true
+          );
+        }
+
+        return textResult(
+          `Wrote ${path.relative(projectRoot, absolutePath)} and reloaded interceptors (${reload.count} active).`
+        );
+      } catch (err) {
+        return textResult(
+          `Failed to write interceptor: ${err instanceof Error ? err.message : "Unknown error"}`,
+          true
+        );
+      }
+    }
+  );
+
+  // --- procsi_delete_interceptor ---
+  server.tool(
+    "procsi_delete_interceptor",
+    "Delete a TypeScript interceptor file under .procsi/interceptors/, then reload interceptors.",
+    {
+      path: z
+        .string()
+        .describe(
+          "Relative interceptor path under .procsi/interceptors/ (e.g. 'mock-users.ts' or 'api/mock-auth.ts')."
+        ),
+      format: FORMAT_SCHEMA,
+    },
+    async (params) => {
+      try {
+        const absolutePath = resolveInterceptorPath(paths.interceptorsDir, params.path);
+        await fsp.unlink(absolutePath);
+
+        const reload = await client.reloadInterceptors();
+
+        if (params.format === "json") {
+          return jsonResult({
+            path: path.relative(projectRoot, absolutePath),
+            deleted: true,
+            reloaded: reload,
+          });
+        }
+
+        if (!reload.success) {
+          return textResult(
+            `Deleted ${path.relative(projectRoot, absolutePath)} but reload failed: ${reload.error ?? "Unknown reload error"}`,
+            true
+          );
+        }
+
+        return textResult(
+          `Deleted ${path.relative(projectRoot, absolutePath)} and reloaded interceptors (${reload.count} active).`
+        );
+      } catch (err) {
+        return textResult(
+          `Failed to delete interceptor: ${err instanceof Error ? err.message : "Unknown error"}`,
           true
         );
       }

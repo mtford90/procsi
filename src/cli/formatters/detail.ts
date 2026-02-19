@@ -49,6 +49,13 @@ export function formatRequestDetail(request: CapturedRequest): string {
     lines.push(`  ${indicator}`);
   }
 
+  if (request.replayedFromId) {
+    const replayLabel = colour
+      ? `${DIM}Replayed from: ${request.replayedFromId}${request.replayInitiator ? ` (${request.replayInitiator})` : ""}${RESET}`
+      : `Replayed from: ${request.replayedFromId}${request.replayInitiator ? ` (${request.replayInitiator})` : ""}`;
+    lines.push(`  ${replayLabel}`);
+  }
+
   if (request.source) {
     const sourceLabel = colour
       ? `${DIM}Source: ${request.source}${RESET}`

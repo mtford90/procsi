@@ -1,7 +1,10 @@
 import * as net from "node:net";
 import * as fs from "node:fs";
+import { randomBytes } from "node:crypto";
 import type { RequestRepository } from "./storage.js";
 import type { InterceptorLoader } from "./interceptor-loader.js";
+import type { ReplayTracker } from "./replay-tracker.js";
+import { buildReplayHeaders, replayViaProxy } from "./replay.js";
 import type {
   CapturedRequest,
   CapturedRequestSummary,
@@ -15,6 +18,7 @@ import type {
   RequestFilter,
   Session,
   BodySearchTarget,
+  ReplayInitiator,
 } from "../shared/types.js";
 import type { InterceptorEventLog, EventCounts } from "./interceptor-event-log.js";
 import {
@@ -28,6 +32,8 @@ import { parseBodySearchTarget } from "../shared/body-search.js";
 
 export { ControlClient } from "../shared/control-client.js";
 
+const REPLAY_TOKEN_BYTES = 16;
+
 export interface ControlServerOptions {
   socketPath: string;
   storage: RequestRepository;
@@ -37,6 +43,8 @@ export interface ControlServerOptions {
   logLevel?: LogLevel;
   interceptorLoader?: InterceptorLoader;
   interceptorEventLog?: InterceptorEventLog;
+  replayTracker?: ReplayTracker;
+  caCertPem?: string;
 }
 
 export interface ControlServer {
@@ -59,6 +67,7 @@ interface ControlHandlers {
   searchBodies: ControlHandler;
   queryJsonBodies: ControlHandler;
   clearRequests: ControlHandler;
+  replayRequest: ControlHandler;
   saveRequest: ControlHandler;
   unsaveRequest: ControlHandler;
   listInterceptors: ControlHandler;
@@ -99,6 +108,48 @@ function requireString(params: Record<string, unknown>, key: string): string {
     throw new Error(`Missing required string parameter: ${key}`);
   }
   return value;
+}
+
+function optionalStringRecord(
+  params: Record<string, unknown>,
+  key: string
+): Record<string, string> | undefined {
+  const value = params[key];
+  if (value === undefined) return undefined;
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new Error(`Invalid ${key} parameter: expected object of string values`);
+  }
+
+  const result: Record<string, string> = {};
+  for (const [entryKey, entryValue] of Object.entries(value)) {
+    if (typeof entryValue !== "string") {
+      throw new Error(`Invalid ${key}.${entryKey}: expected string value`);
+    }
+    result[entryKey] = entryValue;
+  }
+
+  return result;
+}
+
+function optionalStringArray(params: Record<string, unknown>, key: string): string[] | undefined {
+  const value = params[key];
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value) || value.some((entry) => typeof entry !== "string")) {
+    throw new Error(`Invalid ${key} parameter: expected array of strings`);
+  }
+  return value;
+}
+
+function optionalReplayInitiator(
+  params: Record<string, unknown>,
+  key: string
+): ReplayInitiator | undefined {
+  const value = params[key];
+  if (value === undefined) return undefined;
+  if (value === "mcp" || value === "tui") {
+    return value;
+  }
+  throw new Error(`Invalid ${key} parameter: expected "mcp" or "tui"`);
 }
 
 function optionalBodySearchTarget(
@@ -199,6 +250,43 @@ function optionalFilter(params: Record<string, unknown>): RequestFilter | undefi
   return Object.keys(result).length > 0 ? result : undefined;
 }
 
+function parseOptionalReplayBody(params: Record<string, unknown>): {
+  body?: Buffer;
+  hasExplicitBody: boolean;
+} {
+  const bodyText = optionalString(params, "body");
+  const bodyBase64 = optionalString(params, "bodyBase64");
+
+  if (bodyText !== undefined && bodyBase64 !== undefined) {
+    throw new Error('Provide either "body" or "bodyBase64", not both.');
+  }
+
+  if (bodyBase64 !== undefined) {
+    const BASE64_PATTERN = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
+    if (!BASE64_PATTERN.test(bodyBase64)) {
+      throw new Error("Invalid bodyBase64 parameter: expected valid base64 content");
+    }
+
+    return {
+      body: Buffer.from(bodyBase64, "base64"),
+      hasExplicitBody: true,
+    };
+  }
+
+  if (bodyText !== undefined) {
+    return {
+      body: Buffer.from(bodyText, "utf-8"),
+      hasExplicitBody: true,
+    };
+  }
+
+  return { hasExplicitBody: false };
+}
+
+function createReplayToken(): string {
+  return randomBytes(REPLAY_TOKEN_BYTES).toString("hex");
+}
+
 /**
  * Create a Unix socket control server for daemon communication.
  */
@@ -212,6 +300,8 @@ export function createControlServer(options: ControlServerOptions): ControlServe
     logLevel,
     interceptorLoader,
     interceptorEventLog,
+    replayTracker,
+    caCertPem,
   } = options;
 
   // Create logger if projectRoot is provided
@@ -327,6 +417,80 @@ export function createControlServer(options: ControlServerOptions): ControlServe
     clearRequests: (): { success: boolean } => {
       storage.clearRequests();
       return { success: true };
+    },
+
+    replayRequest: async (params): Promise<{ requestId: string }> => {
+      if (!replayTracker) {
+        throw new Error("Replay is not available: replay tracker not initialised");
+      }
+
+      const id = requireString(params, "id");
+      const original = storage.getRequest(id);
+      if (!original) {
+        throw new Error(`Request not found: ${id}`);
+      }
+
+      const method = optionalString(params, "method") ?? original.method;
+      const url = optionalString(params, "url") ?? original.url;
+      const setHeaders = optionalStringRecord(params, "setHeaders");
+      const removeHeaders = optionalStringArray(params, "removeHeaders");
+      const timeoutMs = optionalNumber(params, "timeoutMs");
+      const replayInitiator = optionalReplayInitiator(params, "initiator") ?? "mcp";
+
+      try {
+        // Validate URL early for clearer errors.
+        new URL(url);
+      } catch {
+        throw new Error(`Invalid URL for replay: ${url}`);
+      }
+
+      const replayBody = parseOptionalReplayBody(params);
+      const body = replayBody.hasExplicitBody ? replayBody.body : original.requestBody;
+
+      const replayToken = createReplayToken();
+      replayTracker.register(replayToken, original.id, replayInitiator);
+
+      const headers = buildReplayHeaders({
+        baseHeaders: original.requestHeaders,
+        setHeaders,
+        removeHeaders,
+        replayToken,
+      });
+
+      try {
+        const replayStart = Date.now();
+        await replayViaProxy({
+          proxyPort,
+          method,
+          url,
+          headers,
+          body,
+          timeoutMs,
+          caCertPem,
+        });
+
+        const recent = storage.listRequestsSummary({ limit: 50 });
+        const replayed = recent.find(
+          (request) =>
+            request.replayedFromId === original.id &&
+            request.replayInitiator === replayInitiator &&
+            request.timestamp >= replayStart
+        );
+        if (!replayed) {
+          throw new Error("Replay request completed but could not locate captured replay result");
+        }
+
+        return { requestId: replayed.id };
+      } catch (err: unknown) {
+        logger?.error("Replay request failed", {
+          originalRequestId: id,
+          method,
+          url,
+          replayInitiator,
+          error: err instanceof Error ? err.message : "Unknown error",
+        });
+        throw err;
+      }
     },
 
     saveRequest: (params): { success: boolean } => {

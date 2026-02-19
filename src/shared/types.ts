@@ -4,6 +4,7 @@
 
 export type InterceptionType = "modified" | "mocked";
 export type BodySearchTarget = "request" | "response" | "both";
+export type ReplayInitiator = "mcp" | "tui";
 
 export interface BodySearchOptions {
   query: string;
@@ -30,6 +31,8 @@ export interface CapturedRequest {
   durationMs?: number;
   interceptedBy?: string;
   interceptionType?: InterceptionType;
+  replayedFromId?: string;
+  replayInitiator?: ReplayInitiator;
   saved?: boolean;
 }
 
@@ -55,6 +58,8 @@ export interface CapturedRequestSummary {
   responseBodySize: number;
   interceptedBy?: string;
   interceptionType?: InterceptionType;
+  replayedFromId?: string;
+  replayInitiator?: ReplayInitiator;
   saved?: boolean;
 }
 
