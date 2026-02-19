@@ -1182,7 +1182,7 @@ describe("RequestRepository", () => {
       // Verify user_version was set to latest migration
       const checkDb = new Database(migrationDbPath);
       const version = checkDb.pragma("user_version", { simple: true });
-      expect(version).toBe(9);
+      expect(version).toBe(11);
       checkDb.close();
 
       migratedRepo.close();
@@ -1193,7 +1193,7 @@ describe("RequestRepository", () => {
       // The default repo from beforeEach is a fresh DB
       const checkDb = new Database(dbPath);
       const version = checkDb.pragma("user_version", { simple: true });
-      expect(version).toBe(9);
+      expect(version).toBe(11);
       checkDb.close();
     });
 

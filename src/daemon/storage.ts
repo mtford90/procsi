@@ -144,6 +144,19 @@ const MIGRATIONS: Migration[] = [
       ALTER TABLE requests ADD COLUMN replay_initiator TEXT;
     `,
   },
+  {
+    version: 10,
+    description: "Add index on saved column for eviction and filter queries",
+    sql: `CREATE INDEX IF NOT EXISTS idx_requests_saved_timestamp ON requests(saved, timestamp ASC);`,
+  },
+  {
+    version: 11,
+    description: "Add indexes on content-type columns for body search queries",
+    sql: `
+      CREATE INDEX IF NOT EXISTS idx_requests_req_content_type ON requests(request_content_type);
+      CREATE INDEX IF NOT EXISTS idx_requests_res_content_type ON requests(response_content_type);
+    `,
+  },
 ];
 
 const STATUS_RANGE_MULTIPLIER = 100;
@@ -520,6 +533,14 @@ export class RequestRepository {
       pid: row.pid,
       startedAt: row.startedAt,
     };
+  }
+
+  /**
+   * Count all sessions.
+   */
+  countSessions(): number {
+    const row = this.db.prepare("SELECT COUNT(*) as count FROM sessions").get() as DbCountRow;
+    return row.count;
   }
 
   /**

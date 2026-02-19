@@ -170,6 +170,65 @@ function optionalBodySearchTarget(
   return target;
 }
 
+function optionalQueryTarget(
+  params: Record<string, unknown>,
+  key: string
+): "request" | "response" | "both" | undefined {
+  const value = params[key];
+  if (value === undefined) return undefined;
+  if (value === "request" || value === "response" || value === "both") {
+    return value;
+  }
+  throw new Error(
+    `Invalid ${key} parameter: "${String(value)}". Use "request", "response", or "both".`
+  );
+}
+
+const VALID_INTERCEPTOR_EVENT_LEVELS = new Set<string>(["info", "warn", "error"]);
+
+function optionalInterceptorEventLevel(
+  params: Record<string, unknown>,
+  key: string
+): InterceptorEventLevel | undefined {
+  const value = params[key];
+  if (value === undefined) return undefined;
+  if (typeof value === "string" && VALID_INTERCEPTOR_EVENT_LEVELS.has(value)) {
+    return value as InterceptorEventLevel;
+  }
+  throw new Error(`Invalid ${key} parameter: "${String(value)}". Use "info", "warn", or "error".`);
+}
+
+const VALID_INTERCEPTOR_EVENT_TYPES = new Set<string>([
+  "matched",
+  "mocked",
+  "modified",
+  "observed",
+  "match_error",
+  "match_timeout",
+  "handler_error",
+  "handler_timeout",
+  "invalid_response",
+  "forward_after_complete",
+  "load_error",
+  "loaded",
+  "reload",
+  "user_log",
+]);
+
+function optionalInterceptorEventType(
+  params: Record<string, unknown>,
+  key: string
+): InterceptorEventType | undefined {
+  const value = params[key];
+  if (value === undefined) return undefined;
+  if (typeof value === "string" && VALID_INTERCEPTOR_EVENT_TYPES.has(value)) {
+    return value as InterceptorEventType;
+  }
+  throw new Error(
+    `Invalid ${key} parameter: "${String(value)}". Expected a valid interceptor event type.`
+  );
+}
+
 /**
  * Validate an optional RequestFilter from untyped control message params.
  */
@@ -316,7 +375,7 @@ export function createControlServer(options: ControlServerOptions): ControlServe
 
   const handlers: ControlHandlers = {
     status: (): DaemonStatus => {
-      const sessions = storage.listSessions();
+      const sessionCount = storage.countSessions();
       const requestCount = storage.countRequests();
       const interceptorCount = interceptorLoader
         ? interceptorLoader.getInterceptors().length
@@ -325,7 +384,7 @@ export function createControlServer(options: ControlServerOptions): ControlServe
       return {
         running: true,
         proxyPort,
-        sessionCount: sessions.length,
+        sessionCount,
         requestCount,
         version,
         interceptorCount,
@@ -399,11 +458,7 @@ export function createControlServer(options: ControlServerOptions): ControlServe
 
     queryJsonBodies: (params): JsonQueryResult[] => {
       const jsonPath = requireString(params, "jsonPath");
-      const target = optionalString(params, "target") as
-        | "request"
-        | "response"
-        | "both"
-        | undefined;
+      const target = optionalQueryTarget(params, "target");
       return storage.queryJsonBodies({
         jsonPath,
         value: optionalString(params, "value"),
@@ -541,9 +596,9 @@ export function createControlServer(options: ControlServerOptions): ControlServe
 
       const afterSeq = optionalNumber(params, "afterSeq") ?? 0;
       const limit = optionalNumber(params, "limit");
-      const level = optionalString(params, "level") as InterceptorEventLevel | undefined;
+      const level = optionalInterceptorEventLevel(params, "level");
       const interceptor = optionalString(params, "interceptor");
-      const type = optionalString(params, "type") as InterceptorEventType | undefined;
+      const type = optionalInterceptorEventType(params, "type");
 
       const events =
         afterSeq > 0

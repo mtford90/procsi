@@ -29,6 +29,10 @@ describe("validateRegexFilter", () => {
   it("throws on unsupported flags", () => {
     expect(() => validateRegexFilter("users", "z")).toThrow('Unsupported regex flag "z".');
   });
+
+  it("rejects patterns with catastrophic backtracking", () => {
+    expect(() => validateRegexFilter("(a+)+$")).toThrow("potential catastrophic backtracking");
+  });
 });
 
 describe("parseRegexLiteral", () => {

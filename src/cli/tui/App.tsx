@@ -359,7 +359,7 @@ function AppContent({ __testEnableInput, projectRoot }: AppProps): React.ReactEl
         const replayId = pendingReplayId;
         setPendingReplayId(null);
         if (input === "y") {
-          showStatus("Replaying...");
+          setStatusMessage("Replaying...");
           void replayRequest(replayId)
             .then((newRequestId) => {
               showStatus(

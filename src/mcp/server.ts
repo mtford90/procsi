@@ -20,7 +20,6 @@ import type {
   CapturedRequestSummary,
   DaemonStatus,
   InterceptorInfo,
-  InterceptorEventType,
   JsonQueryResult,
   RequestFilter,
   Session,
@@ -1372,7 +1371,22 @@ export function createProcsiMcpServer(options: McpServerOptions) {
         ),
       interceptor: z.string().optional().describe("Filter by interceptor name."),
       type: z
-        .string()
+        .enum([
+          "matched",
+          "mocked",
+          "modified",
+          "observed",
+          "match_error",
+          "match_timeout",
+          "handler_error",
+          "handler_timeout",
+          "invalid_response",
+          "forward_after_complete",
+          "load_error",
+          "loaded",
+          "reload",
+          "user_log",
+        ])
         .optional()
         .describe('Filter by event type (e.g. "handler_error", "mocked", "user_log").'),
       format: FORMAT_SCHEMA,
@@ -1383,7 +1397,7 @@ export function createProcsiMcpServer(options: McpServerOptions) {
           limit: params.limit,
           level: params.level,
           interceptor: params.interceptor,
-          type: params.type as InterceptorEventType | undefined,
+          type: params.type,
         });
 
         if (params.format === "json") {

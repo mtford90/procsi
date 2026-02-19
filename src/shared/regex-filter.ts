@@ -2,6 +2,8 @@
  * Helpers for parsing and validating regex-based URL filters.
  */
 
+import safe from "safe-regex2";
+
 const REGEX_LITERAL_PATTERN = /^\/((?:\\.|[^\\/])*)\/([dgimsuvy]*)$/;
 const VALID_REGEX_FLAGS = new Set(["d", "g", "i", "m", "s", "u", "v", "y"]);
 
@@ -41,11 +43,18 @@ function validateRegexFlags(flags: string): void {
 export function validateRegexFilter(pattern: string, flags = ""): RegexFilterSpec {
   validateRegexFlags(flags);
 
+  let compiled: RegExp;
   try {
     // Validate by constructing a RegExp instance.
-    new RegExp(pattern, flags);
+    compiled = new RegExp(pattern, flags);
   } catch (err) {
     throw new Error(`Invalid regex pattern "${pattern}": ${getErrorMessage(err)}`);
+  }
+
+  if (!safe(compiled)) {
+    throw new Error(
+      `Regex pattern "${pattern}" is rejected: potential catastrophic backtracking. Simplify the pattern.`
+    );
   }
 
   return { pattern, flags };

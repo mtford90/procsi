@@ -278,6 +278,9 @@ export const onCommand = new Command("on")
           console.log(`# procsi: intercepting traffic${labelInfo}`);
           console.log(`# Proxy: ${proxyUrl}`);
           console.log(`# Session: ${session.id}`);
+          console.log(
+            `# Run 'procsi tui' for the interactive viewer, or 'procsi requests' to list traffic`
+          );
         } finally {
           client.close();
         }
