@@ -11,8 +11,8 @@ const tick = (ms = 50) => new Promise((resolve) => setTimeout(resolve, ms));
 
 describe("HelpModal", () => {
   const defaultProps = {
-    width: 80,
-    height: 60,
+    width: 120,
+    height: 80,
     onClose: vi.fn(),
     isActive: true,
   };
@@ -22,7 +22,7 @@ describe("HelpModal", () => {
     expect(lastFrame()).toContain("Keyboard Shortcuts");
   });
 
-  it("renders the Navigation section", () => {
+  it("renders navigation shortcuts", () => {
     const { lastFrame } = render(<HelpModal {...defaultProps} />);
     const frame = lastFrame();
 
@@ -30,64 +30,22 @@ describe("HelpModal", () => {
     expect(frame).toContain("Move down");
     expect(frame).toContain("Move up");
     expect(frame).toContain("Half page up / down");
-    expect(frame).toContain("Full page down / up");
     expect(frame).toContain("Jump to section");
   });
 
-  it("renders the Actions section", () => {
+  it("renders action shortcuts", () => {
     const { lastFrame } = render(<HelpModal {...defaultProps} />);
     const frame = lastFrame();
 
     expect(frame).toContain("Actions");
     expect(frame).toContain("View body content");
-    expect(frame).toContain("Copy as cURL");
+    expect(frame).toContain("Export: cURL / Fetch / Python / HTTPie / HAR");
     expect(frame).toContain("Replay request");
-    expect(frame).toContain("Export HAR");
-    expect(frame).toContain("Copy body to clipboard");
-    expect(frame).toContain("Export body content");
     expect(frame).toContain("Toggle full URL");
-    expect(frame).toContain("body:(req|res):error");
     expect(frame).toContain("Refresh");
-  });
-
-  it("renders the JSON Explorer section", () => {
-    const { lastFrame } = render(<HelpModal {...defaultProps} />);
-    const frame = lastFrame();
-
-    expect(frame).toContain("JSON Explorer");
-    expect(frame).toContain("Navigate tree");
-    expect(frame).toContain("Half page up / down");
-    expect(frame).toContain("Full page down / up");
-    expect(frame).toContain("Toggle node");
-    expect(frame).toContain("Collapse node");
-    expect(frame).toContain("Expand / collapse all");
-    expect(frame).toContain("Filter by path");
-    expect(frame).toContain("Next / previous match");
-    expect(frame).toContain("Copy value");
-    expect(frame).toContain("Close explorer");
-  });
-
-  it("renders the Text Viewer section", () => {
-    const { lastFrame } = render(<HelpModal {...defaultProps} />);
-    const frame = lastFrame();
-
-    expect(frame).toContain("Text Viewer");
-    expect(frame).toContain("Scroll line by line");
-    expect(frame).toContain("Scroll half page");
-    expect(frame).toContain("Full page down / up");
-    expect(frame).toContain("Page down");
-    expect(frame).toContain("Search text");
-    expect(frame).toContain("Next / previous match");
-    expect(frame).toContain("Close viewer");
-  });
-
-  it("renders the General section", () => {
-    const { lastFrame } = render(<HelpModal {...defaultProps} />);
-    const frame = lastFrame();
-
-    expect(frame).toContain("General");
     expect(frame).toContain("Toggle help");
     expect(frame).toContain("Quit");
+    expect(frame).toContain("Interceptor events");
   });
 
   it("renders close instructions", () => {
@@ -113,5 +71,36 @@ describe("HelpModal", () => {
     await tick();
 
     expect(onClose).toHaveBeenCalled();
+  });
+
+  describe("Connection Info section", () => {
+    it("shows proxy URL when proxyPort is defined", () => {
+      const { lastFrame } = render(
+        <HelpModal {...defaultProps} proxyPort={54321} caCertPath="/path/to/.procsi/ca.pem" />,
+      );
+      const frame = lastFrame();
+      expect(frame).toContain("Connection Info");
+      expect(frame).toContain("http://127.0.0.1:54321");
+    });
+
+    it("shows CA cert path when proxyPort is defined", () => {
+      const { lastFrame } = render(
+        <HelpModal {...defaultProps} proxyPort={54321} caCertPath="/path/to/.procsi/ca.pem" />,
+      );
+      expect(lastFrame()).toContain("/path/to/.procsi/ca.pem");
+    });
+
+    it("shows not-running state when proxyPort is undefined", () => {
+      const { lastFrame } = render(<HelpModal {...defaultProps} />);
+      const frame = lastFrame();
+      expect(frame).toContain("Connection Info");
+      expect(frame).toContain("Proxy is not running");
+    });
+
+    it("does not show proxy URL in not-running state", () => {
+      const { lastFrame } = render(<HelpModal {...defaultProps} />);
+      const frame = lastFrame();
+      expect(frame).not.toContain("http://127.0.0.1");
+    });
   });
 });

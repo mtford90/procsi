@@ -14,12 +14,12 @@ vi.mock("./hooks/useRequests.js", () => ({
 }));
 
 
-const mockExportCurl = vi.fn().mockResolvedValue({ success: true, message: "Copied to clipboard" });
+const mockExportFormat = vi.fn().mockResolvedValue({ success: true, message: "cURL copied to clipboard" });
 const mockExportHar = vi.fn().mockReturnValue({ success: true, message: "HAR exported" });
 
 vi.mock("./hooks/useExport.js", () => ({
   useExport: () => ({
-    exportCurl: mockExportCurl,
+    exportFormat: mockExportFormat,
     exportHar: mockExportHar,
   }),
 }));
@@ -102,7 +102,7 @@ describe("App keyboard interactions", () => {
     mockGetFullRequest.mockReset();
     mockGetAllFullRequests.mockReset();
     mockReplayRequest.mockReset().mockResolvedValue("replayed-1");
-    mockExportCurl.mockReset().mockResolvedValue({ success: true, message: "Copied to clipboard" });
+    mockExportFormat.mockReset().mockResolvedValue({ success: true, message: "cURL copied to clipboard" });
     mockExportHar.mockReset().mockReturnValue({ success: true, message: "HAR exported" });
     mockCopyToClipboard.mockReset().mockResolvedValue(undefined);
     mockOpenInExternalApp.mockReset().mockResolvedValue({ success: true, message: "Opened" });
@@ -710,8 +710,8 @@ describe("App keyboard interactions", () => {
       stdin.write("\r");
       await tick();
 
-      // Verify text viewer is open
-      expect(lastFrame()).toContain("j/k nav");
+      // Verify text viewer is open (has its unique close hint)
+      expect(lastFrame()).toContain("q/Esc close");
 
       // Press Escape to close
       stdin.write("\x1b");
@@ -719,7 +719,7 @@ describe("App keyboard interactions", () => {
 
       // Should be back to main view
       const frame = lastFrame();
-      expect(frame).not.toContain("j/k nav");
+      expect(frame).not.toContain("q/Esc close");
       expect(frame).toContain("Requests");
     });
 
@@ -761,7 +761,7 @@ describe("App keyboard interactions", () => {
       expect(frame).toContain("Refreshing");
     });
 
-    it("c with selected request calls exportCurl", async () => {
+    it("e shows export format picker prompt", async () => {
       const fullRequest = createMockFullRequest();
       mockUseRequests.mockReturnValue({
         requests: [createMockSummary()],
@@ -775,15 +775,135 @@ describe("App keyboard interactions", () => {
       const { lastFrame, stdin } = render(<App __testEnableInput />);
       await tick();
 
-      stdin.write("c");
-      await tick(100); // Give more time for async operation
+      stdin.write("e");
+      await tick();
 
-      expect(mockExportCurl).toHaveBeenCalled();
       const frame = lastFrame();
-      expect(frame).toContain("Copied");
+      expect(frame).toContain("[c]url");
+      expect(frame).toContain("[f]etch");
+      expect(frame).toContain("[p]ython");
+      expect(frame).toContain("[h]ttpie");
+      expect(frame).toContain("[H]ar");
     });
 
-    it("c without selection shows No request selected", async () => {
+    it("e then c dispatches curl export", async () => {
+      const fullRequest = createMockFullRequest();
+      mockUseRequests.mockReturnValue({
+        requests: [createMockSummary()],
+        isLoading: false,
+        error: null,
+        refresh: mockRefresh,
+        getFullRequest: vi.fn().mockResolvedValue(fullRequest),
+        getAllFullRequests: mockGetAllFullRequests,
+      });
+
+      const { lastFrame, stdin } = render(<App __testEnableInput />);
+      await tick();
+
+      stdin.write("e");
+      await tick();
+      stdin.write("c");
+      await tick(100);
+
+      expect(mockExportFormat).toHaveBeenCalledWith(fullRequest, "curl");
+      expect(lastFrame()).toContain("copied to clipboard");
+    });
+
+    it("e then f dispatches fetch export", async () => {
+      const fullRequest = createMockFullRequest();
+      mockExportFormat.mockResolvedValue({ success: true, message: "Fetch copied to clipboard" });
+      mockUseRequests.mockReturnValue({
+        requests: [createMockSummary()],
+        isLoading: false,
+        error: null,
+        refresh: mockRefresh,
+        getFullRequest: vi.fn().mockResolvedValue(fullRequest),
+        getAllFullRequests: mockGetAllFullRequests,
+      });
+
+      const { stdin } = render(<App __testEnableInput />);
+      await tick();
+
+      stdin.write("e");
+      await tick();
+      stdin.write("f");
+      await tick(100);
+
+      expect(mockExportFormat).toHaveBeenCalledWith(fullRequest, "fetch");
+    });
+
+    it("e then p dispatches python export", async () => {
+      const fullRequest = createMockFullRequest();
+      mockExportFormat.mockResolvedValue({ success: true, message: "Python copied to clipboard" });
+      mockUseRequests.mockReturnValue({
+        requests: [createMockSummary()],
+        isLoading: false,
+        error: null,
+        refresh: mockRefresh,
+        getFullRequest: vi.fn().mockResolvedValue(fullRequest),
+        getAllFullRequests: mockGetAllFullRequests,
+      });
+
+      const { stdin } = render(<App __testEnableInput />);
+      await tick();
+
+      stdin.write("e");
+      await tick();
+      stdin.write("p");
+      await tick(100);
+
+      expect(mockExportFormat).toHaveBeenCalledWith(fullRequest, "python");
+    });
+
+    it("e then h dispatches httpie export", async () => {
+      const fullRequest = createMockFullRequest();
+      mockExportFormat.mockResolvedValue({ success: true, message: "HTTPie copied to clipboard" });
+      mockUseRequests.mockReturnValue({
+        requests: [createMockSummary()],
+        isLoading: false,
+        error: null,
+        refresh: mockRefresh,
+        getFullRequest: vi.fn().mockResolvedValue(fullRequest),
+        getAllFullRequests: mockGetAllFullRequests,
+      });
+
+      const { stdin } = render(<App __testEnableInput />);
+      await tick();
+
+      stdin.write("e");
+      await tick();
+      stdin.write("h");
+      await tick(100);
+
+      expect(mockExportFormat).toHaveBeenCalledWith(fullRequest, "httpie");
+    });
+
+    it("e then unrecognised key cancels", async () => {
+      const fullRequest = createMockFullRequest();
+      mockUseRequests.mockReturnValue({
+        requests: [createMockSummary()],
+        isLoading: false,
+        error: null,
+        refresh: mockRefresh,
+        getFullRequest: vi.fn().mockResolvedValue(fullRequest),
+        getAllFullRequests: mockGetAllFullRequests,
+      });
+
+      const { lastFrame, stdin } = render(<App __testEnableInput />);
+      await tick();
+
+      stdin.write("e");
+      await tick();
+      stdin.write("z");
+      await tick();
+
+      expect(mockExportFormat).not.toHaveBeenCalled();
+      // Status message should be cleared (no export picker prompt visible)
+      const frame = lastFrame();
+      expect(frame).not.toContain("[c]url");
+    });
+
+    it("e without selection shows No request selected", async () => {
       mockUseRequests.mockReturnValue({
         requests: [],
         isLoading: false,
@@ -796,14 +916,14 @@ describe("App keyboard interactions", () => {
       const { lastFrame, stdin } = render(<App __testEnableInput />);
       await tick();
 
-      stdin.write("c");
+      stdin.write("e");
       await tick();
 
       const frame = lastFrame();
       expect(frame).toContain("No request selected");
     });
 
-    it("H with requests calls exportHar", async () => {
+    it("e then H calls exportHar for all requests", async () => {
       const fullRequest = createMockFullRequest();
       mockGetAllFullRequests.mockResolvedValue([fullRequest]);
       mockUseRequests.mockReturnValue({
@@ -818,33 +938,15 @@ describe("App keyboard interactions", () => {
       const { lastFrame, stdin } = render(<App __testEnableInput />);
       await tick();
 
+      stdin.write("e");
+      await tick();
       stdin.write("H");
-      await tick(100); // Give more time for async operation
+      await tick(100);
 
       expect(mockGetAllFullRequests).toHaveBeenCalled();
+      expect(mockExportHar).toHaveBeenCalled();
       const frame = lastFrame();
-      // Should show exporting message or success
       expect(frame).toMatch(/HAR|Export/i);
-    });
-
-    it("H without requests shows No requests to export", async () => {
-      mockUseRequests.mockReturnValue({
-        requests: [],
-        isLoading: false,
-        error: null,
-        refresh: mockRefresh,
-        getFullRequest: vi.fn().mockResolvedValue(null),
-        getAllFullRequests: vi.fn().mockResolvedValue([]),
-      });
-
-      const { lastFrame, stdin } = render(<App __testEnableInput />);
-      await tick();
-
-      stdin.write("H");
-      await tick();
-
-      const frame = lastFrame();
-      expect(frame).toContain("No requests to export");
     });
   });
 
@@ -1228,54 +1330,20 @@ describe("App keyboard interactions", () => {
     });
   });
 
-  describe("Info modal (i key)", () => {
-    it("i opens the info modal", async () => {
+  describe("Help modal includes connection info", () => {
+    it("? opens help modal with connection info", async () => {
       setupMocksWithRequests(1);
 
       const { lastFrame, stdin } = render(<App __testEnableInput />);
       await tick();
 
-      stdin.write("i");
+      stdin.write("?");
       await tick();
 
       const frame = lastFrame();
-      expect(frame).toContain("Proxy Connection Details");
-    });
-
-    it("i closes the info modal", async () => {
-      setupMocksWithRequests(1);
-
-      const { lastFrame, stdin } = render(<App __testEnableInput />);
-      await tick();
-
-      // Open info
-      stdin.write("i");
-      await tick();
-
-      // Close info
-      stdin.write("i");
-      await tick();
-
-      const frame = lastFrame();
-      expect(frame).not.toContain("Proxy Connection Details");
-    });
-
-    it("Escape closes the info modal", async () => {
-      setupMocksWithRequests(1);
-
-      const { lastFrame, stdin } = render(<App __testEnableInput />);
-      await tick();
-
-      // Open info
-      stdin.write("i");
-      await tick();
-
-      // Close with Escape
-      stdin.write("\x1b");
-      await tick();
-
-      const frame = lastFrame();
-      expect(frame).not.toContain("Proxy Connection Details");
+      expect(frame).toContain("Keyboard Shortcuts");
+      expect(frame).toContain("Connection Info");
+      expect(frame).toContain("http://127.0.0.1:54321");
     });
   });
 

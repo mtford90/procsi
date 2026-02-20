@@ -8,7 +8,7 @@ vi.mock("../utils/clipboard.js", () => ({
 }));
 
 // Import after mocking
-const { exportCurlToClipboard } = await import("./useExport.js");
+const { exportCurlToClipboard, exportFormatToClipboard } = await import("./useExport.js");
 
 function createMockRequest(overrides: Partial<CapturedRequest> = {}): CapturedRequest {
   return {
@@ -36,7 +36,7 @@ describe("exportCurlToClipboard", () => {
     const result = await exportCurlToClipboard(request);
 
     expect(result.success).toBe(true);
-    expect(result.message).toBe("Copied to clipboard");
+    expect(result.message).toBe("cURL copied to clipboard");
     expect(mockCopyToClipboard).toHaveBeenCalledTimes(1);
 
     // Verify the curl command was generated correctly
@@ -81,5 +81,75 @@ describe("exportCurlToClipboard", () => {
     const copiedText = mockCopyToClipboard.mock.calls[0][0] as string;
     expect(copiedText).toContain("-X POST");
     expect(copiedText).toContain('{"name":"test"}');
+  });
+});
+
+describe("exportFormatToClipboard", () => {
+  beforeEach(() => {
+    mockCopyToClipboard.mockReset();
+  });
+
+  it("should copy curl format to clipboard", async () => {
+    mockCopyToClipboard.mockResolvedValue(undefined);
+
+    const request = createMockRequest();
+    const result = await exportFormatToClipboard(request, "curl");
+
+    expect(result.success).toBe(true);
+    expect(result.message).toBe("cURL copied to clipboard");
+
+    const copiedText = mockCopyToClipboard.mock.calls[0][0] as string;
+    expect(copiedText).toContain("curl");
+  });
+
+  it("should copy fetch format to clipboard", async () => {
+    mockCopyToClipboard.mockResolvedValue(undefined);
+
+    const request = createMockRequest();
+    const result = await exportFormatToClipboard(request, "fetch");
+
+    expect(result.success).toBe(true);
+    expect(result.message).toBe("Fetch copied to clipboard");
+
+    const copiedText = mockCopyToClipboard.mock.calls[0][0] as string;
+    expect(copiedText).toContain("await fetch(");
+  });
+
+  it("should copy python format to clipboard", async () => {
+    mockCopyToClipboard.mockResolvedValue(undefined);
+
+    const request = createMockRequest();
+    const result = await exportFormatToClipboard(request, "python");
+
+    expect(result.success).toBe(true);
+    expect(result.message).toBe("Python copied to clipboard");
+
+    const copiedText = mockCopyToClipboard.mock.calls[0][0] as string;
+    expect(copiedText).toContain("import requests");
+    expect(copiedText).toContain("requests.get(");
+  });
+
+  it("should copy httpie format to clipboard", async () => {
+    mockCopyToClipboard.mockResolvedValue(undefined);
+
+    const request = createMockRequest();
+    const result = await exportFormatToClipboard(request, "httpie");
+
+    expect(result.success).toBe(true);
+    expect(result.message).toBe("HTTPie copied to clipboard");
+
+    const copiedText = mockCopyToClipboard.mock.calls[0][0] as string;
+    expect(copiedText).toContain("http");
+    expect(copiedText).toContain("GET");
+  });
+
+  it("should return error when clipboard fails for any format", async () => {
+    mockCopyToClipboard.mockRejectedValue(new Error("No clipboard available"));
+
+    const request = createMockRequest();
+    const result = await exportFormatToClipboard(request, "fetch");
+
+    expect(result.success).toBe(false);
+    expect(result.message).toBe("No clipboard available");
   });
 });

@@ -16,33 +16,28 @@ const hintActions = (hints: ReturnType<typeof getVisibleHints>): string[] =>
   hints.map((h) => h.action);
 
 // Keys that should always be visible regardless of context
-const ALWAYS_VISIBLE_KEYS = ["j/k/g/G", "Tab", "1-5", "u", "/", "i", "?", "q"];
+const ALWAYS_VISIBLE_KEYS = ["j/k", "Tab", "u", "/", "?", "q"];
 
 describe("getVisibleHints", () => {
   it("returns all conditional hints as visible when no context props are passed (backwards compat)", () => {
-    // With defaults: activePanel="list" so ^f/^b shows, the rest default to true
     const hints = getVisibleHints({});
     const keys = hintKeys(hints);
 
-    expect(keys).toContain("^f/^b");
-    expect(keys).toContain("c");
-    expect(keys).toContain("H");
-    expect(keys).toContain("y");
-    expect(keys).toContain("s");
+    expect(keys).toContain("e");
+    expect(keys).toContain("R");
+    expect(keys).toContain("b");
+    expect(keys).toContain("x");
     for (const key of ALWAYS_VISIBLE_KEYS) {
       expect(keys).toContain(key);
     }
     // Enter is hidden because onViewableBodySection defaults to false
     expect(keys).not.toContain("Enter");
-    // But when it does appear, action should be "view"
   });
 
   it("always includes unconditional hints", () => {
     const hints = getVisibleHints({
-      activePanel: "list",
       hasSelection: false,
       hasRequests: false,
-      onBodySection: false,
     });
     const keys = hintKeys(hints);
 
@@ -51,115 +46,83 @@ describe("getVisibleHints", () => {
     }
   });
 
-  describe("activePanel === 'list'", () => {
-    it("shows ^f/^b (page)", () => {
-      const keys = hintKeys(getVisibleHints({ activePanel: "list" }));
-      expect(keys).toContain("^f/^b");
-    });
-
-    it("hides Enter (explore)", () => {
-      const keys = hintKeys(getVisibleHints({ activePanel: "list" }));
-      expect(keys).not.toContain("Enter");
-    });
+  it("shows Enter (view) when on viewable body section", () => {
+    const hints = getVisibleHints({ onViewableBodySection: true });
+    const keys = hintKeys(hints);
+    const actions = hintActions(hints);
+    expect(keys).toContain("Enter");
+    expect(actions).toContain("view");
   });
 
-  describe("activePanel === 'accordion'", () => {
-    it("hides ^f/^b (page)", () => {
-      const keys = hintKeys(getVisibleHints({ activePanel: "accordion" }));
-      expect(keys).not.toContain("^f/^b");
-    });
-
-    it("hides Enter (view) when not on viewable body section", () => {
-      const keys = hintKeys(getVisibleHints({ activePanel: "accordion", onViewableBodySection: false }));
-      expect(keys).not.toContain("Enter");
-    });
-
-    it("shows Enter (view) when on viewable body section", () => {
-      const hints = getVisibleHints({ activePanel: "accordion", onViewableBodySection: true });
-      const keys = hintKeys(hints);
-      const actions = hintActions(hints);
-      expect(keys).toContain("Enter");
-      expect(actions).toContain("view");
-    });
+  it("hides Enter (view) when not on viewable body section", () => {
+    const keys = hintKeys(getVisibleHints({ onViewableBodySection: false }));
+    expect(keys).not.toContain("Enter");
   });
 
   describe("hasSelection", () => {
-    it("shows c (curl) when true", () => {
-      const keys = hintKeys(getVisibleHints({ hasSelection: true }));
-      expect(keys).toContain("c");
+    it("shows e (export) when true", () => {
+      const actions = hintActions(getVisibleHints({ hasSelection: true }));
+      expect(actions).toContain("export");
     });
 
-    it("hides c (curl) when false", () => {
+    it("hides e (export) when false", () => {
       const keys = hintKeys(getVisibleHints({ hasSelection: false }));
-      expect(keys).not.toContain("c");
+      expect(keys).not.toContain("e");
+    });
+
+    it("shows R (replay) when true", () => {
+      const keys = hintKeys(getVisibleHints({ hasSelection: true }));
+      expect(keys).toContain("R");
+    });
+
+    it("hides R (replay) when false", () => {
+      const keys = hintKeys(getVisibleHints({ hasSelection: false }));
+      expect(keys).not.toContain("R");
+    });
+
+    it("shows b (bookmark) when true", () => {
+      const keys = hintKeys(getVisibleHints({ hasSelection: true }));
+      expect(keys).toContain("b");
+    });
+
+    it("hides b (bookmark) when false", () => {
+      const keys = hintKeys(getVisibleHints({ hasSelection: false }));
+      expect(keys).not.toContain("b");
     });
   });
 
   describe("hasRequests", () => {
-    it("shows H (HAR) when true", () => {
+    it("shows x (clear) when true", () => {
       const keys = hintKeys(getVisibleHints({ hasRequests: true }));
-      expect(keys).toContain("H");
+      expect(keys).toContain("x");
     });
 
-    it("hides H (HAR) when false", () => {
+    it("hides x (clear) when false", () => {
       const keys = hintKeys(getVisibleHints({ hasRequests: false }));
-      expect(keys).not.toContain("H");
+      expect(keys).not.toContain("x");
     });
   });
 
-  describe("onBodySection", () => {
-    it("shows y (yank) and s (export) when true", () => {
-      const hints = getVisibleHints({ onBodySection: true });
-      const keys = hintKeys(hints);
-      const actions = hintActions(hints);
-      expect(keys).toContain("y");
-      expect(keys).toContain("s");
-      expect(actions).toContain("yank");
-      expect(actions).toContain("export");
-    });
-
-    it("hides y (yank) and s (export) when false", () => {
-      const keys = hintKeys(getVisibleHints({ onBodySection: false }));
-      expect(keys).not.toContain("y");
-      expect(keys).not.toContain("s");
-    });
+  it("? hint has action 'help'", () => {
+    const hints = getVisibleHints({});
+    const helpHint = hints.find((h) => h.key === "?");
+    expect(helpHint?.action).toBe("help");
   });
 
   it("combined restrictive context hides all conditional hints", () => {
     const hints = getVisibleHints({
-      activePanel: "list",
       hasSelection: false,
       hasRequests: false,
-      onBodySection: false,
+      onViewableBodySection: false,
     });
     const keys = hintKeys(hints);
 
     // Conditional hints should all be hidden
     expect(keys).not.toContain("Enter");
-    expect(keys).not.toContain("c");
-    expect(keys).not.toContain("H");
-    expect(keys).not.toContain("y");
-    expect(keys).not.toContain("s");
-
-    // ^f/^b should still be visible (list panel)
-    expect(keys).toContain("^f/^b");
-  });
-
-  describe("L (events) hint", () => {
-    it("visible when hasEvents is true", () => {
-      const actions = hintActions(getVisibleHints({ hasEvents: true }));
-      expect(actions).toContain("events");
-    });
-
-    it("hidden when hasEvents is false", () => {
-      const actions = hintActions(getVisibleHints({ hasEvents: false }));
-      expect(actions).not.toContain("events");
-    });
-
-    it("hidden when hasEvents is undefined (defaults to false)", () => {
-      const actions = hintActions(getVisibleHints({}));
-      expect(actions).not.toContain("events");
-    });
+    expect(keys).not.toContain("e");
+    expect(keys).not.toContain("R");
+    expect(keys).not.toContain("b");
+    expect(keys).not.toContain("x");
   });
 });
 
@@ -168,10 +131,7 @@ describe("StatusBar component", () => {
     const { lastFrame } = render(<StatusBar />);
     const frame = lastFrame();
 
-    // Check for key labels that should always appear (using substrings
-    // that survive truncation at narrow default test widths)
     expect(frame).toMatch(/j\/k/);
-    // "q" may be truncated at the default 100-column test width
     expect(frame).toContain("nav");
   });
 
@@ -180,7 +140,6 @@ describe("StatusBar component", () => {
     const frame = lastFrame();
 
     expect(frame).toContain("Something happened");
-    // Keys should not appear
     expect(frame).not.toMatch(/j\/k/);
   });
 
@@ -188,7 +147,6 @@ describe("StatusBar component", () => {
     const { lastFrame } = render(<StatusBar filterActive />);
     const frame = lastFrame();
 
-    // The badge may be truncated at narrow widths, but the opening portion is visible
     expect(frame).toMatch(/FILTE/);
   });
 
@@ -199,34 +157,9 @@ describe("StatusBar component", () => {
     expect(frame).not.toMatch(/FILTE/);
   });
 
-  it("does not render Enter key when activePanel is list", () => {
-    const { lastFrame } = render(
-      <StatusBar activePanel="list" hasSelection={false} hasRequests={false} onBodySection={false} />,
-    );
-    const frame = lastFrame();
-
-    // With fewer hints there's more room — "Enter" should not appear
-    expect(frame).not.toContain("Enter");
-    // But ^f/^b (page) key should appear
-    expect(frame).toMatch(/\^f\/\^b/);
-  });
-
-  it("does not render ^f/^b key when activePanel is accordion", () => {
-    const { lastFrame } = render(
-      <StatusBar activePanel="accordion" hasSelection={false} hasRequests={false} onBodySection={false} />,
-    );
-    const frame = lastFrame();
-
-    // ^f/^b should not appear
-    expect(frame).not.toMatch(/\^f\/\^b/);
-    // Enter should not appear either (not on JSON body section)
-    expect(frame).not.toContain("Enter");
-  });
-
   it("renders Enter view hint when on viewable body section", () => {
-    // Use minimal context so the hints fit within the default 100-column render width
     const { lastFrame } = render(
-      <StatusBar activePanel="accordion" hasSelection={false} hasRequests={false} onBodySection={false} onViewableBodySection />,
+      <StatusBar hasSelection={false} hasRequests={false} onViewableBodySection />,
     );
     const frame = lastFrame();
 
@@ -234,30 +167,21 @@ describe("StatusBar component", () => {
     expect(frame).toContain("view");
   });
 
-  it("omits curl key text when hasSelection is false", () => {
+  it("omits export key text when hasSelection is false", () => {
     const { lastFrame } = render(
-      <StatusBar activePanel="list" hasSelection={false} hasRequests hasOnBodySection={false} />,
+      <StatusBar hasSelection={false} hasRequests />,
     );
     const frame = lastFrame();
 
-    // "curl" action text should not appear since hasSelection is false
-    expect(frame).not.toContain("curl");
-  });
-
-  it("omits HAR key text when hasRequests is false", () => {
-    const { lastFrame } = render(
-      <StatusBar activePanel="list" hasSelection={false} hasRequests={false} onBodySection={false} />,
-    );
-    const frame = lastFrame();
-
-    expect(frame).not.toContain("HAR");
+    // "export" action text from the e hint should not appear since hasSelection is false
+    // (the "export" in the hint line specifically comes from e key — not from other sources)
+    expect(frame).not.toContain("e export");
   });
 
   describe("interceptorCount", () => {
     it("renders interceptor count badge when interceptorCount > 0", () => {
-      // Use minimal context so the badge fits within the default 100-column render width
       const { lastFrame } = render(
-        <StatusBar interceptorCount={3} activePanel="accordion" hasSelection={false} hasRequests={false} onBodySection={false} />,
+        <StatusBar interceptorCount={3} hasSelection={false} hasRequests={false} />,
       );
       const frame = lastFrame();
 
@@ -266,7 +190,7 @@ describe("StatusBar component", () => {
 
     it("uses singular form when interceptorCount is 1", () => {
       const { lastFrame } = render(
-        <StatusBar interceptorCount={1} activePanel="accordion" hasSelection={false} hasRequests={false} onBodySection={false} />,
+        <StatusBar interceptorCount={1} hasSelection={false} hasRequests={false} />,
       );
       const frame = lastFrame();
 
@@ -292,7 +216,7 @@ describe("StatusBar component", () => {
   describe("interceptorErrorCount", () => {
     it("renders error badge when interceptorErrorCount > 0", () => {
       const { lastFrame } = render(
-        <StatusBar interceptorErrorCount={3} activePanel="accordion" hasSelection={false} hasRequests={false} onBodySection={false} />,
+        <StatusBar interceptorErrorCount={3} hasSelection={false} hasRequests={false} />,
       );
       const frame = lastFrame();
       expect(frame).toContain("error");
@@ -300,7 +224,7 @@ describe("StatusBar component", () => {
 
     it("shows correct count in error badge", () => {
       const { lastFrame } = render(
-        <StatusBar interceptorErrorCount={5} activePanel="accordion" hasSelection={false} hasRequests={false} onBodySection={false} />,
+        <StatusBar interceptorErrorCount={5} hasSelection={false} hasRequests={false} />,
       );
       const frame = lastFrame();
       expect(frame).toContain("5");
@@ -308,7 +232,7 @@ describe("StatusBar component", () => {
 
     it("uses singular form '1 error' when count is 1", () => {
       const { lastFrame } = render(
-        <StatusBar interceptorErrorCount={1} activePanel="accordion" hasSelection={false} hasRequests={false} onBodySection={false} />,
+        <StatusBar interceptorErrorCount={1} hasSelection={false} hasRequests={false} />,
       );
       const frame = lastFrame();
       expect(frame).toContain("1 error");
@@ -317,16 +241,15 @@ describe("StatusBar component", () => {
 
     it("hidden when interceptorErrorCount is 0", () => {
       const { lastFrame } = render(
-        <StatusBar interceptorErrorCount={0} activePanel="accordion" hasSelection={false} hasRequests={false} onBodySection={false} />,
+        <StatusBar interceptorErrorCount={0} hasSelection={false} hasRequests={false} />,
       );
       const frame = lastFrame();
-      // Should not contain the error badge text (but may contain "error" in hints — use the badge pattern)
       expect(frame).not.toMatch(/\d+ error/);
     });
 
     it("hidden when interceptorErrorCount is undefined", () => {
       const { lastFrame } = render(
-        <StatusBar activePanel="accordion" hasSelection={false} hasRequests={false} onBodySection={false} />,
+        <StatusBar hasSelection={false} hasRequests={false} />,
       );
       const frame = lastFrame();
       expect(frame).not.toMatch(/\d+ error/);
@@ -334,27 +257,11 @@ describe("StatusBar component", () => {
 
     it("both error badge and interceptor count badge can appear simultaneously", () => {
       const { lastFrame } = render(
-        <StatusBar interceptorErrorCount={2} interceptorCount={3} activePanel="accordion" hasSelection={false} hasRequests={false} onBodySection={false} />,
+        <StatusBar interceptorErrorCount={2} interceptorCount={3} hasSelection={false} hasRequests={false} />,
       );
       const frame = lastFrame();
       expect(frame).toContain("2 errors");
       expect(frame).toContain("3 interceptors");
-    });
-
-    it("L key hint appears when hasEvents is true", () => {
-      const { lastFrame } = render(
-        <StatusBar hasEvents interceptorCount={1} activePanel="accordion" hasSelection={false} hasRequests={false} onBodySection={false} />,
-      );
-      const frame = lastFrame();
-      expect(frame).toContain("events");
-    });
-
-    it("L key hint does not appear when hasEvents is false", () => {
-      const { lastFrame } = render(
-        <StatusBar hasEvents={false} interceptorCount={0} interceptorErrorCount={0} activePanel="accordion" hasSelection={false} hasRequests={false} onBodySection={false} />,
-      );
-      const frame = lastFrame();
-      expect(frame).not.toContain("events");
     });
   });
 
@@ -385,6 +292,84 @@ describe("StatusBar component", () => {
 
       expect(frame).toContain("Busy");
       expect(frame).not.toContain("Esc");
+    });
+  });
+
+  describe("width-based hint truncation", () => {
+    /**
+     * ink-testing-library hardcodes stdout.columns to 100 via a getter.
+     * To test wide-width rendering we must override it before rerendering.
+     */
+    function renderWide(element: React.ReactElement, columns: number) {
+      const result = render(element);
+      Object.defineProperty(result.stdout, "columns", {
+        get: () => columns,
+        configurable: true,
+      });
+      result.rerender(element);
+      return result;
+    }
+
+    it("shows all unconditional hints when width is generous", () => {
+      const { lastFrame } = renderWide(
+        <StatusBar width={200} hasSelection={false} hasRequests={false} />,
+        200,
+      );
+      const frame = lastFrame();
+
+      // All unconditional hints should be visible
+      expect(frame).toContain("j/k");
+      expect(frame).toContain("Tab");
+      expect(frame).toContain("u");
+      expect(frame).toContain("filter");
+      expect(frame).toContain("help");
+      expect(frame).toContain("quit");
+    });
+
+    it("shows all hints including conditional ones when width is generous", () => {
+      const { lastFrame } = renderWide(
+        <StatusBar width={200} hasSelection hasRequests />,
+        200,
+      );
+      const frame = lastFrame();
+
+      expect(frame).toContain("export");
+      expect(frame).toContain("replay");
+      expect(frame).toContain("bookmark");
+      expect(frame).toContain("clear");
+      expect(frame).toContain("help");
+      expect(frame).toContain("quit");
+    });
+
+    it("truncates trailing hints when width is narrow", () => {
+      const { lastFrame } = render(
+        <StatusBar width={80} interceptorCount={5} hasSelection hasRequests />,
+      );
+      const frame = lastFrame();
+
+      // First hints should be visible
+      expect(frame).toContain("j/k");
+      expect(frame).toContain("Tab");
+      // Trailing hints should be truncated at 80 cols with badge overhead
+      expect(frame).not.toContain("quit");
+    });
+
+    it("shows all hints at wide width even with interceptor badge", () => {
+      const { lastFrame } = renderWide(
+        <StatusBar width={200} interceptorCount={5} hasSelection hasRequests />,
+        200,
+      );
+      const frame = lastFrame();
+
+      // Badge should be visible
+      expect(frame).toContain("5 interceptors");
+      // ALL hints should still fit at 200 cols
+      expect(frame).toContain("j/k");
+      expect(frame).toContain("export");
+      expect(frame).toContain("URL");
+      expect(frame).toContain("filter");
+      expect(frame).toContain("help");
+      expect(frame).toContain("quit");
     });
   });
 });

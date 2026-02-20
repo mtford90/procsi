@@ -3,18 +3,7 @@
  */
 
 import type { CapturedRequest } from "../../../shared/types.js";
-
-/**
- * Headers that should be excluded from curl output.
- * These are typically set automatically by curl or are connection-specific.
- */
-const EXCLUDED_HEADERS = new Set([
-  "host",
-  "content-length",
-  "connection",
-  "accept-encoding",
-  "transfer-encoding",
-]);
+import { EXCLUDED_HEADERS } from "./export-shared.js";
 
 /**
  * Escape a string for use in a shell single-quoted context.
@@ -53,8 +42,13 @@ export function generateCurl(request: CapturedRequest): string {
     parts.push(`-H '${shellEscape(name)}: ${shellEscape(value)}'`);
   }
 
-  // Add body if present
-  if (request.requestBody && request.requestBody.length > 0) {
+  // Add body if present and method supports it
+  if (
+    request.requestBody &&
+    request.requestBody.length > 0 &&
+    request.method !== "GET" &&
+    request.method !== "HEAD"
+  ) {
     const bodyStr = request.requestBody.toString("utf-8");
     parts.push(`-d '${shellEscape(bodyStr)}'`);
   }

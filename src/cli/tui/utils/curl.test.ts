@@ -135,6 +135,26 @@ describe("generateCurl", () => {
     expect(curl).toContain("-d '{\"update\":true}'");
   });
 
+  it("should omit body for GET requests", () => {
+    const request = createMockRequest({
+      method: "GET",
+      requestBody: Buffer.from("some body"),
+    });
+    const curl = generateCurl(request);
+
+    expect(curl).not.toContain("-d ");
+  });
+
+  it("should omit body for HEAD requests", () => {
+    const request = createMockRequest({
+      method: "HEAD",
+      requestBody: Buffer.from("some body"),
+    });
+    const curl = generateCurl(request);
+
+    expect(curl).not.toContain("-d ");
+  });
+
   it("should handle binary request body", () => {
     const binaryBody = Buffer.from([0x00, 0xff, 0x80, 0xfe]);
     const request = createMockRequest({

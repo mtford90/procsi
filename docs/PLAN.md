@@ -50,6 +50,7 @@ TypeScript interceptor files in `.procsi/interceptors/` — mock, modify, or obs
 - Method truncation on long URLs
 - Source attribution hardening: internal session headers now require a per-session token, with runtime source taking precedence when available
 - Interception marker semantics: `I` now indicates actual response mutation only; observe-only `forward()` interceptors keep attribution without the modified marker
+- TUI startup dimension sync: status-hint bar now re-checks terminal size immediately after mount to avoid first-render hint truncation until first keypress
 
 </details>
 

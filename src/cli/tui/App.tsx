@@ -7,7 +7,7 @@ import { Box, Text, useInput, useApp, useStdin } from "ink";
 import { MouseProvider, useOnClick, useOnWheel, useOnMouseEnter, useOnMouseLeave } from "@ink-tools/ink-mouse";
 import { useStdoutDimensions } from "./hooks/useStdoutDimensions.js";
 import { useRequests } from "./hooks/useRequests.js";
-import { useExport } from "./hooks/useExport.js";
+import { useExport, type ExportFormat } from "./hooks/useExport.js";
 import { useSpinner } from "./hooks/useSpinner.js";
 import { useBodyExport, generateFilename } from "./hooks/useBodyExport.js";
 import { formatSize } from "./utils/formatters.js";
@@ -27,7 +27,6 @@ import { StatusBar } from "./components/StatusBar.js";
 import { FilterBar } from "./components/FilterBar.js";
 import { ExportModal, type ExportAction } from "./components/ExportModal.js";
 import { HelpModal } from "./components/HelpModal.js";
-import { InfoModal } from "./components/InfoModal.js";
 import { InterceptorLogModal } from "./components/InterceptorLogModal.js";
 import { InfoBar } from "./components/InfoBar.js";
 import { isFilterActive } from "./utils/filters.js";
@@ -91,7 +90,7 @@ function AppContent({ __testEnableInput, projectRoot }: AppProps): React.ReactEl
     pollInterval: config?.pollInterval,
   });
   const startTime = useMemo(() => Date.now(), []);
-  const { exportCurl, exportHar } = useExport();
+  const { exportFormat, exportHar } = useExport();
   const { saveBody } = useBodyExport();
   const spinnerFrame = useSpinner(isLoading && requests.length === 0);
 
@@ -108,9 +107,6 @@ function AppContent({ __testEnableInput, projectRoot }: AppProps): React.ReactEl
   // Help modal state
   const [showHelp, setShowHelp] = useState(false);
 
-  // Info modal state
-  const [showInfo, setShowInfo] = useState(false);
-
   // Interceptor log modal state
   const [showInterceptorLog, setShowInterceptorLog] = useState(false);
 
@@ -119,6 +115,9 @@ function AppContent({ __testEnableInput, projectRoot }: AppProps): React.ReactEl
 
   // Replay confirmation state — stores the request ID awaiting confirmation
   const [pendingReplayId, setPendingReplayId] = useState<string | null>(null);
+
+  // Export format picker state — when true, the next key selects the format
+  const [pendingExport, setPendingExport] = useState(false);
 
   // Proxy details for info modal (one-time sync read)
   const proxyPort = useMemo(() => {
@@ -391,6 +390,37 @@ function AppContent({ __testEnableInput, projectRoot }: AppProps): React.ReactEl
         return;
       }
 
+      // Handle export format picker — map key to format, any unrecognised key cancels
+      if (pendingExport) {
+        setPendingExport(false);
+
+        if (input === "H") {
+          // HAR export — export all captured requests
+          showStatus("Exporting HAR...");
+          void getAllFullRequests().then((fullRequests) => {
+            const result = exportHar(fullRequests);
+            showStatus(result.success ? result.message : `Error: ${result.message}`);
+          });
+          return;
+        }
+
+        const formatMap: Partial<Record<string, ExportFormat>> = {
+          c: "curl",
+          f: "fetch",
+          p: "python",
+          h: "httpie",
+        };
+        const format = formatMap[input];
+        if (format && selectedFullRequest) {
+          void exportFormat(selectedFullRequest, format).then((result) => {
+            showStatus(result.success ? result.message : `Error: ${result.message}`);
+          });
+        } else {
+          setStatusMessage(undefined);
+        }
+        return;
+      }
+
       // Navigation - behaviour depends on active panel
       if (input === "j" || key.downArrow) {
         if (activePanel === "list") {
@@ -540,23 +570,12 @@ function AppContent({ __testEnableInput, projectRoot }: AppProps): React.ReactEl
         } else {
           showStatus("No request selected");
         }
-      } else if (input === "c") {
+      } else if (input === "e") {
         if (selectedFullRequest) {
-          void exportCurl(selectedFullRequest).then((result) => {
-            showStatus(result.success ? result.message : `Error: ${result.message}`);
-          });
+          setPendingExport(true);
+          showStatus("Export: [c]url [f]etch [p]ython [h]ttpie [H]ar");
         } else {
           showStatus("No request selected");
-        }
-      } else if (input === "H") {
-        if (requests.length > 0) {
-          showStatus("Exporting HAR...");
-          void getAllFullRequests().then((fullRequests) => {
-            const result = exportHar(fullRequests);
-            showStatus(result.success ? result.message : `Error: ${result.message}`);
-          });
-        } else {
-          showStatus("No requests to export");
         }
       } else if (input === "f" && key.ctrl) {
         // Full-page down (list only)
@@ -576,8 +595,6 @@ function AppContent({ __testEnableInput, projectRoot }: AppProps): React.ReactEl
         showStatus(newShowFullUrl ? "Showing full URL" : "Showing path only");
       } else if (input === "?") {
         setShowHelp(true);
-      } else if (input === "i") {
-        setShowInfo(true);
       } else if (input === "L") {
         setShowInterceptorLog(true);
       } else if (input === "/") {
@@ -634,7 +651,7 @@ function AppContent({ __testEnableInput, projectRoot }: AppProps): React.ReactEl
         }
       }
     },
-    { isActive: (__testEnableInput || isRawModeSupported === true) && !showSaveModal && !showHelp && !showInfo && !showInterceptorLog && !showFilter && !showJsonExplorer && !showTextViewer },
+    { isActive: (__testEnableInput || isRawModeSupported === true) && !showSaveModal && !showHelp && !showInterceptorLog && !showFilter && !showJsonExplorer && !showTextViewer },
   );
 
   // Calculate layout
@@ -730,20 +747,6 @@ function AppContent({ __testEnableInput, projectRoot }: AppProps): React.ReactEl
     );
   }
 
-  // Info modal - full screen replacement
-  if (showInfo) {
-    return (
-      <InfoModal
-        proxyPort={proxyPort}
-        caCertPath={caCertPath}
-        width={columns}
-        height={rows}
-        onClose={() => setShowInfo(false)}
-        isActive={__testEnableInput || isRawModeSupported === true}
-      />
-    );
-  }
-
   // Interceptor log modal - full screen replacement
   if (showInterceptorLog) {
     return (
@@ -765,6 +768,8 @@ function AppContent({ __testEnableInput, projectRoot }: AppProps): React.ReactEl
         height={rows}
         onClose={() => setShowHelp(false)}
         isActive={__testEnableInput || isRawModeSupported === true}
+        proxyPort={proxyPort}
+        caCertPath={caCertPath}
       />
     );
   }
@@ -859,14 +864,11 @@ function AppContent({ __testEnableInput, projectRoot }: AppProps): React.ReactEl
         message={statusMessage}
         filterActive={isFilterActive(filter) || bodySearch !== undefined}
         filterOpen={showFilter}
-        activePanel={activePanel}
         hasSelection={selectedFullRequest !== null}
         hasRequests={requests.length > 0}
-        onBodySection={currentBodyIsExportable}
         onViewableBodySection={currentBodyIsExportable && !currentBodyIsBinary}
         interceptorCount={interceptorEvents.interceptorCount}
         interceptorErrorCount={interceptorEvents.counts.error}
-        hasEvents={interceptorEvents.totalEventCount > 0}
         width={columns}
       />
     </Box>

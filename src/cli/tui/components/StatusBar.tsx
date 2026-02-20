@@ -8,12 +8,9 @@ import { Box, Text } from "ink";
 import { HintContent, type HintItem } from "./HintContent.js";
 
 interface StatusBarContext {
-  activePanel: "list" | "accordion";
   hasSelection: boolean;
   hasRequests: boolean;
-  onBodySection: boolean;
   onViewableBodySection: boolean;
-  hasEvents: boolean;
 }
 
 interface KeyHint extends HintItem {
@@ -21,22 +18,15 @@ interface KeyHint extends HintItem {
 }
 
 const KEY_HINTS: KeyHint[] = [
-  { key: "j/k/g/G", action: "nav" },
-  { key: "^f/^b", action: "page", visible: (ctx) => ctx.activePanel === "list" },
+  { key: "j/k", action: "nav" },
   { key: "Tab", action: "panel" },
-  { key: "1-5", action: "section" },
   { key: "Enter", action: "view", visible: (ctx) => ctx.onViewableBodySection },
-  { key: "c", action: "curl", visible: (ctx) => ctx.hasSelection },
+  { key: "e", action: "export", visible: (ctx) => ctx.hasSelection },
   { key: "R", action: "replay", visible: (ctx) => ctx.hasSelection },
-  { key: "H", action: "HAR", visible: (ctx) => ctx.hasRequests },
-  { key: "y", action: "yank", visible: (ctx) => ctx.onBodySection },
-  { key: "s", action: "export", visible: (ctx) => ctx.onBodySection },
   { key: "b", action: "bookmark", visible: (ctx) => ctx.hasSelection },
   { key: "x", action: "clear", visible: (ctx) => ctx.hasRequests },
   { key: "u", action: "URL" },
   { key: "/", action: "filter" },
-  { key: "L", action: "events", visible: (ctx) => ctx.hasEvents },
-  { key: "i", action: "info" },
   { key: "?", action: "help" },
   { key: "q", action: "quit" },
 ];
@@ -46,17 +36,13 @@ export interface StatusBarProps {
   filterActive?: boolean;
   /** When true the filter bar is open and capturing input, so main-view hints are suppressed. */
   filterOpen?: boolean;
-  activePanel?: "list" | "accordion";
   hasSelection?: boolean;
   hasRequests?: boolean;
-  onBodySection?: boolean;
   onViewableBodySection?: boolean;
   /** Number of active interceptors; shown as a badge when > 0. */
   interceptorCount?: number;
   /** Number of interceptor error events; shown as a red badge when > 0. */
   interceptorErrorCount?: number;
-  /** Whether any interceptor events exist (gates L hint visibility). */
-  hasEvents?: boolean;
   /** Terminal width in columns — used to constrain the hint bar. */
   width?: number;
 }
@@ -66,14 +52,11 @@ export interface StatusBarProps {
  * so the component remains backwards-compatible when no context is passed.
  */
 export function getVisibleHints({
-  activePanel = "list",
   hasSelection = true,
   hasRequests = true,
-  onBodySection = true,
   onViewableBodySection = false,
-  hasEvents = false,
-}: Pick<StatusBarProps, "activePanel" | "hasSelection" | "hasRequests" | "onBodySection" | "onViewableBodySection" | "hasEvents">): KeyHint[] {
-  const ctx: StatusBarContext = { activePanel, hasSelection, hasRequests, onBodySection, onViewableBodySection, hasEvents };
+}: Pick<StatusBarProps, "hasSelection" | "hasRequests" | "onViewableBodySection">): KeyHint[] {
+  const ctx: StatusBarContext = { hasSelection, hasRequests, onViewableBodySection };
   return KEY_HINTS.filter((hint) => !hint.visible || hint.visible(ctx));
 }
 
@@ -84,19 +67,16 @@ export function StatusBar({
   message,
   filterActive,
   filterOpen,
-  activePanel,
   hasSelection,
   hasRequests,
-  onBodySection,
   onViewableBodySection,
   interceptorCount,
   interceptorErrorCount,
-  hasEvents,
   width,
 }: StatusBarProps): React.ReactElement {
   const visibleHints = useMemo(
-    () => getVisibleHints({ activePanel, hasSelection, hasRequests, onBodySection, onViewableBodySection, hasEvents }),
-    [activePanel, hasSelection, hasRequests, onBodySection, onViewableBodySection, hasEvents],
+    () => getVisibleHints({ hasSelection, hasRequests, onViewableBodySection }),
+    [hasSelection, hasRequests, onViewableBodySection],
   );
 
   // Calculate available width for hints, accounting for prefix badges
