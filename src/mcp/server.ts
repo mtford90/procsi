@@ -15,6 +15,7 @@ import { getProcsiPaths } from "../shared/project.js";
 import { getProcsiVersion } from "../shared/version.js";
 import { isTextContentType, isJsonContentType } from "../shared/content-type.js";
 import { normaliseRegexFilterInput } from "../shared/regex-filter.js";
+import { resolveInterceptorPath } from "../shared/interceptors.js";
 import type {
   CapturedRequest,
   CapturedRequestSummary,
@@ -441,27 +442,6 @@ export function buildFilter(params: {
 export function clampLimit(limit: number | undefined): number {
   if (limit === undefined) return DEFAULT_LIST_LIMIT;
   return Math.floor(Math.max(1, Math.min(limit, MAX_LIST_LIMIT)));
-}
-
-function resolveInterceptorPath(interceptorsDir: string, requestedPath: string): string {
-  const trimmed = requestedPath.trim();
-  if (!trimmed) {
-    throw new Error("Path is required.");
-  }
-
-  const absoluteInterceptorsDir = path.resolve(interceptorsDir);
-  const absoluteTarget = path.resolve(absoluteInterceptorsDir, trimmed);
-  const relative = path.relative(absoluteInterceptorsDir, absoluteTarget);
-
-  if (relative.startsWith("..") || path.isAbsolute(relative)) {
-    throw new Error("Interceptor path must stay inside .procsi/interceptors/.");
-  }
-
-  if (!absoluteTarget.endsWith(".ts")) {
-    throw new Error("Interceptor path must end with .ts");
-  }
-
-  return absoluteTarget;
 }
 
 export interface McpServerOptions {

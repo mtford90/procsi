@@ -7,6 +7,7 @@ import { isDaemonRunning } from "../../shared/daemon.js";
 import type { InterceptorEventLevel } from "../../shared/types.js";
 import { requireProjectRoot, getErrorMessage, getGlobalOptions } from "./helpers.js";
 import { formatInterceptorEventTable } from "../formatters/detail.js";
+import { resolveInterceptorPath } from "../../shared/interceptors.js";
 
 const EXAMPLE_INTERCEPTOR_FILENAME = "example.ts";
 
@@ -335,12 +336,156 @@ const logsSubcommand = new Command("logs")
     }
   );
 
+/**
+ * Reload interceptors via the daemon if it is running, printing the result.
+ * Returns silently if the daemon is not running.
+ */
+async function reloadIfRunning(projectRoot: string): Promise<void> {
+  const running = await isDaemonRunning(projectRoot);
+  if (!running) return;
+
+  const paths = getProcsiPaths(projectRoot);
+  const client = new ControlClient(paths.controlSocketFile);
+  try {
+    const result = await client.reloadInterceptors();
+    if (result.success) {
+      console.log(`Reloaded ${result.count} interceptor${result.count === 1 ? "" : "s"}`);
+    } else {
+      console.log(result.error ?? "Reload failed");
+    }
+  } finally {
+    client.close();
+  }
+}
+
+/**
+ * Collect all .ts files under a directory recursively.
+ */
+function collectTsFiles(dir: string): string[] {
+  if (!fs.existsSync(dir)) return [];
+  const entries = fs.readdirSync(dir, { recursive: true, withFileTypes: true });
+  const files: string[] = [];
+  for (const entry of entries) {
+    if (entry.isFile() && entry.name.endsWith(".ts")) {
+      const parentPath =
+        "parentPath" in entry
+          ? (entry as { parentPath: string }).parentPath
+          : (entry as { path: string }).path;
+      files.push(path.join(parentPath, entry.name));
+    }
+  }
+  return files;
+}
+
+const removeSubcommand = new Command("remove")
+  .description("Delete a single interceptor file")
+  .argument("<file>", "path relative to .procsi/interceptors/")
+  .action(async (file: string, _, command: Command) => {
+    const globalOpts = getGlobalOptions(command);
+    const projectRoot = requireProjectRoot(globalOpts.dir);
+    const paths = getProcsiPaths(projectRoot);
+
+    let absolutePath: string;
+    try {
+      absolutePath = resolveInterceptorPath(paths.interceptorsDir, file);
+    } catch (err) {
+      console.error(getErrorMessage(err));
+      process.exit(1);
+    }
+
+    if (!fs.existsSync(absolutePath)) {
+      console.error(`Interceptor not found: ${file}`);
+      process.exit(1);
+    }
+
+    try {
+      fs.unlinkSync(absolutePath);
+    } catch (err) {
+      console.error(`Failed to remove file: ${getErrorMessage(err)}`);
+      process.exit(1);
+    }
+
+    console.log(`Removed ${file}`);
+    await reloadIfRunning(projectRoot);
+  });
+
+const clearSubcommand = new Command("clear")
+  .description("Delete all interceptor files")
+  .action(async (_, command: Command) => {
+    const globalOpts = getGlobalOptions(command);
+    const projectRoot = requireProjectRoot(globalOpts.dir);
+    const paths = getProcsiPaths(projectRoot);
+
+    const files = collectTsFiles(paths.interceptorsDir);
+
+    if (files.length === 0) {
+      console.log("No interceptors to remove");
+      process.exit(0);
+    }
+
+    for (const file of files) {
+      try {
+        fs.unlinkSync(file);
+      } catch (err) {
+        console.error(`Failed to remove ${file}: ${getErrorMessage(err)}`);
+        process.exit(1);
+      }
+    }
+
+    console.log(`Removed ${files.length} interceptor${files.length === 1 ? "" : "s"}`);
+    await reloadIfRunning(projectRoot);
+  });
+
+const resetSubcommand = new Command("reset")
+  .description("Delete all interceptor files and clear the event log")
+  .action(async (_, command: Command) => {
+    const globalOpts = getGlobalOptions(command);
+    const projectRoot = requireProjectRoot(globalOpts.dir);
+    const paths = getProcsiPaths(projectRoot);
+
+    const files = collectTsFiles(paths.interceptorsDir);
+
+    for (const file of files) {
+      try {
+        fs.unlinkSync(file);
+      } catch (err) {
+        console.error(`Failed to remove ${file}: ${getErrorMessage(err)}`);
+        process.exit(1);
+      }
+    }
+
+    const running = await isDaemonRunning(projectRoot);
+    if (running) {
+      const client = new ControlClient(paths.controlSocketFile);
+      try {
+        const result = await client.reloadInterceptors();
+        if (result.success) {
+          console.log(`Reloaded ${result.count} interceptor${result.count === 1 ? "" : "s"}`);
+        } else {
+          console.log(result.error ?? "Reload failed");
+        }
+        await client.clearInterceptorEvents();
+      } finally {
+        client.close();
+      }
+    }
+
+    const removedMsg =
+      files.length === 0
+        ? "No interceptors to remove"
+        : `Removed ${files.length} interceptor${files.length === 1 ? "" : "s"}`;
+    console.log(`${removedMsg}. Event log cleared.`);
+  });
+
 export const interceptorsCommand = new Command("interceptors")
   .description("Manage request interceptors")
   .addCommand(listSubcommand)
   .addCommand(reloadSubcommand)
   .addCommand(initSubcommand)
   .addCommand(logsSubcommand)
+  .addCommand(removeSubcommand)
+  .addCommand(clearSubcommand)
+  .addCommand(resetSubcommand)
   .action(async (_, command: Command) => {
     // Default action when no subcommand is specified — behaves like `list`
     await listAction(command);
