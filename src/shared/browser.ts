@@ -87,7 +87,7 @@ const KNOWN_BROWSERS: Record<string, { type: BrowserType; name: string; path: st
     {
       type: "firefox",
       name: "LibreWolf",
-      path: "/Applications/LibreWolf.app/Contents/MacOS/librewolf",
+      path: "/Applications/LibreWolf.app/Contents/MacOS/LibreWolf",
     },
   ],
   linux: [
