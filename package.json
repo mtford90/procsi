@@ -1,6 +1,6 @@
 {
   "name": "procsi",
-  "version": "0.6.3",
+  "version": "0.6.4",
   "description": "Terminal HTTP interception toolkit",
   "type": "module",
   "main": "dist/cli/index.js",
