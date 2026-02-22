@@ -11,7 +11,7 @@ Procsi is a terminal-based, project-isolated HTTP proxy with a powerful CLI & MC
 ## Feature Highlights
 
 - **Project isolation** — each project gets its own `.procsi/` directory with a separate daemon, database, CA cert and interceptors
-- **MCP server** — AI agents get full access to your captured traffic and can write interceptor files for you. Search, filter, inspect, mock — all via tool calls.
+- **MCP server** — AI agents get full access to your captured traffic and can search, filter, inspect, mock — all via tool calls.
 - **Interceptors** — mock, modify or observe traffic with `.ts` files. Match on anything, query past traffic from within handlers, compose complex scenarios.
 
 ## Quick Start
@@ -49,10 +49,10 @@ Each browser session gets its own isolated profile and is automatically attribut
 
 **Supported browsers:**
 
-| Engine   | Browsers                                          |
-| -------- | ------------------------------------------------- |
-| Chromium | Chrome, Brave, Edge, Vivaldi, Arc, Chromium       |
-| Firefox  | Firefox, Zen Browser, LibreWolf                   |
+| Engine   | Browsers                                    |
+| -------- | ------------------------------------------- |
+| Chromium | Chrome, Brave, Edge, Vivaldi, Arc, Chromium |
+| Firefox  | Firefox, Zen Browser, LibreWolf             |
 
 ## Project Isolation
 
@@ -217,36 +217,36 @@ Anything that respects `HTTP_PROXY` works. procsi sets the right CA cert env var
 
 **Works automatically (env vars only):**
 
-| Client                       | Support                    |
-| ---------------------------- | -------------------------- |
-| curl                         | Automatic                  |
-| wget                         | Automatic                  |
-| Go (`net/http`)              | Automatic                  |
-| Rust (reqwest)               | Automatic                  |
-| .NET (`HttpClient`)          | Automatic                  |
-| Deno                         | Automatic (`DENO_CERT`)    |
-| Bun                          | Automatic (`SSL_CERT_FILE`)|
-| Git                          | Automatic (`GIT_SSL_CAINFO`)|
-| AWS CLI                      | Automatic (`AWS_CA_BUNDLE`)|
-| Cargo                        | Automatic (`CARGO_HTTP_CAINFO`)|
+| Client              | Support                         |
+| ------------------- | ------------------------------- |
+| curl                | Automatic                       |
+| wget                | Automatic                       |
+| Go (`net/http`)     | Automatic                       |
+| Rust (reqwest)      | Automatic                       |
+| .NET (`HttpClient`) | Automatic                       |
+| Deno                | Automatic (`DENO_CERT`)         |
+| Bun                 | Automatic (`SSL_CERT_FILE`)     |
+| Git                 | Automatic (`GIT_SSL_CAINFO`)    |
+| AWS CLI             | Automatic (`AWS_CA_BUNDLE`)     |
+| Cargo               | Automatic (`CARGO_HTTP_CAINFO`) |
 
 **Works with procsi overrides (injection scripts):**
 
-| Client                       | Mechanism                                  |
-| ---------------------------- | ------------------------------------------ |
-| Node.js (fetch, axios, etc.) | `NODE_OPTIONS --require` preload script    |
-| Python (requests, httplib2)  | `PYTHONPATH` sitecustomize.py              |
-| Ruby (Net::HTTP, gems)       | `RUBYOPT -r` OpenSSL CA patch              |
-| PHP (curl, streams)          | `PHP_INI_SCAN_DIR` custom INI              |
+| Client                       | Mechanism                               |
+| ---------------------------- | --------------------------------------- |
+| Node.js (fetch, axios, etc.) | `NODE_OPTIONS --require` preload script |
+| Python (requests, httplib2)  | `PYTHONPATH` sitecustomize.py           |
+| Ruby (Net::HTTP, gems)       | `RUBYOPT -r` OpenSSL CA patch           |
+| PHP (curl, streams)          | `PHP_INI_SCAN_DIR` custom INI           |
 
 **Not currently supported (needs system-level config):**
 
-| Runtime           | Reason                                           |
-| ----------------- | ------------------------------------------------ |
-| Java/JVM          | Needs `-javaagent` or JVM trust store config     |
-| Swift             | Uses macOS Keychain only                         |
-| Dart/Flutter      | Requires code changes for proxy                  |
-| Elixir/Erlang     | Requires code changes for proxy                  |
+| Runtime       | Reason                                       |
+| ------------- | -------------------------------------------- |
+| Java/JVM      | Needs `-javaagent` or JVM trust store config |
+| Swift         | Uses macOS Keychain only                     |
+| Dart/Flutter  | Requires code changes for proxy              |
+| Elixir/Erlang | Requires code changes for proxy              |
 
 ## TUI
 
